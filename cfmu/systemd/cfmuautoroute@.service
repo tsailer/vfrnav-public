@@ -1,0 +1,16 @@
+[Unit]
+Description=CFMU Autorouter Webservice
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/tmp
+EnvironmentFile=-/etc/sysconfig/cfmuautoroute
+ExecStart=/usr/bin/cfmuautoroute --socketserver=%i $OPTIONS
+Restart=always
+RestartSec=5
+User=vfrnav
+Group=vfrnav
+
+;[Install]
+;WantedBy=multi-user.target

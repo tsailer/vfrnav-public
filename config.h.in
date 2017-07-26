@@ -1,0 +1,411 @@
+/* config.h.in.  Generated from configure.ac by autoheader.  */
+
+/* define if boost multiprecision int128_t type */
+#undef BOOST_INT128
+
+/* define int128_t type */
+#undef DEFINE_INT128
+
+/* Define to 1 if translation of program messages to the user's native
+   language is requested. */
+#undef ENABLE_NLS
+
+/* GEOS library version */
+#undef GEOS_VERSION
+
+/* BlueZ library */
+#undef HAVE_BLUEZ
+
+/* define if the Boost library is available */
+#undef HAVE_BOOST
+
+/* Define to 1 if you have the <boost/geometry.hpp> header file. */
+#undef HAVE_BOOST_GEOMETRY_HPP
+
+/* Define to 1 if you have the MacOS X function CFLocaleCopyCurrent in the
+   CoreFoundation framework. */
+#undef HAVE_CFLOCALECOPYCURRENT
+
+/* Define if Cfmu should be compiled */
+#undef HAVE_CFMU
+
+/* Define to 1 if you have the MacOS X function CFPreferencesCopyAppValue in
+   the CoreFoundation framework. */
+#undef HAVE_CFPREFERENCESCOPYAPPVALUE
+
+/* Clipper library */
+#undef HAVE_CLIPPER
+
+/* Clipper Library has ExPolygon API */
+#undef HAVE_CLIPPER_EXPOLYGON
+
+/* Clipper Library has Path class */
+#undef HAVE_CLIPPER_PATH
+
+/* Clipper Library has Polygon class */
+#undef HAVE_CLIPPER_POLYGON
+
+/* Clipper Library has PolyTree API */
+#undef HAVE_CLIPPER_POLYTREE
+
+/* curl library */
+#undef HAVE_CURL
+
+/* define if the compiler supports basic C++11 syntax */
+#undef HAVE_CXX11
+
+/* Define if the GNU dcgettext() function is already present or preinstalled.
+   */
+#undef HAVE_DCGETTEXT
+
+/* Define to 1 if you have the <dlfcn.h> header file. */
+#undef HAVE_DLFCN_H
+
+/* Eigen3 library */
+#undef HAVE_EIGEN3
+
+/* Define to 1 if you have the <endian.h> header file. */
+#undef HAVE_ENDIAN_H
+
+/* evince library */
+#undef HAVE_EVINCE
+
+/* Define to 1 if you have the <execinfo.h> header file. */
+#undef HAVE_EXECINFO_H
+
+/* Define if Flightdeck should be compiled */
+#undef HAVE_FLIGHTDECK
+
+/* Define to 1 if you have the `fork' function. */
+#undef HAVE_FORK
+
+/* either libftdi or d2xx FTDI chip access library */
+#undef HAVE_FTDI
+
+/* whether we have FTDI D2XX Library */
+#undef HAVE_FTDID2XX
+
+/* Define to 1 if you have the <ftdi/ftd2xx.h> header file. */
+#undef HAVE_FTDI_FTD2XX_H
+
+/* gconf library */
+#undef HAVE_GCONF
+
+/* GDAL library */
+#undef HAVE_GDAL
+
+/* GDAL v2 library */
+#undef HAVE_GDAL2
+
+/* Defined if GDK_KEY compat is needed */
+#undef HAVE_GDKKEYCOMPAT
+
+/* Geoclue Library */
+#undef HAVE_GEOCLUE
+
+/* GeoClue2 Library */
+#undef HAVE_GEOCLUE2
+
+/* GEOS library */
+#undef HAVE_GEOS
+
+/* Define to 1 if you have the `getpagesize' function. */
+#undef HAVE_GETPAGESIZE
+
+/* Define if the GNU gettext() function is already present or preinstalled. */
+#undef HAVE_GETTEXT
+
+/* Giomm library */
+#undef HAVE_GIOMM
+
+/* Define if giomm24 supports make_directory_with_parents */
+#undef HAVE_GIOMM_MAKE_DIRECTORY_WITH_PARENTS
+
+/* Gnome Bluetooth Libraries */
+#undef HAVE_GNOMEBT
+
+/* Define to 1 if you have the <gps.h> header file. */
+#undef HAVE_GPS_H
+
+/* Define to 1 if you have the <grp.h> header file. */
+#undef HAVE_GRP_H
+
+/* GSL library */
+#undef HAVE_GSL
+
+/* Define if GTKMM 2.4 is available */
+#undef HAVE_GTKMM2
+
+/* Define if GTKMM 3.0 is available */
+#undef HAVE_GTKMM3
+
+/* Gypsy GPS Daemon */
+#undef HAVE_GYPSY
+
+/* Hidapi library */
+#undef HAVE_HIDAPI
+
+/* Nokia Hildon Framework */
+#undef HAVE_HILDON
+
+/* Nokia/Openismus Hildonmm Framework */
+#undef HAVE_HILDONMM
+
+/* Define if you have the iconv() function. */
+#undef HAVE_ICONV
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#undef HAVE_INTTYPES_H
+
+/* Jsoncpp Libraries */
+#undef HAVE_JSONCPP
+
+/* OpenSSL Crypto Library */
+#undef HAVE_LIBCRYPTO
+
+/* whether we have libftdi */
+#undef HAVE_LIBFTDI
+
+/* whether we have libftdi1 */
+#undef HAVE_LIBFTDI1
+
+/* Defined if libgps is available */
+#undef HAVE_LIBGPS
+
+/* Nokia Location Library */
+#undef HAVE_LIBLOCATION
+
+/* libusb1 library */
+#undef HAVE_LIBUSB1
+
+/* Define if libutil is available */
+#undef HAVE_LIBUTIL
+
+/* Define to 1 if you have the `z' library (-lz). */
+#undef HAVE_LIBZ
+
+/* Define to 1 if you have the <linux/usb/ch9.h> header file. */
+#undef HAVE_LINUX_USB_CH9_H
+
+/* GraphicsMagick++ */
+#undef HAVE_MAGICKPP
+
+/* Define to 1 if you have the <memory.h> header file. */
+#undef HAVE_MEMORY_H
+
+/* Define to 1 if you have a working `mmap' system call. */
+#undef HAVE_MMAP
+
+/* Define if maps should be multithreaded */
+#undef HAVE_MULTITHREADED_MAPS
+
+/* Define to 1 if you have the <objbase.h> header file. */
+#undef HAVE_OBJBASE_H
+
+/* openjpeg library */
+#undef HAVE_OPENJPEG
+
+/* Defined if open_memstream is available */
+#undef HAVE_OPEN_MEMSTREAM
+
+/* Nokia Osso Framework */
+#undef HAVE_OSSO
+
+/* PilotLink library */
+#undef HAVE_PILOTLINK
+
+/* Defined if PoDoFo Library is available */
+#undef HAVE_PODOFO
+
+/* poppler library */
+#undef HAVE_POPPLER
+
+/* PostgreSQL C++ */
+#undef HAVE_PQXX
+
+/* Define to 1 if you have the `prctl' function. */
+#undef HAVE_PRCTL
+
+/* Define to 1 if you have the <pty.h> header file. */
+#undef HAVE_PTY_H
+
+/* Define to 1 if you have the <pwd.h> header file. */
+#undef HAVE_PWD_H
+
+/* Define to 1 if you have the <sensorsapi.h> header file. */
+#undef HAVE_SENSORSAPI_H
+
+/* SIMD instruction set potentially available */
+#undef HAVE_SIMD
+
+/* x64 AVX instruction set potentially available */
+#undef HAVE_SIMD_X64
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#undef HAVE_STDINT_H
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the <strings.h> header file. */
+#undef HAVE_STRINGS_H
+
+/* Define to 1 if you have the <string.h> header file. */
+#undef HAVE_STRING_H
+
+/* Define to 1 if you have the `sysconf' function. */
+#undef HAVE_SYSCONF
+
+/* Define to 1 if you have the <sysexits.h> header file. */
+#undef HAVE_SYSEXITS_H
+
+/* SystemD Daemon Libraries */
+#undef HAVE_SYSTEMDDAEMON
+
+/* Define to 1 if you have the <systemd/sd-daemon.h> header file. */
+#undef HAVE_SYSTEMD_SD_DAEMON_H
+
+/* Define to 1 if you have the <sys/mman.h> header file. */
+#undef HAVE_SYS_MMAN_H
+
+/* Define to 1 if you have the <sys/param.h> header file. */
+#undef HAVE_SYS_PARAM_H
+
+/* Define to 1 if you have the <sys/prctl.h> header file. */
+#undef HAVE_SYS_PRCTL_H
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#undef HAVE_SYS_STAT_H
+
+/* Define to 1 if you have the <sys/syscall.h> header file. */
+#undef HAVE_SYS_SYSCALL_H
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have the <sys/utsname.h> header file. */
+#undef HAVE_SYS_UTSNAME_H
+
+/* Define to 1 if you have the <termios.h> header file. */
+#undef HAVE_TERMIOS_H
+
+/* Udev library */
+#undef HAVE_UDEV
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#undef HAVE_UNISTD_H
+
+/* Define to 1 if you have the `vfork' function. */
+#undef HAVE_VFORK
+
+/* Define to 1 if you have the <vfork.h> header file. */
+#undef HAVE_VFORK_H
+
+/* webkitgtk library */
+#undef HAVE_WEBKITGTK
+
+/* webkitgtk4 library */
+#undef HAVE_WEBKITGTK4
+
+/* webkitgtk web extension library */
+#undef HAVE_WEBKITGTKWEBEXT
+
+/* WebSocket Libraries */
+#undef HAVE_WEBSOCKET
+
+/* Define to 1 if you have the <windows.h> header file. */
+#undef HAVE_WINDOWS_H
+
+/* Define to 1 if `fork' works. */
+#undef HAVE_WORKING_FORK
+
+/* Define to 1 if `vfork' works. */
+#undef HAVE_WORKING_VFORK
+
+/* Defined if DPMSDisable is available */
+#undef HAVE_X11_DPMS
+
+/* Define to 1 if you have the <X11/extensions/dpms.h> header file. */
+#undef HAVE_X11_EXTENSIONS_DPMS_H
+
+/* Define to 1 if you have the <X11/extensions/scrnsaver.h> header file. */
+#undef HAVE_X11_EXTENSIONS_SCRNSAVER_H
+
+/* Defined if XResetScreenSaver is available */
+#undef HAVE_X11_RSS
+
+/* Define to 1 if you have the <X11/Xlib.h> header file. */
+#undef HAVE_X11_XLIB_H
+
+/* Defined if XScreenSaverSuspend is available */
+#undef HAVE_X11_XSS
+
+/* Define as const if the declaration of iconv() needs const. */
+#undef ICONV_CONST
+
+/* Define to the sub-directory in which libtool stores uninstalled libraries.
+   */
+#undef LT_OBJDIR
+
+/* Name of package */
+#undef PACKAGE
+
+/* Define to the address where bug reports for this package should be sent. */
+#undef PACKAGE_BUGREPORT
+
+/* various directories */
+#undef PACKAGE_DATA_DIR
+
+/* various directories */
+#undef PACKAGE_LIBEXEC_DIR
+
+/* various directories */
+#undef PACKAGE_LOCALE_DIR
+
+/* various directories */
+#undef PACKAGE_LOCALSTATE_DIR
+
+/* Define to the full name of this package. */
+#undef PACKAGE_NAME
+
+/* various directories */
+#undef PACKAGE_PREFIX_DIR
+
+/* various directories */
+#undef PACKAGE_RUN_DIR
+
+/* Define to the full name and version of this package. */
+#undef PACKAGE_STRING
+
+/* Package System Configuration Directory */
+#undef PACKAGE_SYSCONF_DIR
+
+/* Define to the one symbol short name of this package. */
+#undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
+/* Define to the version of this package. */
+#undef PACKAGE_VERSION
+
+/* The size of `wchar_t', as computed by sizeof. */
+#undef SIZEOF_WCHAR_T
+
+/* Define to 1 if you have the ANSI C header files. */
+#undef STDC_HEADERS
+
+/* Version number of package */
+#undef VERSION
+
+/* Define if constexpr is not supported */
+#undef constexpr
+
+/* Define to `int' if <sys/types.h> does not define. */
+#undef pid_t
+
+/* Define if unique_ptr is not supported */
+#undef unique_ptr
+
+/* Define as `fork' if `vfork' does not work. */
+#undef vfork

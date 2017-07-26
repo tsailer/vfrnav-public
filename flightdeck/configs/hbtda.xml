@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<aircraft callsign="HBTDA" manufacturer="Cessna" model="172SP" year="2011" icaotype="C172" equipment="SDGLOYR" transponder="S" pbn="B2D2" colormarking="WHITE BLUE AND RED STRIPES" emergencyradio="E" homebase="LSZK" mrm="2550" mtom="2550" mlm="2550" vr0="51" vr1="51" vx0="62" vx1="62" vy="74" vs0="40" vs1="48" vno="129" vne="163" vref0="52" vref1="62.4" va="105" vfe="85" vbestglide="68" glideslope="9" fuelunitname="usg" fuelmass="6.017" maxbhp="180" propulsion="fixedpitch" freecirculation="N">
+  <wb armunitname="in" massunitname="lb">
+    <element name="Pilot and Front Pax" massmax="600" arm="40">
+      <unit name="kg" factor="2.20462"/>
+      <unit name="lb" factor="1"/>
+    </element>
+    <element name="Rear Pax" massmax="600" arm="73">
+      <unit name="kg" factor="2.20462"/>
+      <unit name="lb" factor="1"/>
+    </element>
+    <element name="Cargo 1" massmax="120" arm="95">
+      <unit name="kg" factor="2.20462"/>
+      <unit name="lb" factor="1"/>
+    </element>
+    <element name="Cargo 2" massmax="50" arm="125">
+      <unit name="kg" factor="2.20462"/>
+      <unit name="lb" factor="1"/>
+    </element>
+    <element name="Fuel" massmax="336" arm="48" flags="avgas">
+      <unit name="l" factor="1.58292"/>
+      <unit name="USgal" factor="5.992"/>
+      <unit name="kg" factor="2.20462"/>
+      <unit name="lb" factor="1"/>
+    </element>
+    <element name="Oil" massmax="14.354" arm="13.1" flags="oil">
+      <unit name="Quart" factor="1.79426"/>
+      <unit name="l" factor="1.89598"/>
+      <unit name="kg" factor="2.20462"/>
+      <unit name="lb" factor="1"/>
+    </element>
+    <element name="Basic Empty Mass" massmin="1695" massmax="1695" arm="42.7843" flags="fixed">
+      <unit name="lb" factor="1"/>
+    </element>
+    <envelope name="Normal">
+      <point arm="35" mass="1600"/>
+      <point arm="47.3" mass="1600"/>
+      <point arm="47.3" mass="2550"/>
+      <point arm="41" mass="2550"/>
+      <point arm="35" mass="1950"/>
+    </envelope>
+    <envelope name="Utility">
+      <point arm="35" mass="1600"/>
+      <point arm="40.5" mass="1600"/>
+      <point arm="40.5" mass="2200"/>
+      <point arm="37.5" mass="2200"/>
+      <point arm="35" mass="1950"/>
+    </envelope>
+  </wb>
+  <distances distfactor="0.3048" unitname="m">
+    <tkoffdist name="Flaps 10" vrotate="51" mass="2550">
+      <point pa="0" temp="0" gnddist="860" obstdist="1465"/>
+      <point pa="0" temp="10" gnddist="925" obstdist="1575"/>
+      <point pa="0" temp="20" gnddist="995" obstdist="1690"/>
+      <point pa="0" temp="30" gnddist="1070" obstdist="1810"/>
+      <point pa="0" temp="40" gnddist="1150" obstdist="1945"/>
+      <point da="1000" temp="0" gnddist="940" obstdist="1600"/>
+      <point da="1000" temp="10" gnddist="1010" obstdist="1720"/>
+      <point da="1000" temp="20" gnddist="1090" obstdist="1850"/>
+      <point da="1000" temp="30" gnddist="1170" obstdist="1990"/>
+      <point da="1000" temp="40" gnddist="1260" obstdist="2135"/>
+      <point da="2000" temp="0" gnddist="1025" obstdist="1755"/>
+      <point da="2000" temp="10" gnddist="1110" obstdist="1890"/>
+      <point da="2000" temp="20" gnddist="1195" obstdist="2035"/>
+      <point da="2000" temp="30" gnddist="1285" obstdist="2190"/>
+      <point da="2000" temp="40" gnddist="1380" obstdist="2355"/>
+      <point da="3000" temp="0" gnddist="1125" obstdist="1925"/>
+      <point da="3000" temp="10" gnddist="1215" obstdist="2080"/>
+      <point da="3000" temp="20" gnddist="1310" obstdist="2240"/>
+      <point da="3000" temp="30" gnddist="1410" obstdist="2420"/>
+      <point da="3000" temp="40" gnddist="1515" obstdist="2605"/>
+      <point da="4000" temp="0" gnddist="1235" obstdist="2120"/>
+      <point da="4000" temp="10" gnddist="1335" obstdist="2295"/>
+      <point da="4000" temp="20" gnddist="1440" obstdist="2480"/>
+      <point da="4000" temp="30" gnddist="1550" obstdist="2685"/>
+      <point da="4000" temp="40" gnddist="1660" obstdist="2880"/>
+      <point da="5000" temp="0" gnddist="1355" obstdist="2345"/>
+      <point da="5000" temp="10" gnddist="1465" obstdist="2545"/>
+      <point da="5000" temp="20" gnddist="1585" obstdist="2755"/>
+      <point da="5000" temp="30" gnddist="1705" obstdist="2975"/>
+      <point da="5000" temp="40" gnddist="1825" obstdist="3205"/>
+      <point da="6000" temp="0" gnddist="1495" obstdist="2605"/>
+      <point da="6000" temp="10" gnddist="1615" obstdist="2830"/>
+      <point da="6000" temp="20" gnddist="1745" obstdist="3075"/>
+      <point da="6000" temp="30" gnddist="1875" obstdist="3320"/>
+      <point da="6000" temp="40" gnddist="2010" obstdist="3585"/>
+      <point da="7000" temp="0" gnddist="1645" obstdist="2910"/>
+      <point da="7000" temp="10" gnddist="1785" obstdist="3170"/>
+      <point da="7000" temp="20" gnddist="1920" obstdist="3440"/>
+      <point da="7000" temp="30" gnddist="2065" obstdist="3730"/>
+      <point da="7000" temp="40" gnddist="2215" obstdist="4045"/>
+      <point da="8000" temp="0" gnddist="1820" obstdist="3265"/>
+      <point da="8000" temp="10" gnddist="1970" obstdist="3575"/>
+      <point da="8000" temp="20" gnddist="2120" obstdist="3880"/>
+      <point da="8000" temp="30" gnddist="2280" obstdist="4225"/>
+      <point da="8000" temp="40" gnddist="2450" obstdist="4615"/>
+      <gndpoly>295.2782944,0.03871259219,-1.777349332e-06,3.104844639e-10</gndpoly>
+      <obstpoly>501.0977383,0.06797400527,-3.849150669e-06,7.724542862e-10</obstpoly>
+    </tkoffdist>
+    <ldgdist name="Flaps 40" vrotate="51" mass="2550">
+      <point pa="0" temp="0" gnddist="545" obstdist="1290"/>
+      <point pa="0" temp="10" gnddist="565" obstdist="1320"/>
+      <point pa="0" temp="20" gnddist="585" obstdist="1350"/>
+      <point pa="0" temp="30" gnddist="605" obstdist="1380"/>
+      <point pa="0" temp="40" gnddist="625" obstdist="1415"/>
+      <point pa="1000" temp="0" gnddist="565" obstdist="1320"/>
+      <point pa="1000" temp="10" gnddist="585" obstdist="1350"/>
+      <point pa="1000" temp="20" gnddist="605" obstdist="1385"/>
+      <point pa="1000" temp="30" gnddist="625" obstdist="1420"/>
+      <point pa="1000" temp="40" gnddist="650" obstdist="1450"/>
+      <point pa="2000" temp="0" gnddist="585" obstdist="1355"/>
+      <point pa="2000" temp="10" gnddist="610" obstdist="1385"/>
+      <point pa="2000" temp="20" gnddist="630" obstdist="1420"/>
+      <point pa="2000" temp="30" gnddist="650" obstdist="1455"/>
+      <point pa="2000" temp="40" gnddist="670" obstdist="1490"/>
+      <point pa="3000" temp="0" gnddist="610" obstdist="1385"/>
+      <point pa="3000" temp="10" gnddist="630" obstdist="1425"/>
+      <point pa="3000" temp="20" gnddist="655" obstdist="1460"/>
+      <point pa="3000" temp="30" gnddist="675" obstdist="1495"/>
+      <point pa="3000" temp="40" gnddist="695" obstdist="1530"/>
+      <point pa="4000" temp="0" gnddist="630" obstdist="1425"/>
+      <point pa="4000" temp="10" gnddist="655" obstdist="1460"/>
+      <point pa="4000" temp="20" gnddist="675" obstdist="1495"/>
+      <point pa="4000" temp="30" gnddist="700" obstdist="1535"/>
+      <point pa="4000" temp="40" gnddist="725" obstdist="1570"/>
+      <point pa="5000" temp="0" gnddist="655" obstdist="1460"/>
+      <point pa="5000" temp="10" gnddist="680" obstdist="1500"/>
+      <point pa="5000" temp="20" gnddist="705" obstdist="1535"/>
+      <point pa="5000" temp="30" gnddist="725" obstdist="1575"/>
+      <point pa="5000" temp="40" gnddist="750" obstdist="1615"/>
+      <point pa="6000" temp="0" gnddist="680" obstdist="1500"/>
+      <point pa="6000" temp="10" gnddist="705" obstdist="1540"/>
+      <point pa="6000" temp="20" gnddist="730" obstdist="1580"/>
+      <point pa="6000" temp="30" gnddist="755" obstdist="1620"/>
+      <point pa="6000" temp="40" gnddist="780" obstdist="1660"/>
+      <point pa="7000" temp="0" gnddist="705" obstdist="1545"/>
+      <point pa="7000" temp="10" gnddist="730" obstdist="1585"/>
+      <point pa="7000" temp="20" gnddist="760" obstdist="1625"/>
+      <point pa="7000" temp="30" gnddist="785" obstdist="1665"/>
+      <point pa="7000" temp="40" gnddist="810" obstdist="1705"/>
+      <point pa="8000" temp="0" gnddist="735" obstdist="1585"/>
+      <point pa="8000" temp="10" gnddist="760" obstdist="1630"/>
+      <point pa="8000" temp="20" gnddist="790" obstdist="1670"/>
+      <point pa="8000" temp="30" gnddist="815" obstdist="1715"/>
+      <point pa="8000" temp="40" gnddist="840" obstdist="1755"/>
+      <gndpoly>174.1249934,0.008576208099,-7.377435755e-07,5.980352005e-11</gndpoly>
+      <obstpoly>405.3034615,0.01348403259,-1.14237298e-06,9.24927294e-11</obstpoly>
+    </ldgdist>
+  </distances>
+  <climb ceiling="15660.3" climbtime="3601" mode="rateofclimb">
+    <point da="0" rate="730" fuelflow="14" cas="74"/>
+    <point da="1000" rate="695" fuelflow="13.5" cas="74"/>
+    <point da="2000" rate="655" fuelflow="13" cas="74"/>
+    <point da="3000" rate="620" fuelflow="12.5" cas="74"/>
+    <point da="4000" rate="600" fuelflow="12" cas="74"/>
+    <point da="5000" rate="550" fuelflow="11.5" cas="74"/>
+    <point da="6000" rate="505" fuelflow="11" cas="74"/>
+    <point da="7000" rate="455" fuelflow="10.5" cas="74"/>
+    <point da="8000" rate="410" fuelflow="10" cas="74"/>
+    <point da="9000" rate="360" fuelflow="9.5" cas="74"/>
+    <point da="10000" rate="315" fuelflow="9" cas="74"/>
+    <point da="11000" rate="265" fuelflow="8.5" cas="74"/>
+    <point da="12000" rate="220" fuelflow="8" cas="74"/>
+    <ratepoly>725.4395604,-0.02727439227,-2.02047952e-06,6.41025641e-11</ratepoly>
+    <fuelflowpoly>14,-0.0005,-5.717472394e-21,3.61891518e-25</fuelflowpoly>
+    <caspoly>82.5527428,8.67361738e-19</caspoly>
+    <climbtimepoly>0,0.1135063315,-3.69039636e-05,1.678855503e-08,-3.396049409e-12,3.560296727e-16,-1.853846499e-20,3.8417265e-25</climbtimepoly>
+    <climbaltpoly>0,12.34138022,-0.003832112057,4.400949893e-07,3.640473768e-11,-9.541403629e-15</climbaltpoly>
+    <climbdistpoly>0,0.02050059374,2.889106056e-06,-4.33563854e-10,2.126286738e-14,1.126958755e-18</climbdistpoly>
+    <climbfuelpoly>0,0.003897175696,-8.783337791e-07,1.9982805e-10,-2.628285582e-14,1.519729251e-18</climbfuelpoly>
+  </climb>
+  <descent rate="1000"/>
+  <cruise>
+    <curve name="2100 RPM" flags="interpolate">
+      <point da="2000" rpm="2100" bhp="79.2" tas="90" fuelflow="6.6"/>
+      <point da="4000" rpm="2100" bhp="75.6" tas="89" fuelflow="6.4"/>
+    </curve>
+    <curve name="2200 RPM" flags="interpolate">
+      <point da="2000" rpm="2200" bhp="90" tas="97" fuelflow="7.3"/>
+      <point da="4000" rpm="2200" bhp="86.4" tas="96" fuelflow="7"/>
+      <point da="6000" rpm="2200" bhp="81" tas="94" fuelflow="6.7"/>
+      <point da="8000" rpm="2200" bhp="77.4" tas="92" fuelflow="6.5"/>
+    </curve>
+    <curve name="2300 RPM" flags="interpolate">
+      <point da="2000" rpm="2300" bhp="102.6" tas="104" fuelflow="8.1"/>
+      <point da="4000" rpm="2300" bhp="97.2" tas="102" fuelflow="7.7"/>
+      <point da="6000" rpm="2300" bhp="91.8" tas="101" fuelflow="7.4"/>
+      <point da="8000" rpm="2300" bhp="86.4" tas="99" fuelflow="7.1"/>
+      <point da="10000" rpm="2300" bhp="82.8" tas="97" fuelflow="6.8"/>
+      <point da="12000" rpm="2300" bhp="79.2" tas="95" fuelflow="6.6"/>
+    </curve>
+    <curve name="2400 RPM" flags="interpolate">
+      <point da="2000" rpm="2400" bhp="115.2" tas="110" fuelflow="9"/>
+      <point da="4000" rpm="2400" bhp="109.8" tas="109" fuelflow="8.5"/>
+      <point da="6000" rpm="2400" bhp="102.6" tas="108" fuelflow="8.2"/>
+      <point da="8000" rpm="2400" bhp="97.2" tas="106" fuelflow="7.8"/>
+      <point da="10000" rpm="2400" bhp="91.8" tas="104" fuelflow="7.5"/>
+      <point da="12000" rpm="2400" bhp="88.2" tas="102" fuelflow="7.1"/>
+    </curve>
+    <curve name="2500 RPM" flags="interpolate">
+      <point da="2000" rpm="2500" bhp="131.4" tas="115" fuelflow="9.9"/>
+      <point da="4000" rpm="2500" bhp="124.2" tas="115" fuelflow="9.5"/>
+      <point da="6000" rpm="2500" bhp="117" tas="114" fuelflow="9"/>
+      <point da="8000" rpm="2500" bhp="109.8" tas="112" fuelflow="8.6"/>
+      <point da="10000" rpm="2500" bhp="102.6" tas="111" fuelflow="8.2"/>
+      <point da="12000" rpm="2500" bhp="97.2" tas="109" fuelflow="7.8"/>
+    </curve>
+    <curve name="2550 RPM" flags="interpolate">
+      <point da="2000" rpm="2550" bhp="138.6" tas="118" fuelflow="10.5"/>
+      <point da="4000" rpm="2550" bhp="131.4" tas="117" fuelflow="9.9"/>
+    </curve>
+    <curve name="2600 RPM" flags="interpolate">
+      <point da="4000" rpm="2600" bhp="138.6" tas="120" fuelflow="10.4"/>
+      <point da="6000" rpm="2600" bhp="131.4" tas="119" fuelflow="9.9"/>
+      <point da="8000" rpm="2600" bhp="122.4" tas="119" fuelflow="9.4"/>
+      <point da="10000" rpm="2600" bhp="115.2" tas="117" fuelflow="9"/>
+      <point da="12000" rpm="2600" bhp="109.8" tas="116" fuelflow="8.5"/>
+    </curve>
+    <curve name="2650 RPM" flags="interpolate">
+      <point da="6000" rpm="2650" bhp="138.6" tas="122" fuelflow="10.4"/>
+      <point da="8000" rpm="2650" bhp="129.6" tas="122" fuelflow="9.9"/>
+      <point da="10000" rpm="2650" bhp="122.4" tas="120" fuelflow="9.4"/>
+      <point da="12000" rpm="2650" bhp="115.2" tas="119" fuelflow="8.9"/>
+    </curve>
+    <curve name="2700 RPM" flags="interpolate">
+      <point da="8000" rpm="2700" bhp="138.6" tas="124" fuelflow="10.4"/>
+      <point da="10000" rpm="2700" bhp="129.6" tas="123" fuelflow="9.8"/>
+    </curve>
+  </cruise>
+</aircraft>

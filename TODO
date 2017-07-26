@@ -1,0 +1,23 @@
+- speed
+- correctness / valgrind
+- trackeditor:
+  - find names for depature / destination from db
+  - export to KML
+  - make waypoint from track point
+  - determine times from track
+
+FlightDeck:
+- Flight Plan Import/Export
+- IFVU Flight Plan validation
+- Terrain Cut graphics
+
+Bugs:
+- QNH inconsistent (between dialog and indicator)
+- check airspace display
+- check airway display
+- get bluetooth GPS working
+
+Autorouter:
+- try to extract "SID"/"STAR" from standard routes
+- debug "high altitude" stuff
+- when a rule requires a SID/STAR even for VFR dep/arr, we need to use a SID/STAR connecting point (eg. EB5503A/B)

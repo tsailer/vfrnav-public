@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=VFR Airport Editor
+Exec=/usr/bin/vfrairporteditor
+Icon=vfrnav
+X-Window-Icon=vfrnav
+X-Window-Icon-Dimmed=vfrnav
+X-Osso-Type=application/x-executable
+Terminal=false
+StartupNotify=true
+Categories=GTK;Utility;Education;Geography;

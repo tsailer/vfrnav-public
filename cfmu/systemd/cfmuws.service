@@ -1,0 +1,14 @@
+[Unit]
+Description=CFMU Autorouter Webservice
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/tmp
+EnvironmentFile=-/etc/sysconfig/cfmuws
+ExecStart=/usr/sbin/cfmuws $OPTIONS
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

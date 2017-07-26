@@ -1,0 +1,2 @@
+OPTIONS="--xdisplay=50 -6 --threads=8 --uid=vfrnav --gid=vfrnav --sockgid=apache --sockmode=0770 --routerlimit=10 --routeractivelimit=10 --routertimeout=120 --routermaxruntime=600 --setproctitle --log-client --log-router --log-sockcli"
+HOME=/var/lib/vfrnav/

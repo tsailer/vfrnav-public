@@ -1,0 +1,9 @@
+a note on glade files
+
+.glade files are used by libglademm/gtkmm2
+.ui files are used by gtkbuilder/gtkmm3
+use glade-2 (2.12.2) to edit .glade files
+use glade-3 (3.8.2) to convert .glade to .ui files
+glade (3.12.1) to edit .ui files
+
+current parameters -5 --dctpenalty=1 --dctoffset=1 --stdroutepenalty=0.8 --stdrouteoffset=-100 --stdroutedctpenalty=1 --stdroutedctoffset=0 --exclude-awylimit=500 --exclude-dctlimit=50 --exclude-dctoffset=1000 --exclude-dctscale=1.2 --exclude=EGDCT/adr_auag

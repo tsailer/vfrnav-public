@@ -1,0 +1,12 @@
+?package(vfrnav):needs="X11|text|vc|wm" section="Apps/see-menu-manual"\
+  title="vfrnav" command="/usr/bin/vfrnav"
+?package(vfrnav):needs="X11|text|vc|wm" section="Apps/see-menu-manual"\
+  title="vfr airporteditor" command="/usr/bin/vfrairporteditor"
+?package(vfrnav):needs="X11|text|vc|wm" section="Apps/see-menu-manual"\
+  title="vfr airspaceeditor" command="/usr/bin/vfrairspaceeditor"
+?package(vfrnav):needs="X11|text|vc|wm" section="Apps/see-menu-manual"\
+  title="vfr navaideditor" command="/usr/bin/vfrnavaideditor"
+?package(vfrnav):needs="X11|text|vc|wm" section="Apps/see-menu-manual"\
+  title="vfr waypointeditor" command="/usr/bin/vfrwaypointeditor"
+?package(vfrnav):needs="X11|text|vc|wm" section="Apps/see-menu-manual"\
+  title="vfr airwayeditor" command="/usr/bin/vfrairwayeditor"

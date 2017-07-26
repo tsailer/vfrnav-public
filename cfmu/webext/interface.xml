@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<node>
+ <interface name='eu.autorouter.cfmu.WebExtension'>
+  <signal name='PageCreated'>
+   <arg type='t' name='page_id' direction='out'/>
+  </signal>
+  <method name='Validate'>
+   <arg type='t' name='page_id' direction='in'/>
+   <arg type='s' name='fpl' direction='in'/>
+   <arg type='as' name='errors' direction='out'/>
+  </method>
+ </interface>
+</node>
