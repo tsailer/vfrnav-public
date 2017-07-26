@@ -1,0 +1,6 @@
+[Socket]
+ListenStream=/run/vfrnav/validator/socket
+SocketMode=0666
+
+[Install]
+WantedBy=sockets.target

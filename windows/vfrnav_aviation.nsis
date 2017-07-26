@@ -1,0 +1,156 @@
+#!Nsis Installer Command Script
+#
+# This is an NSIS Installer Command Script generated automatically
+# by the Fedora nsiswrapper program.  For more information see:
+#
+#   http://fedoraproject.org/wiki/MinGW
+#
+# To build an installer from the script you would normally do:
+#
+#   makensis this_script
+#
+# which will generate the output file 'VFRNavAviationDbSetupCYCLE.exe' which is a Windows
+# installer containing your program.
+# Created by: nsiswrapper --name "VFR Navigation Aviation Database" --installdirregkey 'HKLM SOFTWARE\VFR-Navigation'  --installdir 'C:\vfrnav'--outfile VFRNavAviationDbSetup.exe /usr/share/vfrnav/ > vfrnav_aviation.nsis
+
+!ifndef VERSION
+!define VERSION "201309"
+!endif
+
+Name "VFR Navigation Aviation Database, Cycle ${VERSION}"
+OutFile "VFRNavAviationDbSetup${VERSION}.exe"
+InstallDir "C:\vfrnav"
+InstallDirRegKey HKLM SOFTWARE\VFR-Navigation "Install_Dir"
+
+ShowInstDetails hide
+ShowUninstDetails hide
+
+# Uncomment this to enable BZip2 compression, which results in
+# slightly smaller files but uses more memory at install time.
+#SetCompressor bzip2
+SetCompressor /SOLID lzma
+
+XPStyle on
+
+; ============================================================================
+; Modern UI
+; ============================================================================
+!include "MUI.nsh"
+
+!define MUI_ICON "../ui/vfrnav.ico"
+!define MUI_UNICON "../ui/vfrnav.ico"
+
+!define MUI_COMPONENTSPAGE_SMALLDESC
+!define MUI_FINISHPAGE_NOAUTOCLOSE
+!define MUI_UNFINISHPAGE_NOAUTOCLOSE
+!define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of VFR/IFR Navigation Aviation Databases, Cycle ${VERSION}.\r\n\r\nBefore starting the installation, make sure VFRNav is not running.\r\n\r\nClick 'Next' to continue."
+;!define MUI_FINISHPAGE_LINK "For maximum features, make sure you also install the other database files"
+;!define MUI_FINISHPAGE_LINK_LOCATION "http://www.gna.org/projects/vfrnav"
+;!define MUI_FINISHPAGE_SHOWREADME "$INSTDIR\NEWS.txt"
+;!define MUI_FINISHPAGE_SHOWREADME_TEXT "Show News"
+;!define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
+!define MUI_FINISHPAGE_RUN "$INSTDIR\bin\vfrnav.exe"
+!define MUI_FINISHPAGE_RUN_NOTCHECKED
+
+; ============================================================================
+; MUI Pages
+; ============================================================================
+
+!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_LICENSE "/usr/share/doc/vfrnav-data-aviation-${VERSION}/LICENSE"
+!insertmacro MUI_PAGE_COMPONENTS
+!insertmacro MUI_PAGE_DIRECTORY
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
+
+!insertmacro MUI_UNPAGE_WELCOME
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_COMPONENTS
+!insertmacro MUI_UNPAGE_INSTFILES
+!insertmacro MUI_UNPAGE_FINISH
+
+; ============================================================================
+; MUI Languages
+; ============================================================================
+
+!insertmacro MUI_LANGUAGE "English"
+
+;Page components
+;Page directory
+;Page instfiles
+
+;ComponentText "Select which optional components you want to install."
+
+;DirText "Please select the installation folder."
+
+Section "Airports Database"
+  SetOutPath "$INSTDIR\db\"
+  File "/usr/share/vfrnav/airports.db"
+SectionEnd
+
+Section "Airspaces Database"
+  SetOutPath "$INSTDIR\db\"
+  File "/usr/share/vfrnav/airspaces.db"
+SectionEnd
+
+Section "Airways Database"
+  SetOutPath "$INSTDIR\db\"
+  File "/usr/share/vfrnav/airways.db"
+SectionEnd
+
+Section "Navigation Aids Database"
+  SetOutPath "$INSTDIR\db\"
+  File "/usr/share/vfrnav/navaids.db"
+SectionEnd
+
+Section "Intersections Database"
+  SetOutPath "$INSTDIR\db\"
+  File "/usr/share/vfrnav/waypoints.db"
+SectionEnd
+
+Section "Traffic Flow Restrictions"
+  SetOutPath "$INSTDIR\db\"
+  File "/usr/share/vfrnav/eRAD.xml"
+  File "/usr/share/vfrnav/eRAD.bin"
+SectionEnd
+
+Section "IFR Autorouter Precomputed Routing Graphs"
+  SetOutPath "$INSTDIR\db\"
+  File "/usr/share/vfrnav/cfmugraphn30w15n60e25.bin"
+  File "/usr/share/vfrnav/cfmugraphn30w5n60e35.bin"
+  File "/usr/share/vfrnav/cfmugraphn30e5n60e45.bin"
+  File "/usr/share/vfrnav/cfmugraphn40w15n70e25.bin"
+  File "/usr/share/vfrnav/cfmugraphn40w5n70e35.bin"
+  File "/usr/share/vfrnav/cfmugraphn40e5n70e45.bin"
+  File "/usr/share/vfrnav/cfmugraphn50w15n80e25.bin"
+  File "/usr/share/vfrnav/cfmugraphn50w5n80e35.bin"
+  File "/usr/share/vfrnav/cfmugraphn50e5n80e45.bin"
+SectionEnd
+
+Section "Uninstall"
+  Delete /rebootok "$SMPROGRAMS\VFR Navigation Aviation Database\Uninstall VFR Navigation Aviation Database.lnk"
+  RMDir "$SMPROGRAMS\VFR Navigation Aviation Database"
+
+  Delete /rebootok "$INSTDIR\db\airports.db"
+  Delete /rebootok "$INSTDIR\db\airspaces.db"
+  Delete /rebootok "$INSTDIR\db\airways.db"
+  Delete /rebootok "$INSTDIR\db\navaids.db"
+  Delete /rebootok "$INSTDIR\db\waypoints.db"
+  Delete /rebootok "$INSTDIR\db\eRAD.xml"
+  Delete /rebootok "$INSTDIR\db\eRAD.bin"
+  Delete /rebootok "$INSTDIR\db\cfmugraphn30w15n60e25.bin"
+  Delete /rebootok "$INSTDIR\db\cfmugraphn30w5n60e35.bin"
+  Delete /rebootok "$INSTDIR\db\cfmugraphn30e5n60e45.bin"
+  Delete /rebootok "$INSTDIR\db\cfmugraphn40w15n70e25.bin"
+  Delete /rebootok "$INSTDIR\db\cfmugraphn40w5n70e35.bin"
+  Delete /rebootok "$INSTDIR\db\cfmugraphn40e5n70e45.bin"
+  Delete /rebootok "$INSTDIR\db\cfmugraphn50w15n80e25.bin"
+  Delete /rebootok "$INSTDIR\db\cfmugraphn50w5n80e35.bin"
+  Delete /rebootok "$INSTDIR\db\cfmugraphn50e5n80e45.bin"
+  RMDir "$INSTDIR\db"
+  RMDir "$INSTDIR"
+SectionEnd
+
+Section -post
+  WriteUninstaller "$INSTDIR\Uninstall VFR Navigation Aviation Database.exe"
+SectionEnd

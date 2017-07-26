@@ -1,0 +1,109 @@
+#!Nsis Installer Command Script
+#
+# This is an NSIS Installer Command Script generated automatically
+# by the Fedora nsiswrapper program.  For more information see:
+#
+#   http://fedoraproject.org/wiki/MinGW
+#
+# To build an installer from the script you would normally do:
+#
+#   makensis this_script
+#
+# which will generate the output file 'VFRNavTerrainDbSetup.exe' which is a Windows
+# installer containing your program.
+# Created by: nsiswrapper --name "VFR Navigation Terrain Database" --installdirregkey 'HKLM SOFTWARE\VFR-Navigation'  --installdir 'C:\vfrnav'--outfile VFRNavTerrainDbSetup.exe /usr/share/vfrnav/ > vfrnav_terrain.nsis
+
+Name "VFR Navigation Terrain Database"
+OutFile "VFRNavTerrainDbSetup.exe"
+InstallDir "C:\vfrnav"
+InstallDirRegKey HKLM SOFTWARE\VFR-Navigation "Install_Dir"
+
+ShowInstDetails hide
+ShowUninstDetails hide
+
+# Uncomment this to enable BZip2 compression, which results in
+# slightly smaller files but uses more memory at install time.
+#SetCompressor bzip2
+SetCompressor /SOLID lzma
+
+XPStyle on
+
+; ============================================================================
+; Modern UI
+; ============================================================================
+!include "MUI.nsh"
+
+!define MUI_ICON "../ui/vfrnav.ico"
+!define MUI_UNICON "../ui/vfrnav.ico"
+
+!define MUI_COMPONENTSPAGE_SMALLDESC
+!define MUI_FINISHPAGE_NOAUTOCLOSE
+!define MUI_UNFINISHPAGE_NOAUTOCLOSE
+!define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of VFR Navigation Terrain Databases.\r\n\r\nBefore starting the installation, make sure VFRNav is not running.\r\n\r\nClick 'Next' to continue."
+;!define MUI_FINISHPAGE_LINK "For maximum features, make sure you also install the database files"
+;!define MUI_FINISHPAGE_LINK_LOCATION "http://www.gna.org/projects/vfrnav"
+;!define MUI_FINISHPAGE_SHOWREADME "$INSTDIR\NEWS.txt"
+;!define MUI_FINISHPAGE_SHOWREADME_TEXT "Show News"
+;!define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
+!define MUI_FINISHPAGE_RUN "$INSTDIR\bin\vfrnav.exe"
+!define MUI_FINISHPAGE_RUN_NOTCHECKED
+
+; ============================================================================
+; MUI Pages
+; ============================================================================
+
+!insertmacro MUI_PAGE_WELCOME
+;!insertmacro MUI_PAGE_LICENSE "/usr/share/doc/mingw32-vfrnav-0.3/COPYING"
+!insertmacro MUI_PAGE_COMPONENTS
+!insertmacro MUI_PAGE_DIRECTORY
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
+
+!insertmacro MUI_UNPAGE_WELCOME
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_COMPONENTS
+!insertmacro MUI_UNPAGE_INSTFILES
+!insertmacro MUI_UNPAGE_FINISH
+
+; ============================================================================
+; MUI Languages
+; ============================================================================
+
+!insertmacro MUI_LANGUAGE "English"
+
+
+;Page components
+;Page directory
+;Page instfiles
+
+;ComponentText "Select which optional components you want to install."
+
+;DirText "Please select the installation folder."
+
+Section "Terrain Elevation Database"
+
+  SetOutPath "$INSTDIR\db\"
+  File "/usr/share/vfrnav/topo30.db"
+
+SectionEnd
+
+Section "Vector Map Database"
+
+  SetOutPath "$INSTDIR\db\"
+  File "/usr/share/vfrnav/mapelements.db"
+
+SectionEnd
+
+Section "Uninstall"
+  Delete /rebootok "$SMPROGRAMS\VFR Navigation Terrain Database\Uninstall VFR Navigation Terrain Database.lnk"
+  RMDir "$SMPROGRAMS\VFR Navigation Terrain Database"
+
+  Delete /rebootok "$INSTDIR\db\mapelements.db"
+  Delete /rebootok "$INSTDIR\db\topo30.db"
+  RMDir "$INSTDIR\db"
+  RMDir "$INSTDIR"
+SectionEnd
+
+Section -post
+  WriteUninstaller "$INSTDIR\Uninstall VFR Navigation Terrain Database.exe"
+SectionEnd

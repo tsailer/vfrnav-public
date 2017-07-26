@@ -1,0 +1,11 @@
+usr/bin/vfrairporteditor
+usr/bin/vfrairspaceeditor
+usr/bin/vfrnav
+usr/bin/vfrnavaideditor
+usr/bin/vfrwaypointeditor
+usr/bin/vfrairwayeditor
+usr/bin/vfrtrackeditor
+usr/bin/acftperf
+usr/share/vfrnav/*
+usr/share/applications/*
+usr/share/icons/hicolor/*

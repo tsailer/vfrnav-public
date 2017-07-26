@@ -1,0 +1,335 @@
+%{?mingw_package_header}
+
+%global mingw_build_win32 1
+%global mingw_build_win64 1
+
+%global         name1 vfrnav
+
+Name:           mingw-%{name1}
+Version:        @VERSION@
+Release:        1%{?dist}
+Summary:        VFR Navigation
+
+Group:          Applications/Navigation
+License:        GPLv2
+URL:            http://www.baycom.org/~tom/vfrnav
+Source0:        %{name1}-%{version}.tar.gz
+BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+
+BuildArch:      noarch
+
+BuildRequires:  mingw32-filesystem
+BuildRequires:  mingw64-filesystem
+BuildRequires:  mingw32-gcc
+BuildRequires:  mingw64-gcc
+BuildRequires:  mingw32-binutils
+BuildRequires:  mingw64-binutils
+BuildRequires:  mingw32-gtkmm30
+BuildRequires:  mingw64-gtkmm30
+BuildRequires:  mingw32-glib-networking
+BuildRequires:  mingw64-glib-networking
+BuildRequires:  mingw32-libxml++
+BuildRequires:  mingw64-libxml++
+BuildRequires:  mingw32-sqlite
+BuildRequires:  mingw64-sqlite
+#BuildRequires:  mingw32-gpsd
+#BuildRequires:  mingw64-gpsd
+BuildRequires:  mingw32-libsqlite3x
+BuildRequires:  mingw64-libsqlite3x
+#BuildRequires:  mingw32-gdal
+#BuildRequires:  mingw64-gdal
+#BuildRequires:  mingw32-gypsy
+#BuildRequires:  mingw64-gypsy
+#BuildRequires:  mingw32-bluez-libs
+#BuildRequires:  mingw64-bluez-libs
+BuildRequires:  mingw32-eigen3
+BuildRequires:  mingw64-eigen3
+BuildRequires:  mingw32-boost
+BuildRequires:  mingw64-boost
+BuildRequires:  mingw32-cairomm
+BuildRequires:  mingw64-cairomm
+BuildRequires:  mingw32-cairo
+BuildRequires:  mingw64-cairo
+BuildRequires:  mingw32-zfstream
+BuildRequires:  mingw64-zfstream
+BuildRequires:  mingw32-gettext
+BuildRequires:  mingw64-gettext
+#BuildRequires:  mingw32-gnome-bluetooth-libs
+#BuildRequires:  mingw64-gnome-bluetooth-libs
+#BuildRequires:  mingw32-geoclue
+#BuildRequires:  mingw64-geoclue
+BuildRequires:  mingw32-gsl
+BuildRequires:  mingw64-gsl
+#BuildRequires:  mingw32-libftdi
+#BuildRequires:  mingw64-libftdi
+#BuildRequires:  mingw32-libftdi-c++
+#BuildRequires:  mingw64-libftdi-c++
+#BuildRequires:  mingw32-libudev
+#BuildRequires:  mingw64-libudev
+#BuildRequires:  mingw32-evince
+#BuildRequires:  mingw64-evince
+BuildRequires:  mingw32-libusbx
+BuildRequires:  mingw64-libusbx
+BuildRequires:  mingw32-curl
+BuildRequires:  mingw64-curl
+BuildRequires:  mingw32-webkitgtk3
+BuildRequires:  mingw64-webkitgtk3
+BuildRequires:  mingw32-openjpeg
+BuildRequires:  mingw64-openjpeg
+BuildRequires:  mingw32-libsoup
+BuildRequires:  mingw64-libsoup
+BuildRequires:  mingw32-ftdi
+BuildRequires:  mingw64-ftdi
+BuildRequires:  ImageMagick
+BuildRequires:  transfig
+BuildRequires:  texlive
+BuildRequires:  texlive-texconfig
+BuildRequires:  texlive-latex
+BuildRequires:  texlive-latex-bin-bin
+BuildRequires:  texlive-epstopdf-bin
+BuildRequires:  texlive-umlaute
+BuildRequires:  texlive-multirow
+BuildRequires:  texlive-oberdiek
+BuildRequires:  texlive-tools
+BuildRequires:  poppler-utils
+BuildRequires:  octave
+BuildRequires:  octave-devel
+BuildRequires:  inkscape
+
+
+%description
+This is a navigation application for VFR and IFR flying.
+
+# Mingw32
+%package -n mingw32-%{name1}
+Summary:                %{summary}
+
+%description -n mingw32-%{name1}
+This is a navigation application for VFR and IFR flying.
+
+%package -n mingw32-%{name1}-utils
+Summary:                VFR Navigation Utilities
+
+%description -n mingw32-%{name1}-utils
+This package contains utilities for database creation and manipulation
+for the VFR navigation application.
+
+
+# Mingw64
+%package -n mingw64-%{name1}
+Summary:                %{summary}
+
+%description -n mingw64-%{name1}
+This is a navigation application for VFR and IFR flying.
+
+%package -n mingw64-%{name1}-utils
+Summary:                VFR Navigation Utilities
+
+%description -n mingw64-%{name1}-utils
+This package contains utilities for database creation and manipulation
+for the VFR navigation application.
+
+%{?mingw_debug_package}
+
+%prep
+%setup -q -n %{name1}-%{version}
+libtoolize -f -c
+aclocal -I m4
+autoconf
+automake -a -c
+
+%build
+export MINGW_CONFIGURE_ARGS="--with-geosconfig=x"
+%{mingw_configure}
+%{mingw_make} %{?_smp_mflags}
+
+%install
+rm -rf $RPM_BUILD_ROOT
+%{mingw_make} install DESTDIR=$RPM_BUILD_ROOT
+rm -rf $RPM_BUILD_ROOT/%{mingw32_datadir}/applications
+rm -rf $RPM_BUILD_ROOT/%{mingw64_datadir}/applications
+rm -rf $RPM_BUILD_ROOT/%{mingw32_datadir}/icons
+rm -rf $RPM_BUILD_ROOT/%{mingw64_datadir}/icons
+# these are generated dynamically by the nsis install script
+rm -f $RPM_BUILD_ROOT/%{mingw32_libdir}/libreoffice/share/registry/vfrnav.xcd
+rm -f $RPM_BUILD_ROOT/%{mingw64_libdir}/libreoffice/share/registry/vfrnav.xcd
+
+rm -f $RPM_BUILD_ROOT/%{mingw32_libdir}/systemd/system/cfmuws.service
+rm -f $RPM_BUILD_ROOT/%{mingw64_libdir}/systemd/system/cfmuws.service
+rm -f $RPM_BUILD_ROOT/%{mingw32_libdir}/systemd/system/cfmuautoroute.service
+rm -f $RPM_BUILD_ROOT/%{mingw64_libdir}/systemd/system/cfmuautoroute.service
+rm -f $RPM_BUILD_ROOT/%{mingw32_libdir}/systemd/system/cfmuautoroute.socket
+rm -f $RPM_BUILD_ROOT/%{mingw64_libdir}/systemd/system/cfmuautoroute.socket
+rm -f $RPM_BUILD_ROOT/%{mingw32_libdir}/systemd/system/cfmuvalidate.service
+rm -f $RPM_BUILD_ROOT/%{mingw64_libdir}/systemd/system/cfmuvalidate.service
+rm -f $RPM_BUILD_ROOT/%{mingw32_libdir}/systemd/system/cfmuvalidate.socket
+rm -f $RPM_BUILD_ROOT/%{mingw64_libdir}/systemd/system/cfmuvalidate.socket
+rm -f $RPM_BUILD_ROOT/%{mingw32_sysconfdir}/sysconfig/cfmuws
+rm -f $RPM_BUILD_ROOT/%{mingw64_sysconfdir}/sysconfig/cfmuws
+rm -f $RPM_BUILD_ROOT/%{mingw32_sysconfdir}/sysconfig/cfmuautoroute
+rm -f $RPM_BUILD_ROOT/%{mingw64_sysconfdir}/sysconfig/cfmuautoroute
+rm -f $RPM_BUILD_ROOT/%{mingw32_sysconfdir}/sysconfig/cfmuvalidate
+rm -f $RPM_BUILD_ROOT/%{mingw64_sysconfdir}/sysconfig/cfmuvalidate
+rm -f $RPM_BUILD_ROOT/%{mingw32_sysconfdir}/vfrnav/cfmuwsusers.json
+rm -f $RPM_BUILD_ROOT/%{mingw64_sysconfdir}/vfrnav/cfmuwsusers.json
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+%if 0%{mingw_build_win32} != 0
+%files -n mingw32-%{name1}
+%defattr(-,root,root,-)
+%doc AUTHORS ChangeLog COPYING INSTALL NEWS README TODO build_win32/doc/flightdeck.pdf
+%{mingw32_datadir}/%{name1}/vfrnav.png
+%{mingw32_datadir}/%{name1}/bluetooth.png
+%{mingw32_datadir}/%{name1}/BlankMap-World_gray.svg
+%{mingw32_datadir}/%{name1}/dbeditor.ui
+%{mingw32_datadir}/%{name1}/navigate.ui
+%{mingw32_datadir}/%{name1}/routeedit.ui
+%{mingw32_datadir}/%{name1}/prefs.ui
+%{mingw32_datadir}/%{name1}/acftperformance.ui
+%{mingw32_datadir}/%{name1}/cfmuvalidate.ui
+%{mingw32_bindir}/vfrnav.exe
+%{mingw32_bindir}/acftperf.exe
+%{mingw32_bindir}/vfrairporteditor.exe
+%{mingw32_bindir}/vfrairspaceeditor.exe
+%{mingw32_bindir}/vfrairwayeditor.exe
+%{mingw32_bindir}/vfrnavaideditor.exe
+%{mingw32_bindir}/vfrwaypointeditor.exe
+%{mingw32_bindir}/vfrtrackeditor.exe
+%{mingw32_bindir}/vfrnavdb2xml.exe
+%{mingw32_bindir}/vfrnavfplan.exe
+%{mingw32_bindir}/vfrnavxml2db.exe
+%{mingw32_bindir}/flightdeck.exe
+%{mingw32_bindir}/cfmuvalidate.exe
+%{mingw32_bindir}/cfmuautoroute.exe
+%{mingw32_bindir}/checkfplan.exe
+%dir %{mingw32_libexecdir}/%{name1}
+%{mingw32_libexecdir}/%{name1}/cfmuvalidateserver.exe
+%{mingw32_datadir}/%{name1}/flightdeck.ui
+%{mingw32_datadir}/%{name1}/flightdeck/hbpbx.cfg
+%{mingw32_datadir}/%{name1}/flightdeck/hbpho.cfg
+%{mingw32_datadir}/%{name1}/flightdeck/hbtda.cfg
+%{mingw32_datadir}/%{name1}/flightdeck/hbtdb.cfg
+%{mingw32_datadir}/%{name1}/flightdeck/hbtdc.cfg
+%{mingw32_datadir}/%{name1}/flightdeck/hbdhg.cfg
+%{mingw32_datadir}/%{name1}/flightdeck/sim.cfg
+%{mingw32_datadir}/%{name1}/aircraft/hbpbx.xml
+%{mingw32_datadir}/%{name1}/aircraft/hbpho.xml
+%{mingw32_datadir}/%{name1}/aircraft/hbtda.xml
+%{mingw32_datadir}/%{name1}/aircraft/hbtdb.xml
+%{mingw32_datadir}/%{name1}/aircraft/hbtdc.xml
+%{mingw32_datadir}/%{name1}/aircraft/hbdhg.xml
+%{mingw32_datadir}/%{name1}/navlogtemplates/navlog.ods
+
+%files -n mingw32-%{name1}-utils
+%defattr(-,root,root,-)
+%{mingw32_bindir}/vfrdbdafif.exe
+#%{mingw32_bindir}/vfrdbmapelementsdb.exe
+%{mingw32_bindir}/vfrdboptimizelabelplacement.exe
+%{mingw32_bindir}/vfrdbrebuildspatialindex.exe
+%{mingw32_bindir}/vfrdbsrtm30db.exe
+#%{mingw32_bindir}/vfrdbsrtmwatermask.exe
+%{mingw32_bindir}/vfrdbsettopo30.exe
+%{mingw32_bindir}/vfrdbtopo30zerotiles.exe
+%{mingw32_bindir}/vfrdbupdategndelev.exe
+%{mingw32_bindir}/vfrdbcamelcase.exe
+%{mingw32_bindir}/vfrnavwmmconv.exe
+%{mingw32_bindir}/vfrnavwmmtest.exe
+%{mingw32_bindir}/vfrdbxplane.exe
+#%{mingw32_bindir}/vfrdbcsv.exe
+#%{mingw32_bindir}/vfrdbxplaneexport.exe
+%{mingw32_bindir}/flightdeckftdieeprog.exe
+%{mingw32_bindir}/vfrdbairwaydump.exe
+%{mingw32_bindir}/vfrdbeadimport.exe
+%{mingw32_bindir}/vfrdbaixmimport.exe
+%{mingw32_bindir}/vfrdbopenair.exe
+%{mingw32_bindir}/vfrdbfasimport.exe
+%{mingw32_bindir}/vfrradconvert.exe
+%endif
+
+%if 0%{mingw_build_win64} != 0
+%files -n mingw64-%{name1}
+%defattr(-,root,root,-)
+%doc AUTHORS ChangeLog COPYING INSTALL NEWS README TODO build_win64/doc/flightdeck.pdf
+%{mingw64_datadir}/%{name1}/vfrnav.png
+%{mingw64_datadir}/%{name1}/bluetooth.png
+%{mingw64_datadir}/%{name1}/BlankMap-World_gray.svg
+%{mingw64_datadir}/%{name1}/dbeditor.ui
+%{mingw64_datadir}/%{name1}/navigate.ui
+%{mingw64_datadir}/%{name1}/routeedit.ui
+%{mingw64_datadir}/%{name1}/prefs.ui
+%{mingw64_datadir}/%{name1}/acftperformance.ui
+%{mingw64_datadir}/%{name1}/cfmuvalidate.ui
+%{mingw64_bindir}/vfrnav.exe
+%{mingw64_bindir}/acftperf.exe
+%{mingw64_bindir}/vfrairporteditor.exe
+%{mingw64_bindir}/vfrairspaceeditor.exe
+%{mingw64_bindir}/vfrairwayeditor.exe
+%{mingw64_bindir}/vfrnavaideditor.exe
+%{mingw64_bindir}/vfrwaypointeditor.exe
+%{mingw64_bindir}/vfrtrackeditor.exe
+%{mingw64_bindir}/vfrnavdb2xml.exe
+%{mingw64_bindir}/vfrnavfplan.exe
+%{mingw64_bindir}/vfrnavxml2db.exe
+%{mingw64_bindir}/flightdeck.exe
+%{mingw64_bindir}/cfmuvalidate.exe
+%{mingw64_bindir}/cfmuautoroute.exe
+%{mingw64_bindir}/checkfplan.exe
+%dir %{mingw64_libexecdir}/%{name1}
+%{mingw64_libexecdir}/%{name1}/cfmuvalidateserver.exe
+%{mingw64_datadir}/%{name1}/flightdeck.ui
+%{mingw64_datadir}/%{name1}/flightdeck/hbpbx.cfg
+%{mingw64_datadir}/%{name1}/flightdeck/hbpho.cfg
+%{mingw64_datadir}/%{name1}/flightdeck/hbtda.cfg
+%{mingw64_datadir}/%{name1}/flightdeck/hbtdb.cfg
+%{mingw64_datadir}/%{name1}/flightdeck/hbtdc.cfg
+%{mingw64_datadir}/%{name1}/flightdeck/hbdhg.cfg
+%{mingw64_datadir}/%{name1}/flightdeck/sim.cfg
+%{mingw64_datadir}/%{name1}/aircraft/hbpbx.xml
+%{mingw64_datadir}/%{name1}/aircraft/hbpho.xml
+%{mingw64_datadir}/%{name1}/aircraft/hbtda.xml
+%{mingw64_datadir}/%{name1}/aircraft/hbtdb.xml
+%{mingw64_datadir}/%{name1}/aircraft/hbtdc.xml
+%{mingw64_datadir}/%{name1}/aircraft/hbdhg.xml
+%{mingw64_datadir}/%{name1}/navlogtemplates/navlog.ods
+
+%files -n mingw64-%{name1}-utils
+%defattr(-,root,root,-)
+%{mingw64_bindir}/vfrdbdafif.exe
+#%{mingw64_bindir}/vfrdbmapelementsdb.exe
+%{mingw64_bindir}/vfrdboptimizelabelplacement.exe
+%{mingw64_bindir}/vfrdbrebuildspatialindex.exe
+%{mingw64_bindir}/vfrdbsrtm30db.exe
+#%{mingw64_bindir}/vfrdbsrtmwatermask.exe
+%{mingw64_bindir}/vfrdbsettopo30.exe
+%{mingw64_bindir}/vfrdbtopo30zerotiles.exe
+%{mingw64_bindir}/vfrdbupdategndelev.exe
+%{mingw64_bindir}/vfrdbcamelcase.exe
+%{mingw64_bindir}/vfrnavwmmconv.exe
+%{mingw64_bindir}/vfrnavwmmtest.exe
+%{mingw64_bindir}/vfrdbxplane.exe
+#%{mingw64_bindir}/vfrdbcsv.exe
+#%{mingw64_bindir}/vfrdbxplaneexport.exe
+%{mingw64_bindir}/flightdeckftdieeprog.exe
+%{mingw64_bindir}/vfrdbairwaydump.exe
+%{mingw64_bindir}/vfrdbeadimport.exe
+%{mingw64_bindir}/vfrdbaixmimport.exe
+%{mingw64_bindir}/vfrdbopenair.exe
+%{mingw64_bindir}/vfrdbfasimport.exe
+%{mingw64_bindir}/vfrradconvert.exe
+%endif
+
+%changelog
+* Sat Aug 25 2012 Thomas Sailer <t.sailer@alumni.ethz.ch> - 20120821-1
+- multiarch spec file (32bit and 64bit)
+
+* Thu Apr 16 2009 Thomas Sailer <t.sailer@alumni.ethz.ch> - 0.3-1
+- replace %%define with %%global
+
+* Sat Feb  2 2008 Thomas Sailer <t.sailer@alumni.ethz.ch> - 0.1-2
+- move utilities into their own subpackage
+
+* Sat Aug 25 2007 Thomas Sailer <t.sailer@alumni.ethz.ch> - 0.1-1
+- initial spec file
+

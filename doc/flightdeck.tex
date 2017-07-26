@@ -1,0 +1,2066 @@
+%% pdflatex or latex
+\newif\ifphymodel
+\phymodeltrue
+
+\newif\iftexht
+\newif\ifmypdf
+\ifx\HCode\UnDef
+  \texhtfalse
+  \ifx\pdfoutput\undefined
+    \mypdffalse
+    \texhtfalse
+  \else
+    \pdfoutput=1
+    \mypdftrue
+  \fi
+\else
+  \mypdffalse
+  \texhttrue
+\fi
+
+\newif\ifregssubsection
+\regssubsectiontrue
+
+\ifmypdf
+\documentclass[a4paper,10pt,pdftex]{article}
+\else
+\documentclass[a4paper,10pt,dvips]{article}
+\fi
+\usepackage[german,english]{babel}
+\selectlanguage{english}
+\usepackage{graphicx}
+\usepackage[isolatin]{inputenc}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\frenchspacing
+%\pagestyle{plain}
+\pagestyle{headings}
+%\usepackage[a4paper,ignoremp]{geometry}
+\usepackage[a4paper,ignoremp,left=2cm,right=2cm,top=3cm,bottom=3cm]{geometry}
+\usepackage{rotating}
+\usepackage{hhline}
+\usepackage{multirow}
+\usepackage{pdflscape}
+\usepackage{longtable}
+\usepackage{afterpage}
+%
+\clubpenalty=4000
+\widowpenalty=4000
+%
+
+\ifmypdf
+\usepackage[pdftex]{color}
+
+% The hyperref package makes sure that all references in your
+% document become colored clickable links.
+%\usepackage[colorlinks,hyperindex]{hyperref}
+\usepackage[hyperindex]{hyperref}
+  \hypersetup{pdftitle={FlightDeck Manual},
+    pdfsubject={Flightdeck},
+    pdfauthor={Thomas M. Sailer},
+    pdfkeywords={Flightdeck},
+    bookmarksdepth=paragraph,
+%% pdfpagemode={FullScreen}
+}
+
+% supress the ugly colored boxes around the active parts of the
+% text.
+\def\pdfBorderAttrs{/Border [0 0 0] } % No border around Links
+% Some further Color tuning. Use xcolorsel for help with the colors
+\definecolor{links}{rgb}{0.2116,0.0104,0.7716} % BlueViolet
+\def\LinkColor{links}
+\definecolor{anchors}{rgb}{0.5812,0.0665,0.0659} % IndianRed
+\def\AnchorColor{anchors}
+
+\hypersetup{bookmarks=true,bookmarksopen=true,bookmarksopenlevel=1,bookmarksnumbered=true}
+
+%\DeclareGraphicsRule{.tiff}{tif}{.tiff}{}
+%\DeclareGraphicsExtensions{.jpg,.pdf,.tif}
+
+\else
+%\usepackage[hyperindex,dvips]{hyperref}
+\usepackage[hyperindex,hypertex]{hyperref}
+\def\pdfBorderAttrs{/Border [0 0 0] } % No border around Links
+\fi
+\usepackage{colortbl}
+
+%
+\makeatletter
+\newcommand{\jnxbookmark}[1]{\ifmypdf
+\ifx\@currentHref\@empty\phantomsection\fi
+\Hy@writebookmark{}{#1}{\@currentHref}{-1}{toc}\fi}
+\makeatother
+%
+%\input{psfig}
+%
+\newcommand{\jnxfig}[3][]{\ifmypdf\includegraphics[#1]{#3}
+  \else\includegraphics[#1]{#2}\fi}
+%
+
+\begin{document}
+\sloppy
+
+\title{FlightDeck}
+\author{Thomas M. Sailer}
+
+%
+\makeatletter
+\newpage\thispagestyle{empty}
+\noindent\begin{minipage}{\textwidth}
+  \flushright
+  {\sffamily\bfseries\Huge\@title}
+  \noindent\rule[-1ex]{\textwidth}{5pt}\\[5ex]
+  {\sffamily\Large\@author}\\[1.5ex]
+  {\sffamily\Large\@date}\\[5ex]
+  {\sffamily\Large draft}\\[5ex]
+\end{minipage}
+\makeatother
+%
+\tableofcontents
+
+\newcommand\graycol{\iftexht\else\cellcolor[gray]{.9}\fi}
+
+
+\section{Introduction}
+
+This manual describes the VFRNav package. VFRNav consists of the
+following main programs:
+
+\begin{itemize}
+\item VFRNav
+\item FlightDeck
+\end{itemize}
+
+VFRNav is optimized for small resolution displays, such as the Nokia
+N810 tablet having a resolution of 800x600 pixels.
+
+FlightDeck on the other hand requires at least 1024x768 screen
+resolution. The remainder of this document describes the FlightDeck
+application. Despite the package name, it is also suitable for IFR
+flights.
+
+\subsection{User Interface}
+
+FlightDeck features a user interface similar to state of the art glass
+cockpit avionics. Its user interface is organized into a set of
+pages. At the bottom of the screen, there are 12 ``soft keys'', which
+map to the function keys F1 to F12 (but can of course also be
+clicked). The first five soft keys activate a page in a page
+group. Subsequent presses of the same soft key advances to the next
+page in the same page group. The page groups are:
+
+\begin{itemize}
+\item NAV -- Main Navigation Pages
+  \begin{itemize}
+  \item NAV:M -- Map Page
+  \item NAV:AD -- Airport Map Page
+  \end{itemize}
+\item WPT -- Waypoint Information
+  \begin{itemize}
+  \item WPT:ARPT -- Airport Information Page
+  \item WPT:NAV -- Navaid Information Page
+  \item WPT:INT -- Intersection Information Page
+  \item WPT:AWY -- Airway Segment Information Page
+  \item WPT:ASPC -- Airspace Information Page
+  \item WPT:MAP -- Map Element Information Page
+  \item WPT:FPL -- Flight Plan Waypoint Information Page
+  \end{itemize}
+\item FPL -- Flight Plans
+  \begin{itemize}
+  \item FPL -- Current Flight Plan Page
+  \item FPLS -- Stored Flight Plan Directory Page
+  \item FPL -- Avionics GPS Flight Plan Import Page
+  \end{itemize}
+\item AUX -- Auxilliary
+  \begin{itemize}
+  \item AUX -- Document Directory Page
+  \item AUX -- Document Page
+  \item AUX -- Performance Calculator Page
+  \item AUX -- Current Flight Plan Sunrise Sunset Page
+  \end{itemize}
+\item SENS -- Sensor Configuration
+  \begin{itemize}
+  \item SENS:LOG -- System Log Page
+  \item SENS:X -- Sensor Configuration Pages
+  \end{itemize}
+\end{itemize}
+
+Built-in keyboard widgets allow FlightDeck to be operated without
+keyboard solely with a pen, a mouse or by tapping on touchscreen
+enabled devices.
+
+\subsection{Sensors}
+
+FlightDeck supports the connection of various sensors:
+
+\begin{itemize}
+\item Position Sensors (GPS devices) supported by gpsd
+\item Avionics GPS devices outputting King format
+\item liblocation supported position sensors
+\item PlayStation Move controller as attitude and heading sensor
+\item MS5534 barometric sensor
+\end{itemize}
+
+Multiple sensors of the same kind, for example multiple GPS devices,
+are supported. User selectable priorities specify which sensor is used
+for what type of information under what circumstances.
+
+\subsection{Databases and Configuration Files}
+
+FlightDeck requires map and aviation information databases. Global
+databases are stored under {\tt /usr/share/vfrnav}. Per user
+modifications to the global databases (record deletes and additions)
+are stored under {\tt \$(HOME)/.vfrnav}.
+
+Databases may be created from various sources and file formats;
+conversion utilities are included. Alternatively, worldwide coverage
+database files may be downloaded from
+{\tt http://www.baycom.org/$\sim$tom/vfrnav/data/repoview/}. Unfortunately,
+there is no accurate, up-to-date, official publication; the accuracy
+and actuality of the information contained in the databases cannot be
+guaranteed -- the user is required to check that the information meets
+his requirements.
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{splashdialog.eps}{splashdialog.png}
+    \caption{Splash Screen}
+    \label{fig:splashdialog}
+  \end{center}
+\end{figure}
+
+FlightDeck supports multiple configurations; on start-up, FlightDeck
+searches for available configurations and presents the user with a
+list of the configurations found. The user can then select one that
+will be used. Figure \ref{fig:splashdialog} shows the configuration
+selection dialog.
+
+Global configurations are stored under {\tt /usr/share/vfrnav/flightdeck},
+per user configurations are stored under {\tt \$(HOME)/.vfrnav/flightdeck}.
+Per user configurations take precedence over global
+configurations. Configuration files use a simple name=value ascii
+format, with section names in square brackets. They should use a file
+name of the form {\tt {\it xx}.cfg}.
+
+Configurations store the sensor setup, as well as user settings so
+that the next run with the same configuration continues with the same
+settings as the last run ended.
+
+Each configuration should reference an aircraft definition
+file. Aircraft definition files are stored under
+{\tt \$(HOME)/.vfrnav/aircraft}. They describe the aircraft and
+contain Weight \& Balance and Performance tables.
+
+\clearpage
+
+\section{Navigation Page Group}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{navmap.eps}{navmap.png}
+    \caption{Nav Page: Map}
+    \label{fig:navmap}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{navarpt.eps}{navarpt.png}
+    \caption{Nav Page: Airport Map}
+    \label{fig:navarpt}
+  \end{center}
+\end{figure}
+
+The main navigation page (Figure \ref{fig:navmap}) consists of five
+parts: the soft keys at the bottom, the vector map with an aircraft
+symbol occupying the largest space on the left, an attitude indicator
+on the top left, an altitude indicator and flight plan informations in
+the middle on the left side, and a horizontal situation indicator on
+the bottom left.
+
+Clicking on the NAV soft key again switches to the airport map
+page. This page looks the same, except that the vector map is replaced
+by an airport map (if airport map data is available).
+
+\subsection{Attitude Indicator}
+
+The Attitude Indicator in the top left edge works like a standard
+Attitude Indicator, displaying roll and pitch angles. It only works if
+an attitude sensor is connected, such as the PlayStation Move.
+
+A trapezoid below the orange sky pointer indicates slip.
+
+\subsection{Flight Plan Information}
+
+Flight Plan information is displayed on the center left edge. Distance
+(in nmi), magnetic track, vertical speed, desired track and time to
+the next flight plan or direct-to waypoint are displayed first,
+followed by distance, magnetic track, vertical speed and time to the
+destination.
+
+WPT TIME counts the time since passing the last waypoint, flight time
+counts the time since departure. TIMER is a generic up-counting timer
+that can be started and stopped using a soft key.
+
+IAS and TAS display entered or calculated air speeds, and F, FF and \%
+display fuel consumed since start, calculated fuel flow (from the
+aircraft model), and calculated engine power relative to maximum rated
+engine power.
+
+\subsection{Altitude Indicator}
+
+The central element of the Altitude Indicator is the altitude
+tape. The vertical speed indicator is located on the right side of the
+altitude tape. A magenta diamond indicates the vertical speed required
+to meet the next waypoint altitude target.
+
+The altitude bug altitude is displayed above the tape. The current
+altimeter setting (or STD, for standard) is displayed below the
+tape. The white number on brown background in the bottom right edge
+indicates terrain altitude at the current position. Brown background
+inside the altitude tape also indicates terrain altitude (and below).
+
+A yellow chevron at the left edge of the tape indicates the desired
+altitude to reach the next waypoint altitude target (similar to a
+``glide slope''). A red chevron indicates the configured minimum.
+
+Since altitude is an important parameter (especially for IFR traffic),
+and most aircraft have many different altitude sensors, white labels
+may be displayed at the left edge of the tape for each altitude
+source, even if it was not selected to provide the system
+altitude. This allows the pilot to monitor the accuracy of all
+altitude sources.
+
+Clicking into the altitude indicator opens the Altitude Configuration
+Dialog (Figure \ref{fig:altcfgdlg}).
+
+\subsection{Horizontal Situation Indicator}
+
+The HSI displays compass and horizontal navigation information. The
+current heading is displayed in orange at the top if magnetic heading
+information is available (eg. from a connected PlayStation Move
+sensor). If no heading sensor is available, the heading may be entered
+manually, in which case it will be displayed prefixed with an M. In
+the absence of any heading information, the current course is
+displayed, prefixed with a C. If heading information is available, the
+course is displayed as a magenta diamond on the periphery of the
+compass rose.
+
+A magenta arc at the top periphery of the compass rose indicates turn
+rate. An arrow head indicates that the turn rate is larger than
+approximately one and a half of a standard rate turn, otherwise the
+end of the arc indicates the heading 6 seconds into the future.
+
+The yellow pointer indicates the desired track to the next waypoint,
+as well as the deviation from it.
+
+An optional second cyan pointer may be set to point to any waypoint.
+
+The top left corner displays where the pointer(s) point to.
+
+The top right corner displays air data, and the magnetic variation at
+the present position.
+
+The bottom right corner displays wind information, if heading
+information and air data is available.
+
+Terrain information may be optionally displayed in the background of
+the HSI. Terrain graphics is normally black. Terrain that is less than
+2000ft below the current altitude is displayed in green, terrain less
+than 1000ft below is displayed in yellow, terrain less than 500ft
+below is displayed in light orange, terrain less than 200ft below is
+displayed in dark orange, and terrain above the current altitude is
+displayed in red. The current position is the center of the compass
+rose.
+
+Optionally, the terrain graphics may also display the current flight
+plan, airports, navaids and intersections.
+
+Furthermore, the locations reachable from the current position and
+altitude in unpowered glide may be displayed in gray. The glide area
+graphics considers aircraft performance (glide ratio), wind (the wind
+manually entered in the flight plan page, \emph{not} the automatically
+calculated wind), and topography, giving the pilot a good idea which
+emergency landing locations may be feasible.
+
+There are some inaccuracies in the computation the pilot needs to
+consider:
+
+\begin{itemize}
+\item Best glide speed is taken as TAS, while for most aircraft it is
+  IAS -- only relevant for wind corrections
+\item The available terrain information is relatively coarse
+\item The algorithm does not enforce any minimum height for crossing
+  mountain ridges
+\end{itemize}
+
+Clicking into the HSI opens the HSI Configuration Dialog (Figure
+\ref{fig:hsicfgdlg}).
+
+\subsection{Soft Keys}
+
+The following functions are available on the soft keys:
+
+\begin{description}
+\item[D:NORM] Map Declutter; reduces the information displayed on the
+  vector map
+  \begin{description}
+  \item[D:NORM] Display user selected information
+  \item[D:ASPC] Display User selected information minus Topography,
+    Terrain and Airways
+  \item[D:AWY] Display User selected information minus Topography,
+    Terrain and Airspaces
+  \item[D:TERR] Display User selected information minus Airways and
+    Airspaces
+  \end{description}
+\item[TIMER] Starts and Stops an utility up-counting timer (for timed
+  IFR approach segments, or holdings)
+\item[FPLNAV] Enable or Disable Flight Plan Navigation. When enabling,
+  it selects Direct To the nearest waypoint of the actual flight plan
+\item[HOLD] Enables or Disables Hold mode. In Hold mode, waypoint
+  sequencing is stopped, and guidance is provided inbound the next
+  waypoint on a selected radial. Enabling Hold pops up the hold dialog
+  (Figure \ref{fig:holddialog}), allowing the user to select the
+  holding inbound track.
+\item[BRG2] Enables or Disables the second (cyan) bearing pointer in
+  the HSI. Note that before enabling the bearing pointer, it should be
+  set to point to a waypoint either in one of the waypoint pages or
+  the flight plan page.
+\item[SETUP] Activates the Setup soft keys.
+\end{description}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{holddialog.eps}{holddialog.png}
+    \caption{Hold Dialog}
+    \label{fig:holddialog}
+  \end{center}
+\end{figure}
+
+\subsection{Setup Soft Keys}
+
+The Setup soft keys provide the following functions:
+
+\begin{description}
+\item[MAP$+$] Zoom the vector map in
+\item[MAP$-$] Zoom the vector map out
+\item[ARPT$+$] Zoom the airport map in
+\item[ARPT$-$] Zoom the airport map out
+\item[TERRAIN$+$] Zoom the terrain map underlying the HSI in
+\item[TERRAIN$-$] Zoom the terrain map underlying the HSI out
+\item[MAPCFG] Open the Map Configuration Dialog (Figure \ref{fig:mapcfgdlg})
+\item[ALTCFG] Open the Altitude Configuration Dialog (Figure \ref{fig:altcfgdlg})
+\item[HSICFG] Open the HSI Configuration Dialog (Figure \ref{fig:hsicfgdlg})
+\item[WINDOW/FULLSCREEN] Toggles between Windowed and Fullscreen
+  (borderless) Mode
+\item[QUIT] Terminates the FlightDeck Application
+\item[BACK] Return to the Main Soft Keys
+\end{description}
+
+\subsection{Altitude Configuration Dialog}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{altcfgdlg.eps}{altcfgdlg.png}
+    \caption{Altitude Configuration Dialog}
+    \label{fig:altcfgdlg}
+  \end{center}
+\end{figure}
+
+Figure \ref{fig:altcfgdlg} shows the altitude configuration dialog.
+
+\begin{description}
+\item[Altitude Bug] Enable/Disable the altitude bug, and enter its altitude
+\item[Minimum] Enable/Disable the minimum indicator, and enter its altitude
+\item[QNH] Current Altimeter Setting
+\item[QNH/Standard] Switch between the current Altimeter Setting
+  (``Altitudes'') and Standard (``Flight Level'')
+\item[hPa/inHg] Switch between Hectopascals and Inches of Mercury as
+  Altimeter Setting Unit
+\item[Altitude Labels] Enable/Disable Altitude Labels, i.e. display of
+  Altitudes of non-selected Altitude Sources
+\item[Metric] Switch between Metric (``m'') and Imperial (``ft'') units
+\end{description}
+
+{\bf Important:} Do \emph{not} just enter 1013 or 29.92 into the QNH
+field when switching to standard, but use the Standard switch, because
+the current QNH is needed by FlightDeck even in standard mode to
+compute barometric altitudes from true altitude sources, such as GPS.
+
+\subsection{HSI Configuration Dialog}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{hsicfgdlg.eps}{hsicfgdlg.png}
+    \caption{HSI Configuration Dialog}
+    \label{fig:hsicfgdlg}
+  \end{center}
+\end{figure}
+
+Figure \ref{fig:hsicfgdlg} shows the HSI configuration dialog.
+
+\begin{description}
+\item[Manual Heading] Enable/Disable the manual heading, and enter the
+  current heading; manual heading may be magnetic or true
+\item[RAT] Enter the Ram Air Temperature (i.e. what the thermometer
+  reads); using TAS and current altitude, FlightDeck computes the
+  current outside air temperature (OAT). When altitude changes, FlightDeck
+  uses the ISA lapse rate to adjust the outside air temperature.
+\item[IAS] Select and Enter Indicated Airspeed. What needs to be
+  entered is actually Calibrated Airspeed, FlightDeck currently cannot
+  correct for Instrument Errors. If selected, TAS is computed from the
+  given IAS value, and altitude.
+\item[Cruise RPM/MP] Enter cruise RPM and Manifold Pressure (MP)
+  Settings. If selected, the TAS is computed from Aircraft performance
+  data, given the current Density Altitude, and the selected RPM/MP
+  values. If the current vertical speed is at least 150ft/min
+  climbing, $v_Y$ is used instead.
+\item[Display Wind] whether the calculated wind (given TAS and
+  Heading) should be displayed
+\item[Display Flight Plan] whether the current flight plan should be
+  displayed below the compass rose
+\item[Display Flight Plan Labels] whether flight plan waypoints should
+  have labels
+\item[Display Terrain] whether terrain map should be displayed below
+  the compass rose
+\item[Display Airports] whether airports should be displayed
+\item[Display Navaids] whether navaids should be displayed
+\item[Display Waypoints] whether intersections should be displayed
+\item[Display Glide] whether places reachable by unpowered glide
+  shoudl be displayed
+\end{description}
+
+
+
+\subsection{Map Configuration Dialog}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{mapcfgdlg.eps}{mapcfgdlg.png}
+    \caption{Map Configuration Dialog}
+    \label{fig:mapcfgdlg}
+  \end{center}
+\end{figure}
+
+Figure \ref{fig:mapcfgdlg} shows the map configuration dialog.
+
+This dialog configures what information should be displayed on the
+vector map.
+
+\clearpage
+
+\section{Waypoint Page Group}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{wptarpt1.eps}{wptarpt1.png}
+    \caption{Waypoint Page: Airport}
+    \label{fig:wptarpt1}
+  \end{center}
+\end{figure}
+
+The waypoint page group displays information about database
+elements. Database elements may be searched by entering text, nearest
+to the current position (when entered using the WPT soft key) or
+nearest to the currently selected flight plan waypoint (when entered
+by clicking on insert in the flight plan page). Distance values are
+updated if the current position changes.
+
+Selected database elements may be used as direct-to target, or as
+target for the second HSI pointer (BRG2).
+
+The waypoint pages consist of 3 major parts: the top half of the
+screen is used by the element list, the bottom left half displays the
+element on the vector map, and the bottom right half displays textual
+information about the selected element.
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{wptarpt2.eps}{wptarpt2.png}
+    \caption{Waypoint Page: Airport with Airport Map}
+    \label{fig:wptarpt2}
+  \end{center}
+\end{figure}
+
+Figure \ref{fig:wptarpt1} shows the waypoint airport information page
+with the vector map displayed, while Figure \ref{fig:wptnavaid} shows
+the same page with the airport map.
+
+If the airport database contains approach or departure procedures,
+they may be displayed by clicking on the expander next to the airport
+name.
+
+Airports that are within glide distance (\emph{without considering
+  terrain}, but considering wind entered on the flight plan page) are
+displayed in italics.
+
+Airports that have no suitable runway (considering entered mass from
+the Weight \& Balance page, and wind entered on the flight plan page)
+are coloured red. Airports whose ``best'' runway only allows either
+landing or takeoff, but not both, are coloured orange. The same colour
+scheme is applied to the runway list as well.
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{wptnavaid.eps}{wptnavaid.png}
+    \caption{Waypoint Page: Navaid}
+    \label{fig:wptnavaid}
+  \end{center}
+\end{figure}
+
+Figure \ref{fig:wptnavaid} shows the waypoint navaid information
+page.
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{wptint.eps}{wptint.png}
+    \caption{Waypoint Page: Intersection}
+    \label{fig:wptint}
+  \end{center}
+\end{figure}
+
+Figure \ref{fig:wptint} shows the waypoint intersection information
+page.
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{wptmapel.eps}{wptmapel.png}
+    \caption{Waypoint Page: Map Element}
+    \label{fig:wptmapel}
+  \end{center}
+\end{figure}
+
+Figure \ref{fig:wptmapel} shows the waypoint map elment information
+page. Map elements include cities and lakes.
+
+\paragraph{Soft Keys}
+
+\begin{description}
+\item[D:NORM] Declutter Mode, same as in the main menu
+\item[ZOOM$+$] Zoom Map In
+\item[ZOOM$-$] Zoom Map Out
+\item[MAP] Change Map Mode (cycle through Vector Map, Terrain and
+  Airport Map)
+\end{description}
+
+\clearpage
+
+\section{Flight Plan Page Group}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{fplbrowser.eps}{fplbrowser.png}
+    \caption{Flight Plan Browser Page}
+    \label{fig:fplbrowser}
+  \end{center}
+\end{figure}
+
+Figure \ref{fig:fplbrowser} shows the Flight Plan Database Browser
+Page. It may be used to create a new flight plan, to load, delete,
+duplicate or reverse an existing flight plan.
+
+To create a new flight plan, first select New FPL, then load the newly
+created empty flight plan.
+
+\subsection{Flight Plan Page}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{fpleditor.eps}{fpleditor.png}
+    \caption{Flight Plan Editor Page}
+    \label{fig:fpleditor}
+  \end{center}
+\end{figure}
+
+Figure \ref{fig:fpleditor} shows the flight plan editor. The top half
+displays the curent flight plan. The bottom left half displays the
+currently selected waypoint on a map. The bottom right half displays
+and allows to edit textual information about the currently selected
+waypoint.
+
+\paragraph{Soft Keys}
+
+\begin{description}
+\item[D:NORM] Declutter Mode, same as in the main menu
+\item[ZOOM$+$] Zoom Map In
+\item[ZOOM$-$] Zoom Map Out
+\item[SCRKBD] Enable/Disable the on-screen keyboard (for touchscreen
+  devices; Figure \ref{fig:screenkbd})
+\item[MAP] Change Map Mode (cycle through Vector Map, Terrain and
+  Airport Map)
+\end{description}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{screenkbd.eps}{screenkbd.png}
+    \caption{On Screen Keyboard}
+    \label{fig:screenkbd}
+  \end{center}
+\end{figure}
+
+\paragraph{Buttons}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{fpltextentry.eps}{fpltextentry.png}
+    \caption{Flight Plan Text Entry}
+    \label{fig:fpltextentry}
+  \end{center}
+\end{figure}
+
+\begin{description}
+\item[Insert WPT] Duplicates the currently selected Waypoint, and
+  opens the Waypoint Page in nearest mode, allowing to select a
+  waypoint from the database
+\item[Insert Txt] Opens the Flight Plan Text Entry Dialog (Figure
+  \ref{fig:fpltextentry}), which allows multiple waypoints to be
+  entered in ``flight plan format'', for example: ``LSZK BARIG J51 WIL
+  BINGI ARVAN LSZG''. Points may include airports, intersections and
+  navaids, or coordinates. Airways are also acceptable. It is not
+  necessary to enter airway entry and exit points; if missing, the
+  nearest point on the airway is searched and entered as well. This is
+  usually the fastest method to enter a flight plan; some clean-up may
+  be necessary though (mostly deleting unnecessary waypoints).
+\item[Duplicate WPT] Duplicate the currently selected Waypoint
+\item[Move WPT] Move the currently selected Waypoint up or down
+\item[Delete WPT] Delete the currently selected Waypoint
+\item[Straighten WPT] Shifts the currently selected Waypoint such that
+  it lies on a straight line from the previous to the next Waypoint
+\item[Direct To] Opens the Join dialog (Figure \ref{fig:coordeditor}),
+  which allows the user to select either Direct To the currently
+  selected Waypoint, or Join the Leg between the previous and the
+  currently selected Waypoint, and then start flight plan navigation
+\item[BRG 2] Point the second (cyan) HSI pointer to the currently
+  selected Waypoint
+\end{description}
+
+Waypoint information may be edited directly in the lower right part of
+the page. Clicking on the Edit button opens the Coordinate Editor
+dialog (Figure \ref{fig:coordeditor}), which offers additional options
+for entering coordinates (such as radial/distance from the current
+point, or even by clicking on the map).
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{coordeditor.eps}{coordeditor.png}
+    \caption{Coordinate Editor}
+    \label{fig:coordeditor}
+  \end{center}
+\end{figure}
+
+\section{Auxillary Page Group}
+
+The Auxillary Page Group contains an embedded document (PDF) reader
+suitable for quickly displaying approach charts, a performance
+calculator and sunrise/sunset information for the current flight plan.
+
+\subsection{Document Reader}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{docdirpage.eps}{docdirpage.png}
+    \caption{Documents Directory Page}
+    \label{fig:docdirpage}
+  \end{center}
+\end{figure}
+
+Figure \ref{fig:docdirpage} shows the documents directory. FlightDeck
+searches user-selectable directories for displayable documents. It
+analyzes the file name of each document found, and determines which
+files may be relevant to each current flight plan
+waypoint. Furthermore, all documents found are also listed under the
+``all documents'' heading.
+
+Selecting a document and clicking on the AUX soft key leads to the
+document page.
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{docpage.eps}{docpage.png}
+    \caption{Document Page}
+    \label{fig:docpage}
+  \end{center}
+\end{figure}
+
+Figure \ref{fig:docpage} shows the document page.
+
+\paragraph{Soft Keys}
+
+\begin{description}
+\item[FIT] Toggles between Best Fit and Fit Width mode
+\item[ZOOM$+$] Zoom Document In
+\item[ZOOM$-$] Zoom Document Out
+\item[ROTATE] Rotate Document by 90 degrees
+\item[DOC$+$] Advance to the next document in the list
+\item[DOC$-$] Return to the previous document in the list
+\item[BACK] Return to the Documents Directory Page
+\end{description}
+
+\subsection{Performance Calculator}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{perfpage.eps}{perfpage.png}
+    \caption{Performance Calculator Page}
+    \label{fig:perfpage}
+  \end{center}
+\end{figure}
+
+Figure \ref{fig:perfpage} shows the performance calculator page. The
+left side computes takeoff and landing distances, while the right side
+computes the weight \& balance graph.
+
+Clicking on ``From W\&B'' copies the masses from the Weight \& Balance
+graph. The Takeoff mass is directly set from the Weight \& Balance
+total mass, while the Landing mass has the total fuel (from the
+currently loaded flight plan) subtracted (but not more than sum total
+of the entered fuel in the Weight \& Balance calculation).
+
+Clicking on ``From FPL'' copies the takeoff and landing airfield
+elevations from the currently loaded Flight Plan.
+
+\subsection{Sunrise/Sunset Calculator}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{srsspage.eps}{srsspage.png}
+    \caption{ Page}
+    \label{fig:srsspage}
+  \end{center}
+\end{figure}
+
+Figure \ref{fig:srsspage} shows the Sunrise/Sunset calculator. The
+user may select a date, for which the calculator displays sunrise and
+sunset times (in UTC) for each waypoint of the currently loaded Flight
+Plan. Note that the calculator considers only geographical positions
+of the waypoints; the official day/night times may differ slightly due
+to country rules.
+
+\section{Sensors Page Group}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.5]{logpage.eps}{logpage.png}
+    \caption{System Log Page}
+    \label{fig:logpage}
+  \end{center}
+\end{figure}
+
+Figure \ref{fig:logpage} shows the system log page.
+
+
+
+\raggedright
+\bibliography{attitude,propeller}
+\bibliographystyle{base/plain}
+
+\appendix
+\section{Known Limitations}
+
+\subsection{Windows Version}
+
+\begin{itemize}
+\item Document Viewer is not available
+\item Only very limited I/O drivers available
+\item Lightly Tested
+\end{itemize}
+
+
+\section{Technical}
+
+\subsection{IFR Autorouter}
+
+\subsection{Introduction}
+
+IFR Flight planning in countries such as the United States is fairly
+simple. Given a RNAV equipped aircraft, flight plans between arbitrary
+waypoints may be filed with little restrictions.
+
+Not so in the ECAC\footnote{European Civil Aviation Conference}
+region. An IFR flight plan must comply with many rules (more than 6000
+early 2013) before it is accepted. When submitted to
+CFMU\footnote{Central Flow Management Unit} in Bretigny or Brussels, a
+computer checks the flight plan and rejects it if any one of those
+rules is violated. IFR Flight Planning is even more complicated by the
+fact that the ECAC region is comprised by more than 20 states, each
+with sometimes significantly different rules.
+
+\noindent\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.7]{routenetwork.eps}{routenetwork.pdf}
+    \caption{Central Switzerland Airway Network}
+    \label{fig:routenetwork}
+  \end{center}
+\end{figure}
+
+IFR Flight Plans generally must follow the route network. Figure
+\ref{fig:routenetwork} shows an exceprt of the central Switzerland
+route network. The route network consists of Navigation Aids and
+Intersections. Intersections are specific coordinates that were given
+a 5 character identifier. Navaids and Intersections are connected by
+airway segment. An airway also has a name -- for example G5 between
+WIL and FRI. Airways are often limited vertically. Furthermore, they
+may be unidirectional.
+
+An IFR Flight Plan generally joins the route network at a point close
+to the departure aerodrome and leave the route network at a point
+close to the destination aerodrome. There are rules that govern which
+joining and leaving points are allowed.
+
+Clearly, the complexity of finding an IFR Flight Plan that honours all
+rules, but also limitations of the aircraft, has become impractical to
+do by hand, especially for low flying aircraft and for the General
+Aviation community, where a Flight Plan is used only once. Flight
+Planning can easily exceed the flight time even for slow
+aircraft. There is therefore no way around automating construction of
+an acceptable IFR flight plan.
+
+An autorouter should have the following desirable properties:
+\begin{enumerate}
+\item Minimal user input; ideally it should only require the departure
+  and destination aerodrome, and the aircraft to be flown
+\item Additional altitude restrictions, for example due to weather (icing)
+\item Find the optimal route between the given aerodromes for the
+  given aircraft; optimality criteria should include flight time and
+  fuel consumption and be user selectable
+\end{enumerate}
+
+The router descibed in this document achieves these
+properties. Additionally, it would be desirable to have the following
+additional properties:
+\begin{enumerate}
+\item Offline operation
+\item Consider winds aloft
+\end{enumerate}
+
+Offline operation is currently infeasible, unfortunately, as the rules
+are apparently not available completely in an electronically useable
+format.
+
+Winds aloft awareness should be easy to add to the general algorithm
+structure.
+
+The autorouter algorithm performs the following steps:
+
+\begin{enumerate}
+\item Construct Routing Graph
+  \begin{enumerate}
+  \item Add Navaid and Intersection vertices
+  \item Add Airway edges
+  \item Remove Intersections with non-flightplannable names
+  \item Add Direct-To (DCT) edges
+  \item Add Departure and Destination Aerodromes, and SID and STAR edges
+  \end{enumerate}
+\item Router Iteration
+  \begin{enumerate}
+  \item Find the (k-)shortest path in the Routing Graph from Departure
+    to Destination
+  \item Check the path against the locally available rules
+  \item If the local check passes, submit it to the CFMU flight plan
+    validation website
+  \item If it passes the CFMU test as well, we are done
+  \item (Try to) interpret the error messages; if an edge is clearly
+    forbidden for all possible flight plans between these aerodromes,
+    remove the edge from the Routing Graph and compute the shortest
+    path during the next iteration, otherwise compute the next
+    shortest path during the next iteration
+  \end{enumerate}
+\end{enumerate}
+
+\subsection{Routing Graph Construction}
+
+Operations research provides us with a great many publications on
+algorithms for finding paths in graphs.
+
+A graph consists of vertices and edges. Each edge connects two
+vertices. A directed graph (digraph) is a graph with directed edges
+(i.e. each edge may only be travelled in one direction). Parallel
+edges are allowed -- there may be multiple airways between two
+intersections. Each edge has a ``weight'' -- for example the distance,
+flight time, or fuel consumption when crossing the edge. A path
+through the graph from one vertex to another vertex may only follow
+edges; the weight of the path is the sum of the weights of the edges
+crossed. There are efficient algorithms for computing the shortest
+path (minimum weight path) in a graph, for example the Dijkstra
+algorithm. Unfortunately, computing the second best or $k$th best path
+is significantly harder (for example the Yen algorithm).
+
+The digraph concept matches the airway network well. Navaids and
+Intersections correspond to vertices, and airway segments to edges.
+
+What weight should the edges be given? Distance might be chosen, but
+usually, the user is not interested in the shortest route, as the
+shortest route may require a high flight level and a long climb. A
+slightly longer route on a lower flight level may be faster,
+especially on aircraft equipped with normally aspirated engines. So
+the weight is set to either the travel time on the leg, or the fuel
+consumption, depending on user selection.
+
+What altitude should be chosen for a flight plan? Often, no compliant
+route exists between two aerodromes on a single flight level, or large
+detours would have to be flown. Therefore, the autorouter should be
+able to handle level changes on every flight plan leg. On the other
+hand, the user should not need to select the altitude; the router
+should automatically select the best altitude from an aircraft model
+and the terrain. It should be possible, however, to restrict the
+altitude range, for example because of icing. So how can flight levels
+be mapped to the graph concept?
+
+\noindent\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.7]{vertex.eps}{vertex.pdf}
+    \caption{Routing Graph}
+    \label{fig:vertex}
+  \end{center}
+\end{figure}
+
+Figure \ref{fig:vertex} shows the solution. Consider flight
+planning on four levels from FL70 to FL100, for simplicity. Navaids
+and Intersections map to vertices.
+
+Each airway edge carries not just one ``weight'', but a table of
+``weights'' for each flight level, in this case travel time in
+seconds. Figure \ref{fig:vertex} also shows level and
+directionality constraints, see N491 which only exists at FL090 and
+higher, and only in the direction TRA$\rightarrow$ZUE. Nonexisting
+levels are marked with NaN (not a number).
+
+Level changes are handled by using a modified version of the Dijkstra
+algorithm, that does not just keep track of vertices, but also of
+levels. If the algorithm tries a level change, it adjusts the edge
+weight. For climbs, it adds the additional time or fuel needed for the
+climb. This figure is computed using the aircraft performance
+model. In descent, no adjustment is made. It could theoretically be
+negative; however, in my experience, in practice, I am seldom allowed
+to fly an optimal descent towards the destination, I almost always
+arrive at close to the cruise level in the vincinity of the
+destination, and then need additional track miles for the
+descent. Therefore, I have chosen to not give credits for descent.
+
+Increasingly, airways contain points that are not flight-plannable
+(i.e. may not be submitted in a flight plan). An example above is
+BER10 between BERSU and URIGI. These points need to be removed; all
+edges incident on such vertices need to be replaced by edges between
+predecessor and successor vertices, with the weight set to the sum
+of the weight of the inbound and the outbound edge. Only pairs of
+inbound and outbound edges belonging to the same flight level and the
+same airway should be considered.
+
+Besides airway segments, direct routes may be allowed under some
+conditions, for example BERSU to WIL in the graph above. The
+conditions where direct-to segments (DCT) are allowed differ greatly
+from country to country. Switzerland and Austria are very restrictive,
+in Germany and parts of France they are allowed for low level IFR up
+to a certain leg length, while in Poland it is often the only
+possibility due to the thin low level route network. Clearly, the
+router has to support direct-to segments.
+
+DCT edges are added on all (super-)vertex pairs up to a configurable
+maximum. DCT edges are not added if an airway route that is not
+significantly longer (currently 1\%) than the DCT is
+available. Furthermore, DCT edges are only added for altitudes 1000ft
+above terrain (or 2000ft if the terrain is higher than
+5000ft). Terrain altitudes are computed in a corridor $\pm$5 nautical
+miles around the center line.
+
+Finally, the departure and destination aerodrome vertex needs to be
+added. These are simple vertices, as the aerodrome has a fixed
+altitude. From the departure aerodrome vertex, an SID edge is added to
+every flight level of every possible entry point. Similarily, STAR
+edges are added to the destination aerodrome vertex. Entry and exit
+points may either be specified, or every point with a maximum
+configurable distance is tried. Since procedure databases with exact
+routings are not available to me and the actual runway used is not
+known at flight planning time, the direct distance between the
+aerodrome and the entry/exit point is computed. The weight is then the
+time or fuel needed to travel that distance at the flight level at the
+entry/exit point. For SID edges, the weight is increased by the
+additional time or fuel needed to climb from aerodrome elevation to
+the given flight level; for STAR edges, the weight is not reduced by
+the descent, for the reasons given above.
+
+Due to the flight plan format and the way the CFMU checker works, the
+flight level must not be changed immediately after the SID or before
+the STAR. This is enforced by duplicating the entry and exit
+supervertex without level change edges, and duplicating all other
+incident edges.
+
+
+
+\subsection{Waypoint Sequencing}
+
+Waypoint sequencing switches to the next waypoint whenever it
+determines that the turn must be initiated to smoothly reach the next
+track (it assumes all waypoints are fly-by waypoints at the moment!).
+
+\noindent\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.7]{wptseq.eps}{wptseq.pdf}
+    \caption{Waypoint Sequencing Geometry}
+    \label{fig:wptseq}
+  \end{center}
+\end{figure}
+
+$\alpha=\mathrm{Outbound Track}-\mathrm{Inbound Radial}$ is the angle
+describing the course change.
+
+$r=\frac{v\cdot{}2\mathrm{min}}{2\pi}$ is the radius of a standard
+rate turn.
+
+$d=\frac{r}{\tan{\frac{\alpha}{2}}}$ is the distance from the waypoint
+where the turn must be initiated.
+
+$\tau=(\frac{\pi}{2}-\frac{\alpha}{2})\cdot{}2\cdot{}\frac{r}{v}=(\pi-\alpha)\frac{r}{v}=(\pi-\alpha)\frac{2\mathrm{min}}{2\pi}=(1-\frac\alpha\pi)1\mathrm{min}$
+is the time needed to fly half the arc between inbound radial and outbound track.
+
+\subsection{MS5534 Interface}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=0.8\linewidth]{pbxif.eps}{pbxif.pdf}
+    \caption{MS5534 Interface}
+    \label{fig:pbxif}
+  \end{center}
+\end{figure}
+\clearpage
+
+\subsection{Weather Charts}
+
+\subsubsection{Barycentric Interpolation}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,scale=1]{barycentric1.eps}{barycentric1.pdf}
+    \caption{Barycentric Coordinates in a Triangle}
+    \label{fig:barycentric1}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,scale=1]{barycentric2.eps}{barycentric2.pdf}
+    \caption{Barycentric Coordinates in a Triangle}
+    \label{fig:barycentric2}
+  \end{center}
+\end{figure}
+
+The barycentric coordinates are given by
+\begin{equation}
+  (a_0+a_1+a_2)\cdot\vec{p} = a_0\cdot\vec{x_0}+a_1\cdot\vec{x_1}+a_2\cdot\vec{x_2}
+\end{equation}
+
+Additionally, $a_0+a_1+a_2=1$ to make them unique.
+
+The ratio between barycentric coordinates is the same as the ratio of
+the correspondingly coloured triangles.
+
+The interpolated value for $\vec{p}$ is the sum of the triangle vertex
+values weighted by their correspondic barycentric coordinate.
+
+In order to interpolate within a rectangle, the rectangle is
+decomposed into four triangles each consisting of the center point
+(whose value is the average of all four corner points) and two of the
+corner points.
+
+Assume $x_0=x_2$, $x_1=x_3$, $y_0=y_1$ and $y_2=y_3$.
+
+Set:
+\begin{equation}
+  a_3=\frac{x_p-x_0}{x_1-x_0}\frac{y_p-y_0}{y_2-y_0}
+\end{equation}
+
+\begin{equation}
+  a_2=\frac{x_p-x_1}{x_0-x_1}\frac{y_p-y_0}{y_2-y_0}
+\end{equation}
+
+\begin{equation}
+  a_1=\frac{x_p-x_0}{x_1-x_0}\frac{y_p-y_2}{y_0-y_2}
+\end{equation}
+
+\begin{equation}
+  a_0=\frac{x_p-x_1}{x_0-x_1}\frac{y_p-y_2}{y_0-y_2}
+\end{equation}
+
+
+\begin{equation}
+  \begin{split}
+    \sum_{i=0}^{3}a_i &= \frac{x_p-x_0}{x_1-x_0}\frac{y_p-y_0}{y_2-y_0}+
+    \frac{x_p-x_1}{x_0-x_1}\frac{y_p-y_0}{y_2-y_0} +
+    \frac{x_p-x_0}{x_1-x_0}\frac{y_p-y_2}{y_0-y_2} +
+    \frac{x_p-x_1}{x_0-x_1}\frac{y_p-y_2}{y_0-y_2} \\
+    &= \frac{x_p-x_0-x_p+x_1}{x_1-x_0}\frac{y_p-y_0}{y_2-y_0}+
+    \frac{x_p-x_0-x_p+x_1}{x_1-x_0}\frac{y_p-y_2}{y_0-y_2} \\
+    &= \frac{y_p-y_0}{y_2-y_0}+\frac{y_p-y_2}{y_0-y_2}
+    = \frac{y_p-y_0-y_p+y_2}{y_2-y_0} = 1
+  \end{split}
+\end{equation}
+
+\begin{equation}
+  \begin{split}
+    \sum_{i=0}^{3}a_ix_i &= \frac{x_p-x_1}{x_0-x_1}\frac{y_p-y_2}{y_0-y_2}x_0+
+    \frac{x_p-x_0}{x_1-x_0}\frac{y_p-y_2}{y_0-y_2}x_1+
+    \frac{x_p-x_1}{x_0-x_1}\frac{y_p-y_0}{y_2-y_0}x_0+
+    \frac{x_p-x_0}{x_1-x_0}\frac{y_p-y_0}{y_2-y_0}x_1 \\
+    &= \frac{x_p-x_1}{x_0-x_1}x_0+\frac{x_p-x_0}{x_1-x_0}x_1
+    = \frac{x_0x_p-x_0x_1+x_1x_0-x_1x_p}{x_0-x_1}
+    = x_p\frac{x_0-x_1}{x_0-x_1} = x_p
+  \end{split}
+\end{equation}
+
+\begin{equation}
+  \begin{split}
+    \sum_{i=0}^{3}a_iy_i &= \frac{x_p-x_1}{x_0-x_1}\frac{y_p-y_2}{y_0-y_2}y_0+
+    \frac{x_p-x_0}{x_1-x_0}\frac{y_p-y_2}{y_0-y_2}y_0 +
+    \frac{x_p-x_1}{x_0-x_1}\frac{y_p-y_0}{y_2-y_0}y_2 +
+    \frac{x_p-x_0}{x_1-x_0}\frac{y_p-y_0}{y_2-y_0}y_2 \\
+    &= \frac{y_p-y_2}{y_0-y_2}y_0+\frac{y_p-y_0}{y_2-y_0}y_2
+    = \frac{y_0y_p-y_0y_2+y_2y_0-y_2y_p}{y_0-y_2}
+    = y_p\frac{y_0-y_2}{y_0-y_2} = y_p
+  \end{split}
+\end{equation}
+
+\subsubsection{Contour Extraction}
+
+Contour Extraction works clockwise around points ``inside'' (i.e. whose value is greater than the contour line value). There are 5 cases (and rotational symmetric variants) to consider.
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,scale=1]{contour110.eps}{contour110.pdf}
+    \caption{Contour 1--1}
+    \label{fig:contour110}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,scale=1]{contour111.eps}{contour111.pdf}
+    \caption{Contour 1--1}
+    \label{fig:contour111}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,scale=1]{contour1.eps}{contour1.pdf}
+    \caption{Contour 1}
+    \label{fig:contour1}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,scale=1]{contour2.eps}{contour2.pdf}
+    \caption{Contour 2}
+    \label{fig:contour2}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,scale=1]{contour3.eps}{contour3.pdf}
+    \caption{Contour 3}
+    \label{fig:contour3}
+  \end{center}
+\end{figure}
+\clearpage
+
+\ifphymodel
+\subsection{Physical Airframe / Engine Model}
+
+\subsubsection{Propeller}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propafcpct.eps}{propafcpct.pdf}
+    \caption{$P_{CP}$/$P_{CT}$ versus Propeller Activity Factor $AF$}
+    \label{fig:propafcpct}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propafcpcterr.eps}{propafcpcterr.pdf}
+    \caption{$P_{CP}$/$P_{CT}$ versus Propeller Activity Factor $AF$ Approximation Error}
+    \label{fig:propafcpcterr}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propcpstal.eps}{propcpstal.pdf}
+    \caption{$C_P$ where 50\% of the propeller is stalled versus $J$}
+    \label{fig:propcpstal}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propcpstalerr.eps}{propcpstalerr.pdf}
+    \caption{$C_P$ where 50\% of the propeller is stalled versus $J$ Approximation Error}
+    \label{fig:propcpstalerr}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propctstal.eps}{propctstal.pdf}
+    \caption{$C_T$ where 50\% of the propeller is stalled versus $J$}
+    \label{fig:propctstal}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propctstalerr.eps}{propctstalerr.pdf}
+    \caption{$C_T$ where 50\% of the propeller is stalled versus $J$ Approximation Error}
+    \label{fig:propctstalerr}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{proppbl.eps}{proppbl.pdf}
+    \caption{$P_{BL}$}
+    \label{fig:proppbl}
+  \end{center}
+\end{figure}
+\clearpage
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangcp1.eps}{propbldangcp1.pdf}
+    \caption{$C_P$ versus Blade Angle $\beta_{3/4}$ for a 2 Blade Propeller}
+    \label{fig:propbldangcp1}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangct1.eps}{propbldangct1.pdf}
+    \caption{$C_T$ versus Blade Angle $\beta_{3/4}$ for a 2 Blade Propeller}
+    \label{fig:propbldangct1}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangcp1d.eps}{propbldangcp1d.pdf}
+    \caption{$C_P$ versus Blade Angle $\beta_{3/4}$ for a 2 Blade Propeller}
+    \label{fig:propbldangcp1d}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangct1d.eps}{propbldangct1d.pdf}
+    \caption{$C_T$ versus Blade Angle $\beta_{3/4}$ for a 2 Blade Propeller}
+    \label{fig:propbldangct1d}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangcp2.eps}{propbldangcp2.pdf}
+    \caption{$C_P$ versus Blade Angle $\beta_{3/4}$ for a 4 Blade Propeller}
+    \label{fig:propbldangcp2}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangct2.eps}{propbldangct2.pdf}
+    \caption{$C_T$ versus Blade Angle $\beta_{3/4}$ for a 4 Blade Propeller}
+    \label{fig:propbldangct2}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangcp2d.eps}{propbldangcp2d.pdf}
+    \caption{$C_P$ versus Blade Angle $\beta_{3/4}$ for a 4 Blade Propeller}
+    \label{fig:propbldangcp2d}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangct2d.eps}{propbldangct2d.pdf}
+    \caption{$C_T$ versus Blade Angle $\beta_{3/4}$ for a 4 Blade Propeller}
+    \label{fig:propbldangct2d}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangcp3.eps}{propbldangcp3.pdf}
+    \caption{$C_P$ versus Blade Angle $\beta_{3/4}$ for a 6 Blade Propeller}
+    \label{fig:propbldangcp3}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangct3.eps}{propbldangct3.pdf}
+    \caption{$C_T$ versus Blade Angle $\beta_{3/4}$ for a 6 Blade Propeller}
+    \label{fig:propbldangct3}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangcp3d.eps}{propbldangcp3d.pdf}
+    \caption{$C_P$ versus Blade Angle $\beta_{3/4}$ for a 6 Blade Propeller}
+    \label{fig:propbldangcp3d}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangct3d.eps}{propbldangct3d.pdf}
+    \caption{$C_T$ versus Blade Angle $\beta_{3/4}$ for a 6 Blade Propeller}
+    \label{fig:propbldangct3d}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangcp4.eps}{propbldangcp4.pdf}
+    \caption{$C_P$ versus Blade Angle $\beta_{3/4}$ for a 8 Blade Propeller}
+    \label{fig:propbldangcp4}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangct4.eps}{propbldangct4.pdf}
+    \caption{$C_T$ versus Blade Angle $\beta_{3/4}$ for a 8 Blade Propeller}
+    \label{fig:propbldangct4}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangcp4d.eps}{propbldangcp4d.pdf}
+    \caption{$C_P$ versus Blade Angle $\beta_{3/4}$ for a 8 Blade Propeller}
+    \label{fig:propbldangcp4d}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{propbldangct4d.eps}{propbldangct4d.pdf}
+    \caption{$C_T$ versus Blade Angle $\beta_{3/4}$ for a 8 Blade Propeller}
+    \label{fig:propbldangct4d}
+  \end{center}
+\end{figure}
+\clearpage
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{hartzellf7666a2af.eps}{hartzellf7666a2af.pdf}
+    \caption{Hartzell F7666A-2 Activity Factor}
+    \label{fig:hartzellf7666a2af}
+  \end{center}
+\end{figure}
+
+\nocite{prop:nasacr114289,prop:nasacr2066}
+
+\begin{enumerate}
+\item $\rho_0/\rho$ Density Ratio
+\item $N_0$ Rated Engine RPM (RPM at which SHP is given) (in $\mathrm{min}^{-1}$)
+\item $N$ Engine RPM (in $\mathrm{min}^{-1}$)
+\item $D$ Propeller Diameter (in $\mathrm{ft}$)
+\item $C_P=\frac{\frac{N}{N_0}\cdot\mathrm{SHP}\cdot\rho_0/\rho\cdot{}10^{11}}{2\cdot{}N^3\cdot{}D^5}$
+\item $J=\frac{101.4\cdot{}V_K}{N\cdot{}D}$ ($V_K$ free stream velocity in $\mathrm{kts}$)
+\item $P_{AF}=f_{PAF}(AF)$ activity factor correction (Figure \ref{fig:propafcpct})
+\item $C_{P_E}=C_P\cdot{}P_{AF}$
+\item $\beta_{3/4}=f^{-1}_{\beta_{3/4}\rightarrow{}C_{P_E}}(J,C_{P_E})$ ($\beta_{3/4}$ is the blade angle)
+  (Figures \ref{fig:propbldangcp1}, \ref{fig:propbldangcp2}, \ref{fig:propbldangcp3}, \ref{fig:propbldangcp4})
+\item $C_{T_E}=f_{\beta_{3/4}\rightarrow{}C_{T_E}}(J,\beta_{3/4})$
+  (Figures \ref{fig:propbldangct1}, \ref{fig:propbldangct2}, \ref{fig:propbldangct3}, \ref{fig:propbldangct4})
+\item $T_{AF}=f_{TAF}(AF)$ activity factor correction (Figure \ref{fig:propafcpct})
+\item $C_T=\frac{C_{T_E}}{T_{AF}}$
+\item $T=\frac{0.661\cdot{}10^{-6}\cdot{}C_T\cdot{}N^2\cdot{}D^4}{\rho_0/\rho}$ (Thrust in $\mathrm{lbf}$)
+\item $\eta=\frac{C_T}{C_P}\cdot{}J$ Propeller efficiency
+\end{enumerate}
+
+\paragraph{Fixed Pitch Propeller}
+
+\begin{equation}
+  \epsilon=\frac{\mathrm{SHP}\cdot\rho_0/\rho\cdot{}10^{11}}{2\cdot{}N_0\cdot{}N^2\cdot{}D^5}\cdot{}P_{AF}
+  -f_{\beta_{3/4}\rightarrow{}C_{P_E}}\left(\frac{101.4\cdot{}V_K}{N\cdot{}D},\beta_{3/4}\right)
+\end{equation}
+
+Solve $N$ for $\epsilon=0$.
+
+\begin{equation}
+  \frac{\partial}{\partial{}N}\epsilon=-\frac{\mathrm{SHP}\cdot\rho_0/\rho\cdot{}10^{11}}{N_0\cdot{}N^3\cdot{}D^5}\cdot{}P_{AF}
+  +\frac{\partial}{\partial{}C_{P_E}}f_{\beta_{3/4}\rightarrow{}C_{P_E}}\left(\frac{101.4\cdot{}V_K}{N\cdot{}D},\beta_{3/4}\right)\cdot{}\frac{101.4\cdot{}V_K}{N^2\cdot{}D}
+\end{equation}
+
+\subsubsection{Bootstrap Method}
+
+See {\tt http://www.allstar.fiu.edu/aero/airper-ba.htm}.
+
+Bootstrap data plate for Piper Cherokee Arrow 200.
+
+\noindent\begin{tabular}{lrll}
+  Bootstrap Data Plate Item & Value & Units & Aircraft Subsystem \\
+  Wing area, $S$ & 160 & $\mathrm{ft}^2$ & Airframe \\
+  Wing aspect ratio, $A$ & 5.625 & & Airframe \\
+  Rated MSL torque, $M_0$ & 389.05 & $\mathrm{ft}\cdot\mathrm{lbf}$ & Engine \\
+  Altitude drop-off parameter, $C$ & 0.12 & & Engine \\
+  Propeller diameter, $d$ & 6.333 & $\mathrm{ft}$ & Propeller \\
+  Parasite drag coefficient, $C_{D_0}$ & 0.030662 & & Airframe \\
+  Airplane efficiency factor, $e$ & 0.60648 & & Airframe \\
+  Propeller polar slope, $m$ & 2.073704 & & Propeller \\
+  Propeller polar intercept, $b$ & -0.054411 & & Propeller \\
+\end{tabular} \\
+
+Wing aspect ratio: $A = B^2/S$, where B is the wing span. \\
+
+Mean sea level (MSL) full--throttle rated torque $M_0 = \frac{P_0}{2\pi{}n_0}$,
+where $P_0$ is the rated power, $n_0$ is the rated propeller revolutions per second. \\
+
+For the Arrow 200, $P_0 = 200\mathrm{HP} = 110000\frac{\mathrm{ft}\cdot\mathrm{lbf}}{\mathrm{s}}$,
+and $n_0 = \frac{\mathrm{RPM}}{60\mathrm{s}} = \frac{2700}{60\mathrm{s}} = 45\mathrm{s}^{-1}$. \\
+
+The proportional mechanical power loss independent of altitude, $C$, can almost always be 
+taken as 0.12. \\
+
+$M(\sigma) = \Phi(\sigma)\cdot{}M_0$. $\Phi(\sigma) = \frac{\sigma - C}{1 - C}$. $\sigma$ is the
+relative density. \\
+
+Parasite drag and efficiency. $V_T\cdot\sqrt{\sigma}=V_C$. $\gamma_{bg}=\tan^{-1}(\frac{1}{r_{bg}})$.
+$r_{bg}$ is the glide ratio, $\gamma_{bg}$ the glide angle, $W$ the aircraft weight.
+$\rho_0=0.002377\frac{\mathrm{slug}}{\mathrm{ft}^3}$.
+$C_{D_0}=\frac{W\cdot{}\sin(\gamma_{bg})}{\rho_0\cdot{}V_{Cbg}^2\cdot{}S}$.
+$e=\frac{4\cdot{}C_{D_0}}{\pi\cdot{}A\cdot\tan^2(\gamma_{bg})}$. \\
+
+For the Arrow 200, $W=2600\mathrm{lbf}$, $r_{bg}=\frac{20\mathrm{nmi}}{13000\mathrm{ft}}=9.3479$,
+$\gamma_{bg}=6.1061$, $V_{Cbg}=105\mathrm{MPH}=154\frac{\mathrm{ft}}{\mathrm{s}}$,
+$C_{D_0}=0.030662$, $e=0.60648$. \\
+
+Propeller polars. $V_{Tx}$ true speed for best glide angle.
+$b=\frac{S\cdot{}C_{D_0}}{2\cdot{}d^2}-\frac{2\cdot{}W^2}{\rho^2\cdot{}d^2\cdot{}S\cdot\pi\cdot{}e\cdot{}A\cdot{}V_{Cx}^4}$.
+$m=\frac{2\cdot{}n_0\cdot{}d\cdot{}W^2}{\Phi(\sigma)\cdot{}P_0\cdot\rho\cdot{}S\cdot\pi\cdot{}e\cdot{}A}\cdot\left(\frac{1}{V_{CM}^2}-\frac{V_{CM}^2}{V_{Cx}^4}\right)$. \\
+
+For the Arrow 200, $V_{Cx}=80\mathrm{MPH}=117.33333\frac{\mathrm{ft}}{\mathrm{s}}$,
+$V_{CM}=174\mathrm{MPH}=255.2\frac{\mathrm{ft}}{\mathrm{s}}$ @ 5000ft,
+$V_{CM}=168\mathrm{MPH}=246.4\frac{\mathrm{ft}}{\mathrm{s}}$ @ 10000ft, $\sigma=0.73875$,
+$\Phi(\sigma)=0.70312$, $b=-0.12241$, $m=5.5720$. \\
+
+
+\noindent\begin{tabular}{rr}
+Alt & Density $\rho$ \\
+$\mathrm{ft}$ & $10^{-4}\frac{\mathrm{slugs}}{\mathrm{ft}^3}$ \\
+-5000 &	27.45 \\
+0     &	23.77 \\
+5000  &	20.48 \\
+10000 &	17.56 \\
+15000 &	14.96 \\
+\end{tabular} \\
+
+\paragraph{Thrust / Power}
+
+Propeller Advance $J=\frac{V_T}{n\cdot{}d}$, $V_T$ (true) speed, $n$ revolutions per second, $d$ propeller diameter.\\
+
+Propeller Thrust $T=C_T\cdot\rho\cdot{}n^2\cdot{}d^4$.\\
+
+Propeller Power $P=C_P\cdot\rho\cdot{}n^3\cdot{}d^5$.\\
+
+Propeller Efficiency $\eta=J\cdot\frac{C_T}{C_P}=\frac{V_T\cdot{}T}{P}$.\\
+
+Propeller Polar $\frac{C_T}{J^2}=m\cdot\frac{C_P}{J^2}+b$.\\
+
+$C_P=\frac{P}{\rho\cdot{}n^3\cdot{}d^5}.$\\
+
+$C_T=m\cdot{}C_P+J^2\cdot{}b=m\cdot\frac{P}{\rho\cdot{}n^3\cdot{}d^5}+J^2\cdot{}b$.\\
+
+$T=\frac{m\cdot{}P}{n\cdot{}d}+J^2\cdot{}b\cdot\rho\cdot{}n^2\cdot{}d^4
+=\frac{m\cdot{}P}{n\cdot{}d}+V_T^2\cdot{}b\cdot\rho\cdot{}d^2
+=\frac{m\cdot{}P}{n\cdot{}d}+V_C^2\cdot{}b\cdot\rho_0\cdot{}d^2$.\\
+
+$P=\frac{n\cdot{}d}{m}\cdot\left(T-V_C^2\cdot{}b\cdot\rho_0\cdot{}d^2\right)$.\\
+
+
+\paragraph{Drag / Lift}
+
+$C_D = C_{D_0} + \frac{C_L^2}{\pi\cdot{}A\cdot{}e}$.\\
+
+$L=\frac{1}{2}\cdot{}C_L\cdot\rho\cdot{}V_T^2\cdot{}S$. \\
+
+$D=\frac{1}{2}\cdot{}C_D\cdot\rho\cdot{}V_T^2\cdot{}S$. \\
+
+$C_L=\frac{W}{\frac{1}{2}\cdot\rho\cdot{}V_T^2\cdot{}S}$
+
+\begin{equation}
+  \begin{split}
+    D&=\frac{1}{2}\cdot{}C_{D_0}\cdot\rho\cdot{}V_T^2\cdot{}S
+    + \frac{1}{2}\cdot{}\frac{W^2}{(\frac{1}{2}\cdot\rho\cdot{}V_T^2\cdot{}S)^2\cdot\pi\cdot{}A\cdot{}e}\cdot\rho\cdot{}V_T^2\cdot{}S \\
+    &=\frac{1}{2}\cdot{}C_{D_0}\cdot\rho\cdot{}V_T^2\cdot{}S
+    + \frac{W^2}{\frac{1}{2}\cdot\rho\cdot{}V_T^2\cdot{}S\cdot\pi\cdot{}A\cdot{}e} \\
+    &=\frac{1}{2}\cdot{}C_{D_0}\cdot\rho_0\cdot{}V_C^2\cdot{}S
+    + \frac{W^2}{\frac{1}{2}\cdot\rho_0\cdot{}V_C^2\cdot{}S\cdot\pi\cdot{}A\cdot{}e}
+  \end{split}
+\end{equation}
+
+\begin{equation}
+  0 = \frac{1}{2}\cdot{}C_{D_0}\cdot\rho_0^2\cdot{}V_C^4\cdot{}S
+    - D\cdot\rho_0\cdot{}V_C^2
+    + \frac{W^2}{\frac{1}{2}\cdot{}S\cdot\pi\cdot{}A\cdot{}e}
+\end{equation}
+
+\begin{equation}
+  \rho_0\cdot{}V_C^2 = \rho\cdot{}V_T^2 = \frac{D}{C_{D_0}\cdot{}S}\pm\sqrt{\frac{D^2}{C_{D_0}^2\cdot{}S^2}-\frac{4\cdot{}W^2}{C_{D_0}\cdot{}S^2\cdot\pi\cdot{}A\cdot{}e}}
+\end{equation}
+
+\paragraph{Unaccelerated Level Flight}
+
+\begin{equation}
+  \rho\cdot{}V_{T,max}^2 = \frac{\frac{m\cdot{}P}{n\cdot{}d}+\rho\cdot{}V_{T,max}^2\cdot{}b\cdot{}d^2}{C_{D_0}\cdot{}S}
+  +\sqrt{\frac{\left(\frac{m\cdot{}P}{n\cdot{}d}+\rho\cdot{}V_{T,max}^2\cdot{}b\cdot{}d^2\right)^2}{C_{D_0}^2\cdot{}S^2}-\frac{4\cdot{}W^2}{C_{D_0}\cdot{}S^2\cdot\pi\cdot{}A\cdot{}e}}
+\end{equation}
+
+\begin{equation}
+  \rho\cdot{}V_{T,min}^2 = \frac{\frac{m\cdot{}P}{n\cdot{}d}+\rho\cdot{}V_{T,min}^2\cdot{}b\cdot{}d^2}{C_{D_0}\cdot{}S}
+  -\sqrt{\frac{\left(\frac{m\cdot{}P}{n\cdot{}d}+\rho\cdot{}V_{T,min}^2\cdot{}b\cdot{}d^2\right)^2}{C_{D_0}^2\cdot{}S^2}-\frac{4\cdot{}W^2}{C_{D_0}\cdot{}S^2\cdot\pi\cdot{}A\cdot{}e}}
+\end{equation}
+
+Initial Guess:
+
+\begin{equation}
+  \rho\cdot{}\hat{V}_{T,max}^2 = \frac{m\cdot{}P}{n\cdot{}d\cdot{}C_{D_0}\cdot{}S}
+  +\sqrt{\frac{m^2\cdot{}P^2}{n^2\cdot{}d^2\cdot{}C_{D_0}^2\cdot{}S^2}-\frac{4\cdot{}W^2}{C_{D_0}\cdot{}S^2\cdot\pi\cdot{}A\cdot{}e}}
+\end{equation}
+
+\begin{equation}
+  \rho\cdot{}\hat{V}_{T,min}^2 = \frac{m\cdot{}P}{n\cdot{}d\cdot{}C_{D_0}\cdot{}S}
+  -\sqrt{\frac{m^2\cdot{}P^2}{n^2\cdot{}d^2\cdot{}C_{D_0}^2\cdot{}S^2}-\frac{4\cdot{}W^2}{C_{D_0}\cdot{}S^2\cdot\pi\cdot{}A\cdot{}e}}
+\end{equation}
+
+Error:
+
+\begin{equation}
+  \epsilon = \frac{\frac{m\cdot{}P}{n\cdot{}d}+\rho\cdot{}\hat{V}_{T,max}^2\cdot{}b\cdot{}d^2}{C_{D_0}\cdot{}S} - \rho\cdot{}\hat{V}_{T,max}^2
+  +\sqrt{\frac{\left(\frac{m\cdot{}P}{n\cdot{}d}+\rho\cdot{}\hat{V}_{T,max}^2\cdot{}b\cdot{}d^2\right)^2}{C_{D_0}^2\cdot{}S^2}-\frac{4\cdot{}W^2}{C_{D_0}\cdot{}S^2\cdot\pi\cdot{}A\cdot{}e}}
+\end{equation}
+
+\begin{equation}
+  \epsilon = \frac{\frac{m\cdot{}P}{n\cdot{}d}+\rho\cdot{}\hat{V}_{T,max}^2\cdot{}b\cdot{}d^2}{C_{D_0}\cdot{}S} - \rho\cdot{}\hat{V}_{T,max}^2
+  -\sqrt{\frac{\left(\frac{m\cdot{}P}{n\cdot{}d}+\rho\cdot{}\hat{V}_{T,max}^2\cdot{}b\cdot{}d^2\right)^2}{C_{D_0}^2\cdot{}S^2}-\frac{4\cdot{}W^2}{C_{D_0}\cdot{}S^2\cdot\pi\cdot{}A\cdot{}e}}
+\end{equation}
+
+\begin{equation}
+  \frac{\partial}{\partial\rho\cdot{}\hat{V}_{T,max}^2}\epsilon = \frac{b\cdot{}d^2}{C_{D_0}\cdot{}S}-1+
+  \frac{b\cdot{}d^2\cdot\left(\frac{m\cdot{}P}{n\cdot{}d}+\rho\cdot{}\hat{V}_{T,max}^2\cdot{}b\cdot{}d^2\right)}
+  {C_{D_0}\cdot{}S\cdot\sqrt{\left(\frac{m\cdot{}P}{n\cdot{}d}+\rho\cdot{}\hat{V}_{T,max}^2\cdot{}b\cdot{}d^2\right)^2-
+      \frac{4\cdot{}W^2\cdot{}C_{D_0}}{\pi\cdot{}A\cdot{}e}}}
+\end{equation}
+
+\begin{equation}
+  \frac{\partial}{\partial\rho\cdot{}\hat{V}_{T,min}^2}\epsilon = \frac{b\cdot{}d^2}{C_{D_0}\cdot{}S}-1-
+  \frac{b\cdot{}d^2\cdot\left(\frac{m\cdot{}P}{n\cdot{}d}+\rho\cdot{}\hat{V}_{T,min}^2\cdot{}b\cdot{}d^2\right)}
+  {C_{D_0}\cdot{}S\cdot\sqrt{\left(\frac{m\cdot{}P}{n\cdot{}d}+\rho\cdot{}\hat{V}_{T,min}^2\cdot{}b\cdot{}d^2\right)^2-
+      \frac{4\cdot{}W^2\cdot{}C_{D_0}}{\pi\cdot{}A\cdot{}e}}}
+\end{equation}
+
+\paragraph{Rate of Climb}
+
+\begin{equation}
+  \frac{m\cdot{}P}{n\cdot{}d}+V_C^2\cdot{}b\cdot\rho_0\cdot{}d^2=
+  \frac{1}{2}\cdot{}C_{D_0}\cdot\rho_0\cdot{}V_C^2\cdot{}S
+    + \frac{W^2\cdot\cos^2(\alpha)}{\frac{1}{2}\cdot\rho_0\cdot{}V_C^2\cdot{}S\cdot\pi\cdot{}A\cdot{}e}+W\sin(\alpha)
+\end{equation}
+
+\begin{equation}
+  \frac{m\cdot{}P}{n\cdot{}d}+V_C^2\cdot\rho_0\cdot\left(b\cdot{}d^2-\frac{1}{2}\cdot{}C_{D_0}\cdot{}S\right)=
+  \frac{W^2\cdot\cos^2(\alpha)}{\frac{1}{2}\cdot\rho_0\cdot{}V_C^2\cdot{}S\cdot\pi\cdot{}A\cdot{}e}+W\sin(\alpha)
+\end{equation}
+
+\begin{equation}
+  \frac{m\cdot{}P}{n\cdot{}d}+V_C^2\cdot\rho_0\cdot\left(b\cdot{}d^2-\frac{1}{2}\cdot{}C_{D_0}\cdot{}S\right)
+  -\frac{W^2}{\frac{1}{2}\cdot\rho_0\cdot{}V_C^2\cdot{}S\cdot\pi\cdot{}A\cdot{}e}=
+  W\sin(\alpha)-\frac{W^2\cdot\sin^2(\alpha)}{\frac{1}{2}\cdot\rho_0\cdot{}V_C^2\cdot{}S\cdot\pi\cdot{}A\cdot{}e}
+\end{equation}
+
+\begin{equation}
+  \begin{split}
+    \sin(\alpha)=&\frac{\rho_0\cdot{}V_C^2\cdot{}S\cdot\pi\cdot{}A\cdot{}e}{4\cdot{}W^2}\cdot \\
+    &\left(W\pm\sqrt{W^2-\frac{8\cdot{}W^2}{\rho_0\cdot{}V_C^2\cdot{}S\cdot\pi\cdot{}A\cdot{}e}\cdot
+        \left(\frac{m\cdot{}P}{n\cdot{}d}+V_C^2\cdot\rho_0\cdot\left(b\cdot{}d^2-\frac{1}{2}\cdot{}C_{D_0}\cdot{}S\right)
+          -\frac{W^2}{\frac{1}{2}\cdot\rho_0\cdot{}V_C^2\cdot{}S\cdot\pi\cdot{}A\cdot{}e}\right)}\right)
+  \end{split}
+\end{equation}
+
+\begin{equation}
+  \sin(\alpha)\approx\frac{1}{W}\cdot\left(\frac{m\cdot{}P}{n\cdot{}d}+V_C^2\cdot\rho_0\cdot\left(b\cdot{}d^2-\frac{1}{2}\cdot{}C_{D_0}\cdot{}S\right)
+  -\frac{W^2}{\frac{1}{2}\cdot\rho_0\cdot{}V_C^2\cdot{}S\cdot\pi\cdot{}A\cdot{}e}\right)
+\end{equation}
+
+\begin{equation}
+  \begin{split}
+    \mathrm{ROC} &= V_T\cdot\sin(\alpha) = V_C\cdot\sqrt{\frac{\rho_0}{\rho}}\cdot\sin(\alpha) \\
+    &\approx{}V_C\cdot\sqrt{\frac{\rho_0}{\rho}}\cdot\frac{1}{W}\cdot\left(\frac{m\cdot{}P}{n\cdot{}d}+V_C^2\cdot\rho_0\cdot\left(b\cdot{}d^2-\frac{1}{2}\cdot{}C_{D_0}\cdot{}S\right)
+      -\frac{W^2}{\frac{1}{2}\cdot\rho_0\cdot{}V_C^2\cdot{}S\cdot\pi\cdot{}A\cdot{}e}\right)
+  \end{split}
+\end{equation}
+
+\paragraph{Rate of Climb 2}
+
+\begin{equation}
+  \begin{split}
+    \mathrm{ROC} &= \frac{V_T}{W}(T-D)
+  \end{split}
+\end{equation}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28ratmo.eps}{p28ratmo.pdf}
+    \caption{ICAO Standard Atmosphere}
+    \label{fig:p28ratmo}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rio360pwr.eps}{p28rio360pwr.pdf}
+    \caption{IO-360-C Engine Performance versus Altitude}
+    \label{fig:p28rio360pwr}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rio360pwrdensity.eps}{p28rio360pwrdensity.pdf}
+    \caption{IO-360-C Engine Performance versus Altitude}
+    \label{fig:p28rio360pwrdensity}
+  \end{center}
+\end{figure}
+\clearpage
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rslgndrun.eps}{p28rslgndrun.pdf}
+    \caption{P28R-200B Sea Level Ground Run}
+    \label{fig:p28rslgndrun}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rslgndrunprop.eps}{p28rslgndrunprop.pdf}
+    \caption{P28R-200B Sea Level Ground Run}
+    \label{fig:p28rslgndrunprop}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rclimbforce.eps}{p28rclimbforce.pdf}
+    \caption{P28R-200B Climb Performance}
+    \label{fig:p28rclimbforce}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rclimbprop.eps}{p28rclimbprop.pdf}
+    \caption{P28R-200B Climb Propeller Efficiency / Pitch}
+    \label{fig:p28rclimbprop}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rclimbforcegd.eps}{p28rclimbforcegd.pdf}
+    \caption{P28R-200B Climb Performance}
+    \label{fig:p28rclimbforcegd}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rclimbpropgd.eps}{p28rclimbpropgd.pdf}
+    \caption{P28R-200B Climb Propeller Efficiency / Pitch}
+    \label{fig:p28rclimbpropgd}
+  \end{center}
+\end{figure}
+\clearpage
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rroc2700.eps}{p28rroc2700.pdf}
+    \caption{P28R-200B Rate of Climb, 2700 RPM}
+    \label{fig:p28rroc2700}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rroceff2700.eps}{p28rroceff2700.pdf}
+    \caption{P28R-200B Climb Propeller Efficiency, 2700 RPM}
+    \label{fig:p28rroceff2700}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rrocpitch2700.eps}{p28rrocpitch2700.pdf}
+    \caption{P28R-200B Climb Propeller Pitch, 2700 RPM}
+    \label{fig:p28rrocpitch2700}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rroc2500.eps}{p28rroc2500.pdf}
+    \caption{P28R-200B Rate of Climb, 2500 RPM}
+    \label{fig:p28rroc2500}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rroceff2500.eps}{p28rroceff2500.pdf}
+    \caption{P28R-200B Climb Propeller Efficiency, 2500 RPM}
+    \label{fig:p28rroceff2500}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rrocpitch2500.eps}{p28rrocpitch2500.pdf}
+    \caption{P28R-200B Climb Propeller Pitch, 2500 RPM}
+    \label{fig:p28rrocpitch2500}
+  \end{center}
+\end{figure}
+\clearpage
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rcruisespeed.eps}{p28rcruisespeed.pdf}
+    \caption{P28R-200B Cruise Speed}
+    \label{fig:p28rcruisespeed}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rcruiseeff.eps}{p28rcruiseeff.pdf}
+    \caption{P28R-200B Cruise Propeller Efficiency}
+    \label{fig:p28rcruiseeff}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rcruisepitch.eps}{p28rcruisepitch.pdf}
+    \caption{P28R-200B Cruise Propeller Pitch}
+    \label{fig:p28rcruisepitch}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rcruisespeedgd.eps}{p28rcruisespeedgd.pdf}
+    \caption{P28R-200B Cruise Speed, Gear Down}
+    \label{fig:p28rcruisespeedgd}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rcruiseeffgd.eps}{p28rcruiseeffgd.pdf}
+    \caption{P28R-200B Cruise Propeller Efficiency, Gear Down}
+    \label{fig:p28rcruiseeffgd}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rcruisepitchgd.eps}{p28rcruisepitchgd.pdf}
+    \caption{P28R-200B Cruise Propeller Pitch, Gear Down}
+    \label{fig:p28rcruisepitchgd}
+  \end{center}
+\end{figure}
+\clearpage
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rbestglidepp14.eps}{p28rbestglidepp14.pdf}
+    \caption{P28R-200B Best Glide, Minimum Propeller Pitch}
+    \label{fig:p28rbestglidepp14}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rbestglideproppp14.eps}{p28rbestglideproppp14.pdf}
+    \caption{P28R-200B Best Glide Propeller Parameters, Minimum Propeller Pitch}
+    \label{fig:p28rbestglideproppp14}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rgliderodpp14.eps}{p28rgliderodpp14.pdf}
+    \caption{P28R-200B Glide Rate of Descent, Minimum Propeller Pitch}
+    \label{fig:p28rgliderodpp14}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rglidedistpp14.eps}{p28rglidedistpp14.pdf}
+    \caption{P28R-200B Glide Distance, Minimum Propeller Pitch}
+    \label{fig:p28rglidedistpp14}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rgliderpmpp14.eps}{p28rgliderpmpp14.pdf}
+    \caption{P28R-200B Glide Windmilling RPM, Minimum Propeller Pitch}
+    \label{fig:p28rgliderpmpp14}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rbestglidepp29.eps}{p28rbestglidepp29.pdf}
+    \caption{P28R-200B Best Glide, Maximum Propeller Pitch}
+    \label{fig:p28rbestglidepp29}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rbestglideproppp29.eps}{p28rbestglideproppp29.pdf}
+    \caption{P28R-200B Best Glide Propeller Parameters, Maximum Propeller Pitch}
+    \label{fig:p28rbestglideproppp29}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rgliderodpp29.eps}{p28rgliderodpp29.pdf}
+    \caption{P28R-200B Glide Rate of Descent, Maximum Propeller Pitch}
+    \label{fig:p28rgliderodpp29}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rglidedistpp29.eps}{p28rglidedistpp29.pdf}
+    \caption{P28R-200B Glide Distance, Maximum Propeller Pitch}
+    \label{fig:p28rglidedistpp29}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[angle=0,width=\linewidth]{p28rgliderpmpp29.eps}{p28rgliderpmpp29.pdf}
+    \caption{P28R-200B Glide Windmilling RPM, Maximum Propeller Pitch}
+    \label{fig:p28rgliderpmpp29}
+  \end{center}
+\end{figure}
+\clearpage
+
+
+\subsubsection{Piper Cherokee Arrow Data}
+
+\noindent\begin{tabular}{llr}
+  NACA 652--415 Profile & & \\
+  Angle where Lift Coefficient is zero & $\alpha$ & $-3^\circ$ \\
+  Drag Coefficient at $\alpha$ & $c_d$ & 0.006 \\
+  Drag Coefficient at $\alpha+8^\circ$ & $c_d$ & 0.008 \\
+  Lift coefficient scales with $2\pi\alpha$ ($\alpha$ in rad) & & \\
+  Maximum Lift Coefficient & $c_{l,max}$ & 1.2 \\
+  at angle of attack & $\alpha_{max}$ & 12 \\
+  Wing Area & & $160\mathrm{ft}^2$ \\
+  & & $14.864\mathrm{m}^2$ \\
+  MTOM & & $2600\mathrm{lb}$ \\
+  & & $1179.3402\mathrm{kg}$ \\
+  Rated Horsepower & & $200\mathrm{HP}$ \\
+  & & $149.14\mathrm{kW}$ \\
+  Rated RPM & & $2700\mathrm{min}^{-1}$ \\
+\end{tabular}
+
+\fi
+
+\subsection{Linear Interpolation}
+
+\noindent\begin{figure}[!htbp]
+  \begin{center}
+    \jnxfig[scale=0.7]{lininterp.eps}{lininterp.pdf}
+    \caption{Linear Interpolation}
+    \label{fig:lininterp}
+  \end{center}
+\end{figure}
+
+Linear Interpolation is used extensively for weather data, to
+interpolate between two points in time and two pressure levels, or
+between grid points.
+
+$0\leq\alpha\leq{}1$ and $0\leq\beta\leq{}1$.
+
+\begin{eqnarray}
+  x_0 = (1-\alpha)x_{00} + \alpha x_{01} \\
+  x_1 = (1-\alpha)x_{10} + \alpha x_{11}
+\end{eqnarray}
+
+\begin{equation}
+  \begin{split}
+    x &= (1-\beta)x_0 + \beta x_1 = (1-\alpha)(1-\beta)x_{00} + \alpha(1-\beta) x_{01} + (1-\alpha)\beta x_{10} + \alpha\beta x_{11} \\
+    &= (1-\alpha-\beta+\alpha\beta)x_{00} + (\alpha-\alpha\beta) x_{01} + (\beta-\alpha\beta) x_{10} + \alpha\beta x_{11} \\
+    &= x_{00} + \alpha(x_{01}-x_{00}) + \beta(x_{10}-x_{00}) + \alpha\beta(x_{11}+x_{00}-x_{01}-x_{10}) \\
+    &= p_0 + \alpha p_1 + \beta p_2 + \alpha\beta p_3
+  \end{split}
+\end{equation}
+
+\begin{equation}
+  \mathbf{\hat{x}} = \begin{pmatrix}
+    \hat{x}_0 \\
+    \hat{x}_1 \\
+    \hat{x}_2 \\
+    \hat{x}_3 \\
+  \end{pmatrix}
+\end{equation}
+
+\begin{equation}
+  \mathbf{p} = \begin{pmatrix}
+    p_0 \\
+    p_1 \\
+    p_2 \\
+    p_3 \\
+  \end{pmatrix}
+\end{equation}
+
+\begin{equation}
+  \mathbf{A} = \begin{pmatrix}
+    1 & \alpha_0 & \beta_0 & \alpha_0\beta_0 \\
+    1 & \alpha_1 & \beta_1 & \alpha_1\beta_1 \\
+    1 & \alpha_2 & \beta_2 & \alpha_2\beta_2 \\
+    1 & \alpha_3 & \beta_3 & \alpha_3\beta_3 \\
+  \end{pmatrix}
+\end{equation}
+
+\begin{equation}
+  \begin{split}
+    \frac\partial{\partial\mathbf{p}} (\mathbf{\hat{x}}-\mathbf{A}\mathbf{p})^T(\mathbf{\hat{x}}-\mathbf{A}\mathbf{p})
+    &= \frac\partial{\partial\mathbf{p}} (\mathbf{\hat{x}}^T\mathbf{\hat{x}}-\mathbf{p}^T\mathbf{A}^T\mathbf{\hat{x}}-\mathbf{\hat{x}}^T\mathbf{A}\mathbf{p}+\mathbf{p}^T\mathbf{A}^T\mathbf{A}\mathbf{p}) \\
+    &= -\mathbf{\hat{x}}^T\mathbf{A}+\mathbf{p}^T\mathbf{A}^T\mathbf{A} = 0
+  \end{split}
+\end{equation}
+
+\begin{equation}
+  \mathbf{p} = (\mathbf{A}^T\mathbf{A})^{-1}\mathbf{A}^T\mathbf{\hat{x}}
+\end{equation}
+
+
+
+%\nocite{attitude:lowcostahrs}
+
+\end{document}

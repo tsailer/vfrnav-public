@@ -1,0 +1,6 @@
+/run/vfrnav(/.*)?                               gen_context(system_u:object_r:vfrnav_var_run_t,s0)
+/var/run/vfrnav(/.*)?                           gen_context(system_u:object_r:vfrnav_var_run_t,s0)
+/usr/libexec/vfrnav/cfmuvalidateserver  --      gen_context(system_u:object_r:cfmuvalidate_exec_t,s0)
+/usr/bin/cfmuautoroute                  --      gen_context(system_u:object_r:cfmuautoroute_exec_t,s0)
+/etc/rc\.d/init\.d/cfmuvalidateserver   --      gen_context(system_u:object_r:cfmuvalidate_initrc_exec_t,s0)
+/etc/rc\.d/init\.d/cfmuautoroute        --      gen_context(system_u:object_r:cfmuautoroute_initrc_exec_t,s0)

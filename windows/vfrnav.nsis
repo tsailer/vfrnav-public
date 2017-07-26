@@ -1,0 +1,743 @@
+#!Nsis Installer Command Script
+#
+# This is an NSIS Installer Command Script generated automatically
+# by the Fedora nsiswrapper program.  For more information see:
+#
+#   http://fedoraproject.org/wiki/MinGW
+#
+# To build an installer from the script you would normally do:
+#
+#   makensis this_script
+#
+# which will generate the output file 'VFRNavSetup.exe' which is a Windows
+# installer containing your program.
+
+# created with: PATH=$PATH:/usr/i686-w64-mingw32/sys-root/mingw/bin/ nsiswrapper --with-gtk --name "VFR Navigation" --installdir 'C:\vfrnav' --outfile VFRNavSetup.exe /usr/i686-w64-mingw32/sys-root/mingw/bin/vfr* /usr/i686-w64-mingw32/sys-root/mingw/bin/flightdeck.exe /usr/i686-w64-mingw32/sys-root/mingw/bin/acftperf.exe /usr/i686-w64-mingw32/sys-root/mingw/share/vfrnav > vfrnav.nsis
+
+!define VERSION 20130829
+
+Name "VFR Navigation"
+OutFile "VFRNavSetup${VERSION}.exe"
+InstallDir "C:\vfrnav"
+InstallDirRegKey HKLM SOFTWARE\VFR-Navigation "Install_Dir"
+
+ShowInstDetails hide
+ShowUninstDetails hide
+
+# Uncomment this to enable BZip2 compression, which results in
+# slightly smaller files but uses more memory at install time.
+#SetCompressor bzip2
+SetCompressor /SOLID lzma
+
+XPStyle on
+
+!include "EnvVarUpdate.nsh" #download http://nsis.sourceforge.net/mediawiki/images/a/ad/EnvVarUpdate.7z
+!include x64.nsh
+!include "FileFunc.nsh"
+
+!insertmacro GetParameters
+!insertmacro GetOptions
+
+; ============================================================================
+; Modern UI
+; ============================================================================
+!include "MUI.nsh"
+
+!define MUI_ICON "../ui/vfrnav.ico"
+!define MUI_UNICON "../ui/vfrnav.ico"
+
+!define MUI_COMPONENTSPAGE_SMALLDESC
+!define MUI_FINISHPAGE_NOAUTOCLOSE
+!define MUI_UNFINISHPAGE_NOAUTOCLOSE
+!define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of VFR/IFR Navigation.\r\n\r\nBefore starting the installation, make sure VFRNav is not running.\r\n\r\nClick 'Next' to continue."
+;!define MUI_FINISHPAGE_LINK "For maximum features, make sure you also install the database files"
+;!define MUI_FINISHPAGE_LINK_LOCATION "http://www.gna.org/projects/vfrnav"
+;!define MUI_FINISHPAGE_SHOWREADME "$INSTDIR\NEWS.txt"
+;!define MUI_FINISHPAGE_SHOWREADME_TEXT "Show News"
+;!define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
+!define MUI_FINISHPAGE_RUN "$INSTDIR\bin\flightdeck.exe"
+!define MUI_FINISHPAGE_RUN_NOTCHECKED
+
+; ============================================================================
+; MUI Pages
+; ============================================================================
+
+!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_LICENSE "/usr/share/doc/mingw32-vfrnav-${VERSION}/COPYING"
+!insertmacro MUI_PAGE_COMPONENTS
+!insertmacro MUI_PAGE_DIRECTORY
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
+
+!insertmacro MUI_UNPAGE_WELCOME
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_COMPONENTS
+!insertmacro MUI_UNPAGE_INSTFILES
+!insertmacro MUI_UNPAGE_FINISH
+
+; ============================================================================
+; MUI Languages
+; ============================================================================
+
+!insertmacro MUI_LANGUAGE "English"
+
+;Page components
+;Page directory
+;Page instfiles
+
+;ComponentText "Select which optional components you want to install."
+
+;DirText "Please select the installation folder."
+
+Section "-Required" SecRequired
+  SetOutPath "$INSTDIR\etc"
+  File /r "/usr/i686-w64-mingw32/sys-root/mingw/etc/fonts"
+  File /r "/usr/i686-w64-mingw32/sys-root/mingw/etc/gtk-3.0"
+  SetOutPath "$INSTDIR\etc\gtk-3.0"
+  File "/etc/gtk-3.0/settings.ini"
+  CreateDirectory "$INSTDIR\etc\pango"
+
+  SetOutPath "$INSTDIR\share"
+  File /r "/usr/i686-w64-mingw32/sys-root/mingw/share/vfrnav"
+  SetOutPath "$INSTDIR\share\glib-2.0"
+  File /r "/usr/i686-w64-mingw32/sys-root/mingw/share/glib-2.0/schemas"
+  SetOutPath "$INSTDIR\share\icons"
+  File /r "/usr/share/icons/gnome"
+
+  SetOutPath "$INSTDIR\doc"
+  File "/usr/share/doc/mingw32-vfrnav-${VERSION}/flightdeck.pdf"
+
+  SetOutPath "$INSTDIR\db\flightdeck"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/share/vfrnav/flightdeck/hbdhg.cfg"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/share/vfrnav/flightdeck/hbpbx.cfg"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/share/vfrnav/flightdeck/hbpho.cfg"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/share/vfrnav/flightdeck/hbtda.cfg"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/share/vfrnav/flightdeck/hbtdb.cfg"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/share/vfrnav/flightdeck/sim.cfg"
+
+  SetOutPath "$INSTDIR\db\aircraft"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/share/vfrnav/aircraft/hbdhg.xml"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/share/vfrnav/aircraft/hbpbx.xml"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/share/vfrnav/aircraft/hbpho.xml"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/share/vfrnav/aircraft/hbtda.xml"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/share/vfrnav/aircraft/hbtdb.xml"
+
+  SetOutPath "$INSTDIR\db\navlogtemplates"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/share/vfrnav/navlogtemplates/navlog.ods"
+
+  ; extend PATH variable
+  ${EnvVarUpdate} $0 "PATH" "A" "HKLM" '$INSTDIR\bin'
+
+  ; INSTDIR with forward slashes
+  StrCpy $8 $INSTDIR
+  StrLen $0 $8
+  StrCpy $1 0
+  instfwloop:
+    IntCmp $0 $1 instfwend instfwend 0
+    StrCpy $2 $8 1 $1
+    StrCmp $2 "\" instfwreplace
+    IntOp $1 $1 + 1
+    goto instfwloop
+  instfwreplace:
+    StrCpy $2 $8 $1
+    IntOp $1 $1 + 1
+    StrCpy $3 $8 "" $1
+    StrCpy $8 "$2/$3"
+    goto instfwloop
+  instfwend:
+  DetailPrint "VFRNav Install Path: $8"
+
+  ; Open/LibreOffice macro trusted directory
+  StrCpy $0 0
+  looplo:
+    ClearErrors
+    EnumRegKey $1 HKLM SOFTWARE\LibreOffice\LibreOffice $0
+    IfErrors donelo
+    StrCmp $1 "" donelo
+    IntOp $0 $0 + 1
+    DetailPrint "LibreOffice Registry Key: $1"
+    ClearErrors
+    ReadRegStr $2 HKLM SOFTWARE\LibreOffice\LibreOffice\$1 Path
+    IfErrors looplo
+    DetailPrint "LibreOffice Executable Path: $2"
+    StrLen $9 $2
+    bsloop1lo:
+      IntOp $9 $9 - 1
+      IntCmp $9 0 0 looplo 0
+      StrCpy $3 $2 1 $9
+      StrCmp $3 ":" bsendlo
+      StrCmp $3 "\" bsloop2lo
+      goto bsloop1lo
+    bsloop2lo:
+      IntOp $9 $9 - 1
+      IntCmp $9 0 0 looplo 0
+      StrCpy $3 $2 1 $9
+      StrCmp $3 ":" bsendlo
+      StrCmp $3 "\" bsendlo
+      goto bsloop2lo
+    bsendlo:
+    IntOp $9 $9 + 1
+    StrCpy $2 $2 $9
+    DetailPrint "LibreOffice Install Path: $2"
+    DetailPrint "LibreOffice Registry File: $2\share\registry\vfrnav.xcd"
+    ClearErrors
+    FileOpen $9 "$2\share\registry\vfrnav.xcd" w
+    IfErrors looplo
+    FileWrite $9 "<?xml version=$\"1.0$\"?>$\r$\n"
+    FileWrite $9 "<oor:data xmlns:xs=$\"http://www.w3.org/2001/XMLSchema$\" xmlns:xsi=$\"http://www.w3.org/2001/XMLSchema-instance$\" xmlns:oor=$\"http://openoffice.org/2001/registry$\">$\r$\n"
+    FileWrite $9 "  <dependency file=$\"main$\"/>$\r$\n"
+    FileWrite $9 "  <oor:component-data xmlns:install=$\"http://openoffice.org/2004/installation$\" oor:name=$\"Common$\" oor:package=$\"org.openoffice.Office$\">$\r$\n"
+    FileWrite $9 "    <node oor:name=$\"Security$\">$\r$\n"
+    FileWrite $9 "      <node oor:name=$\"Scripting$\">$\r$\n"
+    FileWrite $9 "        <prop oor:name=$\"SecureURL$\" oor:op=$\"fuse$\"><value><it>file:///$8</it></value></prop>$\r$\n"
+    FileWrite $9 "      </node>$\r$\n"
+    FileWrite $9 "    </node>$\r$\n"
+    FileWrite $9 "  </oor:component-data>$\r$\n"
+    FileWrite $9 "</oor:data>$\r$\n"
+    FileClose $9
+    goto looplo
+  donelo:
+
+  StrCpy $0 0
+  loopoo:
+    ClearErrors
+    EnumRegKey $1 HKLM SOFTWARE\OpenOffice.org\OpenOffice.org $0
+    IfErrors doneoo
+    StrCmp $1 "" doneoo
+    IntOp $0 $0 + 1
+    DetailPrint "OpenOffice.org Registry Key: $1"
+    ClearErrors
+    ReadRegStr $2 HKLM SOFTWARE\OpenOffice.org\OpenOffice.org\$1 Path
+    IfErrors loopoo
+    DetailPrint "OpenOffice.org Executable Path: $2"
+    StrLen $9 $2
+    bsloop1oo:
+      IntOp $9 $9 - 1
+      IntCmp $9 0 0 loopoo 0
+      StrCpy $3 $2 1 $9
+      StrCmp $3 ":" bsendoo
+      StrCmp $3 "\" bsloop2oo
+      goto bsloop1oo
+    bsloop2oo:
+      IntOp $9 $9 - 1
+      IntCmp $9 0 0 loopoo 0
+      StrCpy $3 $2 1 $9
+      StrCmp $3 ":" bsendoo
+      StrCmp $3 "\" bsendoo
+      goto bsloop2oo
+    bsendoo:
+    IntOp $9 $9 + 1
+    StrCpy $2 $2 $9
+    DetailPrint "OpenOffice.org Install Path: $2"
+    DetailPrint "OpenOffice.org Registry File: $2\share\registry\vfrnav.xcd"
+    ClearErrors
+    FileOpen $9 "$2\share\registry\vfrnav.xcd" w
+    IfErrors loopoo
+    FileWrite $9 "<?xml version=$\"1.0$\"?>$\r$\n"
+    FileWrite $9 "<oor:data xmlns:xs=$\"http://www.w3.org/2001/XMLSchema$\" xmlns:xsi=$\"http://www.w3.org/2001/XMLSchema-instance$\" xmlns:oor=$\"http://openoffice.org/2001/registry$\">$\r$\n"
+    FileWrite $9 "  <dependency file=$\"main$\"/>$\r$\n"
+    FileWrite $9 "  <oor:component-data xmlns:install=$\"http://openoffice.org/2004/installation$\" oor:name=$\"Common$\" oor:package=$\"org.openoffice.Office$\">$\r$\n"
+    FileWrite $9 "    <node oor:name=$\"Security$\">$\r$\n"
+    FileWrite $9 "      <node oor:name=$\"Scripting$\">$\r$\n"
+    FileWrite $9 "        <prop oor:name=$\"SecureURL$\" oor:op=$\"fuse$\"><value><it>file:///$8</it></value></prop>$\r$\n"
+    FileWrite $9 "      </node>$\r$\n"
+    FileWrite $9 "    </node>$\r$\n"
+    FileWrite $9 "  </oor:component-data>$\r$\n"
+    FileWrite $9 "</oor:data>$\r$\n"
+    FileClose $9
+    goto loopoo
+  doneoo:
+
+SectionEnd
+
+Section "-Required" SecRequired32
+  SetOutPath "$INSTDIR\bin\"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgcc_s_sjlj-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libstdc++-6.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libffi-6.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libatk-1.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libatkmm-1.6-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libcairo-2.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libcairo-gobject-2.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libcairomm-1.0-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgdk-3-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgdk_pixbuf-2.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgdkmm-3.0-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgio-2.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgiomm-2.4-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libglib-2.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libglibmm-2.4-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgmodule-2.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgobject-2.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgthread-2.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgtk-3-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgtkmm-3.0-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/iconv.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libintl-8.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libpango-1.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libpangocairo-1.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libpangomm-1.4-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libpangowin32-1.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libpangoft2-1.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libfontconfig-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libfreetype-6.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libpixman-1-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libpng15-15.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libsigc-2.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libsqlite3-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libsqlite3x-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libxml++-2.6-2.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libxml2-2.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libcrypto-10.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libidn-11.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libssh2-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libssl-10.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libcurl-4.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libexpat-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libzfstream-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/zlib1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libusb-1.0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgsl-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgslcblas-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libwebkitgtk-3.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libjavascriptcoregtk-3.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/icui18n50.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/icule50.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/icuuc50.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/icudata50.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/pthreadGC2.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libenchant.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgailutil-3-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgstapp-0.10-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgstbase-0.10-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgstreamer-0.10-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgstinterfaces-0.10-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgstpbutils-0.10-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgstvideo-0.10-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libjpeg-62.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libsoup-2.4-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libxslt-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgnutls-28.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgcrypt-11.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgpg-error-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libp11-kit-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libtasn1-6.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libpolyclipping.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libbz2-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libharfbuzz-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libopenjpeg-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libsoup-2.4-1.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgmp-10.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libhogweed-2-3.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libnettle-4-5.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libharfbuzz-icu-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libwebp-4.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgstapp-1.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgstbase-1.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgstaudio-1.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgsttag-1.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgstpbutils-1.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgstvideo-1.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/libgstreamer-1.0-0.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/ftd2xx.dll"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/pango-querymodules.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/glib-compile-schemas.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/gspawn-win32-helper.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/gspawn-win32-helper-console.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/libexec/vfrnav/cfmuvalidateserver.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/acftperf.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrnav.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/flightdeck.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/cfmuautoroute.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/cfmuvalidate.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/checkfplan.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrairporteditor.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrairspaceeditor.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrairwayeditor.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrnavaideditor.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrtrackeditor.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrwaypointeditor.exe"
+
+  SetOutPath "$INSTDIR\lib"
+  File /r "/usr/i686-w64-mingw32/sys-root/mingw/lib/gtk-3.0"
+  File /r "/usr/i686-w64-mingw32/sys-root/mingw/lib/pango"
+  SetOutPath "$INSTDIR\lib\gio"
+  File /r "/usr/i686-w64-mingw32/sys-root/mingw/lib/gio/modules"
+
+  ReadEnvStr $0 COMSPEC
+  SetOutPath "$INSTDIR"
+  nsExec::ExecToLog '$0 /C bin\pango-querymodules.exe > etc\pango\pango.modules'
+  nsExec::ExecToLog '$0 /C bin\glib-compile-schemas.exe share\glib-2.0\schemas'
+SectionEnd
+
+Section /o "-Required" SecRequired64
+  SetOutPath "$INSTDIR\bin\"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgcc_s_seh-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libstdc++-6.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libffi-6.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libatk-1.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libatkmm-1.6-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libcairo-2.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libcairo-gobject-2.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libcairomm-1.0-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgdk-3-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgdk_pixbuf-2.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgdkmm-3.0-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgio-2.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgiomm-2.4-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libglib-2.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libglibmm-2.4-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgmodule-2.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgobject-2.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgthread-2.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgtk-3-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgtkmm-3.0-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/iconv.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libintl-8.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libpango-1.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libpangocairo-1.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libpangomm-1.4-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libpangowin32-1.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libpangoft2-1.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libfontconfig-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libfreetype-6.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libpixman-1-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libpng15-15.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libsigc-2.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libsqlite3-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libsqlite3x-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libxml++-2.6-2.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libxml2-2.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libcrypto-10.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libidn-11.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libssh2-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libssl-10.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libcurl-4.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libexpat-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libzfstream-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/zlib1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libusb-1.0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgsl-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgslcblas-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libwebkitgtk-3.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libjavascriptcoregtk-3.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/icui18n50.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/icule50.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/icuuc50.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/icudata50.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/pthreadGC2.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libenchant.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgailutil-3-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgstapp-0.10-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgstbase-0.10-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgstreamer-0.10-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgstinterfaces-0.10-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgstpbutils-0.10-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgstvideo-0.10-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libjpeg-62.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libsoup-2.4-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libxslt-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgnutls-28.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgcrypt-11.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgpg-error-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libp11-kit-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libtasn1-6.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libpolyclipping.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libbz2-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libharfbuzz-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libopenjpeg-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libsoup-2.4-1.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgmp-10.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libhogweed-2-3.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libnettle-4-5.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libharfbuzz-icu-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libwebp-4.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgstapp-1.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgstbase-1.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgstaudio-1.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgsttag-1.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgstpbutils-1.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgstvideo-1.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgstreamer-1.0-0.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/ftd2xx64.dll"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/pango-querymodules.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/glib-compile-schemas.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/gspawn-win64-helper.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/gspawn-win64-helper-console.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/libexec/vfrnav/cfmuvalidateserver.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/acftperf.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrnav.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/flightdeck.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/cfmuautoroute.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/cfmuvalidate.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/checkfplan.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrairporteditor.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrairspaceeditor.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrairwayeditor.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrnavaideditor.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrtrackeditor.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrwaypointeditor.exe"
+
+  SetOutPath "$INSTDIR\lib"
+  File /r "/usr/x86_64-w64-mingw32/sys-root/mingw/lib/gtk-3.0"
+  File /r "/usr/x86_64-w64-mingw32/sys-root/mingw/lib/pango"
+  SetOutPath "$INSTDIR\lib\gio"
+  File /r "/usr/x86_64-w64-mingw32/sys-root/mingw/lib/gio/modules"
+
+  ReadEnvStr $0 COMSPEC
+  SetOutPath "$INSTDIR"
+  nsExec::ExecToLog '$0 /C bin\pango-querymodules.exe > etc\pango\pango.modules'
+  nsExec::ExecToLog '$0 /C bin\glib-compile-schemas.exe share\glib-2.0\schemas'
+SectionEnd
+
+Section "Flight Plan Command Line Utilities" SecFplUtils32
+  SetOutPath "$INSTDIR\bin\"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrnavdb2xml.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrnavfplan.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrnavxml2db.exe"
+SectionEnd
+
+Section "Flight Plan Command Line Utilities" SecFplUtils64
+  SetOutPath "$INSTDIR\bin\"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrnavdb2xml.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrnavfplan.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrnavxml2db.exe"
+SectionEnd
+
+Section "Database Creation Command Line Utilities" SecDbUtils32
+  SetOutPath "$INSTDIR\bin\"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrdbairwaydump.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrdbaixmimport.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrdbcamelcase.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrdbdafif.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrdbeadimport.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrdbfasimport.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrdbopenair.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrdboptimizelabelplacement.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrdbrebuildspatialindex.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrdbsettopo30.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrdbsrtm30db.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrdbtopo30zerotiles.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrdbupdategndelev.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrdbxplane.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrnavwmmconv.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/vfrnavwmmtest.exe"
+  File "/usr/i686-w64-mingw32/sys-root/mingw/bin/sqlite3.exe"
+SectionEnd
+
+Section "Database Creation Command Line Utilities" SecDbUtils64
+  SetOutPath "$INSTDIR\bin\"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrdbairwaydump.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrdbaixmimport.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrdbcamelcase.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrdbdafif.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrdbeadimport.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrdbfasimport.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrdbopenair.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrdboptimizelabelplacement.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrdbrebuildspatialindex.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrdbsettopo30.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrdbsrtm30db.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrdbtopo30zerotiles.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrdbupdategndelev.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrdbxplane.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrnavwmmconv.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/vfrnavwmmtest.exe"
+  File "/usr/x86_64-w64-mingw32/sys-root/mingw/bin/sqlite3.exe"
+SectionEnd
+
+Section "Start Menu Shortcuts"
+  CreateDirectory "$SMPROGRAMS\VFR Navigation"
+  CreateShortCut "$SMPROGRAMS\VFR Navigation\Uninstall VFR Navigation.lnk" "$INSTDIR\Uninstall VFR Navigation.exe" "" "$INSTDIR\Uninstall VFR Navigation.exe" 0
+  CreateShortCut "$SMPROGRAMS\VFR Navigation\flightdeck.exe.lnk" "$INSTDIR\bin\flightdeck.exe" "" "$INSTDIR\bin\flightdeck.exe" 0
+  CreateShortCut "$SMPROGRAMS\VFR Navigation\vfrnav.exe.lnk" "$INSTDIR\bin\vfrnav.exe" "" "$INSTDIR\bin\vfrnav.exe" 0
+  CreateShortCut "$SMPROGRAMS\VFR Navigation\acftperf.exe.lnk" "$INSTDIR\bin\acftperf.exe" "" "$INSTDIR\bin\acftperf.exe" 0
+  CreateShortCut "$SMPROGRAMS\VFR Navigation\vfrairporteditor.exe.lnk" "$INSTDIR\bin\vfrairporteditor.exe" "" "$INSTDIR\bin\vfrairporteditor.exe" 0
+  CreateShortCut "$SMPROGRAMS\VFR Navigation\vfrairspaceeditor.exe.lnk" "$INSTDIR\bin\vfrairspaceeditor.exe" "" "$INSTDIR\bin\vfrairspaceeditor.exe" 0
+  CreateShortCut "$SMPROGRAMS\VFR Navigation\vfrairwayeditor.exe.lnk" "$INSTDIR\bin\vfrairwayeditor.exe" "" "$INSTDIR\bin\vfrairwayeditor.exe" 0
+  CreateShortCut "$SMPROGRAMS\VFR Navigation\vfrnavaideditor.exe.lnk" "$INSTDIR\bin\vfrnavaideditor.exe" "" "$INSTDIR\bin\vfrnavaideditor.exe" 0
+  CreateShortCut "$SMPROGRAMS\VFR Navigation\vfrtrackeditor.exe.lnk" "$INSTDIR\bin\vfrtrackeditor.exe" "" "$INSTDIR\bin\vfrtrackeditor.exe" 0
+  CreateShortCut "$SMPROGRAMS\VFR Navigation\vfrwaypointeditor.exe.lnk" "$INSTDIR\bin\vfrwaypointeditor.exe" "" "$INSTDIR\bin\vfrwaypointeditor.exe" 0
+  CreateShortCut "$SMPROGRAMS\VFR Navigation\flightdeck.pdf.lnk" "$INSTDIR\doc\flightdeck.pdf" "" "$INSTDIR\doc\flightdeck.pdf" 0
+SectionEnd
+
+Section "Desktop Icons"
+  CreateShortCut "$DESKTOP\flightdeck.exe.lnk" "$INSTDIR\bin\flightdeck.exe" "" "$INSTDIR\bin\flightdeck.exe" 0
+  CreateShortCut "$DESKTOP\vfrnav.exe.lnk" "$INSTDIR\bin\vfrnav.exe" "" "$INSTDIR\bin\vfrnav.exe" 0
+  CreateShortCut "$DESKTOP\acftperf.exe.lnk" "$INSTDIR\bin\acftperf.exe" "" "$INSTDIR\bin\acftperf.exe" 0
+  CreateShortCut "$DESKTOP\vfrairporteditor.exe.lnk" "$INSTDIR\bin\vfrairporteditor.exe" "" "$INSTDIR\bin\vfrairporteditor.exe" 0
+  CreateShortCut "$DESKTOP\vfrairspaceeditor.exe.lnk" "$INSTDIR\bin\vfrairspaceeditor.exe" "" "$INSTDIR\bin\vfrairspaceeditor.exe" 0
+  CreateShortCut "$DESKTOP\vfrairwayeditor.exe.lnk" "$INSTDIR\bin\vfrairwayeditor.exe" "" "$INSTDIR\bin\vfrairwayeditor.exe" 0
+  CreateShortCut "$DESKTOP\vfrnavaideditor.exe.lnk" "$INSTDIR\bin\vfrnavaideditor.exe" "" "$INSTDIR\bin\vfrnavaideditor.exe" 0
+  CreateShortCut "$DESKTOP\vfrtrackeditor.exe.lnk" "$INSTDIR\bin\vfrtrackeditor.exe" "" "$INSTDIR\bin\vfrtrackeditor.exe" 0
+  CreateShortCut "$DESKTOP\vfrwaypointeditor.exe.lnk" "$INSTDIR\bin\vfrwaypointeditor.exe" "" "$INSTDIR\bin\vfrwaypointeditor.exe" 0
+SectionEnd
+
+Section "Uninstall"
+  Delete /rebootok "$DESKTOP\vfrwaypointeditor.exe.lnk"
+  Delete /rebootok "$SMPROGRAMS\VFR Navigation\vfrwaypointeditor.exe.lnk"
+  Delete /rebootok "$DESKTOP\vfrtrackeditor.exe.lnk"
+  Delete /rebootok "$SMPROGRAMS\VFR Navigation\vfrtrackeditor.exe.lnk"
+  Delete /rebootok "$DESKTOP\vfrnavaideditor.exe.lnk"
+  Delete /rebootok "$SMPROGRAMS\VFR Navigation\vfrnavaideditor.exe.lnk"
+  Delete /rebootok "$DESKTOP\flightdeck.exe.lnk"
+  Delete /rebootok "$SMPROGRAMS\VFR Navigation\flightdeck.exe.lnk"
+  Delete /rebootok "$DESKTOP\vfrairwayeditor.exe.lnk"
+  Delete /rebootok "$SMPROGRAMS\VFR Navigation\vfrairwayeditor.exe.lnk"
+  Delete /rebootok "$DESKTOP\vfrairspaceeditor.exe.lnk"
+  Delete /rebootok "$SMPROGRAMS\VFR Navigation\vfrairspaceeditor.exe.lnk"
+  Delete /rebootok "$DESKTOP\vfrairporteditor.exe.lnk"
+  Delete /rebootok "$SMPROGRAMS\VFR Navigation\vfrairporteditor.exe.lnk"
+  Delete /rebootok "$DESKTOP\vfrnav.exe.lnk"
+  Delete /rebootok "$SMPROGRAMS\VFR Navigation\vfrnav.exe.lnk"
+  Delete /rebootok "$DESKTOP\flightdeck.exe.lnk"
+  Delete /rebootok "$SMPROGRAMS\VFR Navigation\flightdeck.exe.lnk"
+  Delete /rebootok "$DESKTOP\acftperf.exe.lnk"
+  Delete /rebootok "$SMPROGRAMS\VFR Navigation\acftperf.exe.lnk"
+  Delete /rebootok "$SMPROGRAMS\VFR Navigation\flightdeck.pdf.lnk"
+  Delete /rebootok "$SMPROGRAMS\VFR Navigation\Uninstall VFR Navigation.lnk"
+  RMDir "$SMPROGRAMS\VFR Navigation"
+
+  RMDir /r "$INSTDIR\doc"
+
+  RMDir /r "$INSTDIR\share\vfrnav"
+
+  Delete /rebootok "$INSTDIR\db\aircraft\hbpbx.xml"
+  Delete /rebootok "$INSTDIR\db\aircraft\hbpho.xml"
+  Delete /rebootok "$INSTDIR\db\aircraft\hbtda.xml"
+  Delete /rebootok "$INSTDIR\db\aircraft\hbtdb.xml"
+  RMDir "$INSTDIR\db\aircraft"
+
+  Delete /rebootok "$INSTDIR\db\flightdeck\hbpbx.cfg"
+  Delete /rebootok "$INSTDIR\db\flightdeck\hbpho.cfg"
+  Delete /rebootok "$INSTDIR\db\flightdeck\hbtda.cfg"
+  Delete /rebootok "$INSTDIR\db\flightdeck\hbtdb.cfg"
+  Delete /rebootok "$INSTDIR\db\flightdeck\sim.cfg"
+  RMDir "$INSTDIR\db\flightdeck"
+  Delete /rebootok "$INSTDIR\db\navlogtemplates\navlog.ods"
+  RMDir "$INSTDIR\db\navlogtemplates"
+
+  RMDir /r "$INSTDIR\lib\pango"
+
+  RMDir /r "$INSTDIR\lib\gtk-3.0"
+
+  RMDir /r "$INSTDIR\etc\pango"
+
+  RMDir /r "$INSTDIR\etc\gtk-3.0"
+
+  RMDir /r "$INSTDIR\etc\fonts"
+
+  Delete /rebootok "$INSTDIR\bin\sqlite3.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrwaypointeditor.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrtrackeditor.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrnavxml2db.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrnavwmmtest.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrnavwmmconv.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrnavfplan.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrnavdb2xml.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrnavaideditor.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrnav.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrdbxplane.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrdbupdategndelev.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrdbtopo30zerotiles.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrdbsrtm30db.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrdbsettopo30.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrdbrebuildspatialindex.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrdboptimizelabelplacement.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrdbeadimport.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrdbfasimport.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrdbopenair.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrdbdafif.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrdbcamelcase.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrdbairwaydump.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrdbaixmimport.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrairwayeditor.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrairspaceeditor.exe"
+  Delete /rebootok "$INSTDIR\bin\vfrairporteditor.exe"
+  Delete /rebootok "$INSTDIR\bin\pango-querymodules.exe"
+  Delete /rebootok "$INSTDIR\bin\flightdeck.exe"
+  Delete /rebootok "$INSTDIR\bin\cfmuautoroute.exe"
+  Delete /rebootok "$INSTDIR\bin\cfmuvalidate.exe"
+  Delete /rebootok "$INSTDIR\bin\checkfplan.exe"
+  Delete /rebootok "$INSTDIR\bin\acftperf.exe"
+  Delete /rebootok "$INSTDIR\bin\zlib1.dll"
+  Delete /rebootok "$INSTDIR\bin\libzfstream-1.dll"
+  Delete /rebootok "$INSTDIR\bin\libxml2-2.dll"
+  Delete /rebootok "$INSTDIR\bin\libxml++-2.6-2.dll"
+  Delete /rebootok "$INSTDIR\bin\libsqlite3x-1.dll"
+  Delete /rebootok "$INSTDIR\bin\libsqlite3-0.dll"
+  Delete /rebootok "$INSTDIR\bin\libsigc-2.0-0.dll"
+  Delete /rebootok "$INSTDIR\bin\libpng12-0.dll"
+  Delete /rebootok "$INSTDIR\bin\libpixman-1-0.dll"
+  Delete /rebootok "$INSTDIR\bin\libpangowin32-1.0-0.dll"
+  Delete /rebootok "$INSTDIR\bin\libpangomm-1.4-1.dll"
+  Delete /rebootok "$INSTDIR\bin\libpangocairo-1.0-0.dll"
+  Delete /rebootok "$INSTDIR\bin\libpango-1.0-0.dll"
+  Delete /rebootok "$INSTDIR\bin\libintl-8.dll"
+  Delete /rebootok "$INSTDIR\bin\libiconv-2.dll"
+  Delete /rebootok "$INSTDIR\bin\libgtkmm-3.0-1.dll"
+  Delete /rebootok "$INSTDIR\bin\libgtk-3-0.dll"
+  Delete /rebootok "$INSTDIR\bin\libgthread-2.0-0.dll"
+  Delete /rebootok "$INSTDIR\bin\libgobject-2.0-0.dll"
+  Delete /rebootok "$INSTDIR\bin\libgmodule-2.0-0.dll"
+  Delete /rebootok "$INSTDIR\bin\libglibmm-2.4-1.dll"
+  Delete /rebootok "$INSTDIR\bin\libglib-2.0-0.dll"
+  Delete /rebootok "$INSTDIR\bin\libgiomm-2.4-1.dll"
+  Delete /rebootok "$INSTDIR\bin\libgio-2.0-0.dll"
+  Delete /rebootok "$INSTDIR\bin\libgdkmm-3.0-1.dll"
+  Delete /rebootok "$INSTDIR\bin\libgdk-3-0.dll"
+  Delete /rebootok "$INSTDIR\bin\libcairomm-1.0-1.dll"
+  Delete /rebootok "$INSTDIR\bin\libcairo-2.dll"
+  Delete /rebootok "$INSTDIR\bin\libatkmm-1.6-1.dll"
+  Delete /rebootok "$INSTDIR\bin\libatk-1.0-0.dll"
+  RMDir "$INSTDIR\bin"
+  RMDir "$INSTDIR"
+
+  ; remove from PATH
+  ${un.EnvVarUpdate} $0 "PATH" "R" "HKLM" '$INSTDIR\bin'
+SectionEnd
+
+Section -post
+  WriteUninstaller "$INSTDIR\Uninstall VFR Navigation.exe"
+SectionEnd
+
+Function .onInit
+  ; check for Admin rights
+  System::Call "kernel32::GetModuleHandle(t 'shell32.dll') i .s"
+  System::Call "kernel32::GetProcAddress(i s, i 680) i .r0"
+  System::Call "::$0() i .r0"
+  IntCmp $0 0 0 0 +3
+  MessageBox MB_OK "Insufficient Access Rights! This package needs Administrator Rights to install."
+  quit
+  ${GetParameters} $R0
+  ${GetOptionsS} $R0 "/s" $0
+  IfErrors +2 0
+  SetSilent silent
+  ClearErrors
+  SectionSetFlags ${SecRequired64} 16
+  SectionSetFlags ${SecRequired32} 17
+  SectionSetText ${SecFplUtils32} "Flight Plan Command Line Utilities"
+  SectionSetText ${SecFplUtils64} ""
+  SectionSetText ${SecDbUtils32} "Database Creation Command Line Utilities"
+  SectionSetText ${SecDbUtils64} ""
+  SectionSetFlags ${SecFplUtils32} 1
+  SectionSetFlags ${SecFplUtils64} 0
+  SectionSetFlags ${SecDbUtils32} 1
+  SectionSetFlags ${SecDbUtils64} 0
+  ${if} ${RunningX64}
+    ${GetParameters} $R0
+    ${GetOptionsS} $R0 "/64" $0
+    IfErrors +11 0
+    SectionSetFlags ${SecRequired64} 17
+    SectionSetFlags ${SecRequired32} 16
+    SectionSetText ${SecFplUtils32} ""
+    SectionSetText ${SecFplUtils64} "Flight Plan Command Line Utilities"
+    SectionSetText ${SecDbUtils32} ""
+    SectionSetText ${SecDbUtils64} "Database Creation Command Line Utilities"
+    SectionSetFlags ${SecFplUtils32} 0
+    SectionSetFlags ${SecFplUtils64} 1
+    SectionSetFlags ${SecDbUtils32} 0
+    SectionSetFlags ${SecDbUtils64} 1
+    ClearErrors
+  ${endif}
+FunctionEnd

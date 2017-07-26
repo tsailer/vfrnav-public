@@ -1,0 +1,2 @@
+OPTIONS="--xdisplay=99 --uid=vfrnav --gid=vfrnav --sockuid=vfrnav --sockgid=vfrnav --sockmode=0770"
+HOME=/var/lib/vfrnav/

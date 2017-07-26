@@ -1,0 +1,110 @@
+policy_module(vfrnav, 0.0.2)
+
+########################################
+#
+# Declarations
+#
+
+type cfmuvalidate_t;
+type cfmuvalidate_exec_t;
+init_daemon_domain(cfmuvalidate_t, cfmuvalidate_exec_t)
+
+type cfmuvalidate_initrc_exec_t;
+init_script_file(cfmuvalidate_initrc_exec_t)
+
+type cfmuautoroute_t;
+type cfmuautoroute_exec_t;
+init_daemon_domain(cfmuautoroute_t, cfmuautoroute_exec_t)
+
+type cfmuautoroute_initrc_exec_t;
+init_script_file(cfmuautoroute_initrc_exec_t)
+
+type vfrnav_var_run_t;
+files_pid_file(vfrnav_var_run_t)
+init_daemon_run_dir(vfrnav_var_run_t, "vfrnav")
+
+type vfrnav_tmp_t;
+files_tmp_file(vfrnav_tmp_t)
+
+########################################
+#
+# Local policy
+#
+
+# cfmuvalidate
+
+allow cfmuvalidate_t self:capability { setgid setuid };
+allow cfmuvalidate_t self:unix_stream_socket { accept listen };
+
+manage_files_pattern(cfmuvalidate_t, vfrnav_var_run_t, vfrnav_var_run_t)
+manage_sock_files_pattern(cfmuvalidate_t, vfrnav_var_run_t, vfrnav_var_run_t)
+files_pid_filetrans(cfmuvalidate_t, vfrnav_var_run_t, { file sock_file })
+
+manage_dirs_pattern(cfmuvalidate_t, vfrnav_tmp_t, vfrnav_tmp_t)
+manage_files_pattern(cfmuvalidate_t, vfrnav_tmp_t, vfrnav_tmp_t)
+files_tmp_filetrans(cfmuvalidate_t, vfrnav_tmp_t, { dir file })
+
+auth_use_nsswitch(cfmuvalidate_t)
+
+corenet_all_recvfrom_unlabeled(cfmuvalidate_t)
+corenet_all_recvfrom_netlabel(cfmuvalidate_t)
+
+corenet_sendrecv_all_server_packets(cfmuvalidate_t)
+
+corenet_tcp_connect_all_unreserved_ports(cfmuvalidate_t)
+corenet_tcp_sendrecv_generic_if(cfmuvalidate_t)
+corenet_tcp_sendrecv_generic_node(cfmuvalidate_t)
+corenet_tcp_sendrecv_all_ports(cfmuvalidate_t)
+
+#kernel_read_kernel_sysctls(cfmuvalidate_t)
+#kernel_read_network_state(cfmuvalidate_t)
+#kernel_read_system_state(cfmuvalidate_t)
+
+corecmd_exec_shell(cfmuvalidate_t)
+
+dev_read_sysfs(cfmuvalidate_t)
+
+domain_use_interactive_fds(cfmuvalidate_t)
+
+#files_read_etc_files(cfmuvalidate_t)
+
+# cfmuautoroute
+
+manage_dirs_pattern(cfmuautoroute_t, vfrnav_tmp_t, vfrnav_tmp_t)
+manage_files_pattern(cfmuautoroute_t, vfrnav_tmp_t, vfrnav_tmp_t)
+files_tmp_filetrans(cfmuautoroute_t, vfrnav_tmp_t, { dir file })
+
+auth_use_nsswitch(cfmuautoroute_t)
+dev_read_sysfs(cfmuautoroute_t)
+
+#userdom_manage_user_home_content(cfmuautoroute_t)
+userdom_manage_user_home_content_dirs(cfmuautoroute_t)
+userdom_manage_user_home_content_files(cfmuautoroute_t)
+
+postgresql_stream_connect(cfmuautoroute_t)
+postgresql_tcp_connect(cfmuautoroute_t)
+
+corenet_all_recvfrom_unlabeled(cfmuautoroute_t)
+corenet_all_recvfrom_netlabel(cfmuautoroute_t)
+corenet_tcp_sendrecv_generic_if(cfmuautoroute_t)
+#corenet_udp_sendrecv_generic_if(cfmuautoroute_t)
+corenet_tcp_sendrecv_generic_node(cfmuautoroute_t)
+#corenet_udp_sendrecv_generic_node(cfmuautoroute_t)
+corenet_tcp_sendrecv_all_ports(cfmuautoroute_t)
+#corenet_udp_sendrecv_all_ports(cfmuautoroute_t)
+corenet_tcp_bind_generic_node(cfmuautoroute_t)
+#corenet_udp_bind_generic_node(cfmuautoroute_t)
+
+corenet_sendrecv_all_server_packets(cfmuautoroute_t)
+corenet_tcp_bind_all_ports(cfmuautoroute_t)
+#corenet_udp_bind_all_ports(cfmuautoroute_t)
+
+miscfiles_read_all_certs(cfmuautoroute_t)
+
+sysnet_read_config(cfmuautoroute_t)
+
+corecmd_exec_shell(cfmuautoroute_t)
+
+# this is for an unlabelled external validate binary
+# need to find a better solution
+allow cfmuautoroute_t bin_t:file execute;

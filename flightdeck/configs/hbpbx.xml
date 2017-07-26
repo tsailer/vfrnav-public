@@ -1,0 +1,406 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<aircraft callsign="HBPBX" manufacturer="Piper" model="PA28R-200 Arrow 1.5" year="1971" icaotype="P28R" equipment="SDFGBRY" transponder="S" pbn="B2D2S1" colormarking="WHITE BLUE STRIPES" emergencyradio="E" homebase="LSZK" mrm="2600" mtom="2600" mlm="2600" vr0="53.8765" vr1="59.0904" vx0="69.5181" vx1="69.5181" vy="82.5527" vs0="55.6145" vs1="60.8283" vno="147.726" vne="185.961" vref0="77.8603" vref1="85.1597" va="116.443" vfe="108.622" vgearext="130.346" vgearret="108.622" vbestglide="91.2425" glideslope="8.1086" fuelunitname="usg" fuelmass="6.017" maxbhp="200" propulsion="constantspeed" freecirculation="N">
+  <wb armunitname="in" massunitname="lb">
+    <element name="Pilot and Front Pax" massmax="600" arm="85.5">
+      <unit name="kg" factor="2.20462"/>
+      <unit name="lb" factor="1"/>
+    </element>
+    <element name="Rear Pax" massmax="600" arm="118.1">
+      <unit name="kg" factor="2.20462"/>
+      <unit name="lb" factor="1"/>
+    </element>
+    <element name="Cargo" massmax="200" arm="142.8">
+      <unit name="kg" factor="2.20462"/>
+      <unit name="lb" factor="1"/>
+    </element>
+    <element name="Fuel" massmax="300.85" arm="95" flags="avgas">
+      <unit name="l" factor="1.58292"/>
+      <unit name="USgal" factor="5.992"/>
+      <unit name="kg" factor="2.20462"/>
+      <unit name="lb" factor="1"/>
+    </element>
+    <element name="Oil" massmax="15" arm="29.5" flags="oil">
+      <unit name="Quart" factor="1.79426"/>
+      <unit name="l" factor="1.89598"/>
+      <unit name="kg" factor="2.20462"/>
+      <unit name="lb" factor="1"/>
+    </element>
+    <element name="Gear" massmax="0.1" arm="8190" flags="fixed|gear">
+      <unit name="Extended"/>
+      <unit name="Retracted" offset="0.1"/>
+    </element>
+    <element name="Basic Empty Mass" massmin="1668" massmax="1668" arm="84.19" flags="fixed">
+      <unit name="lb" factor="1"/>
+    </element>
+    <envelope name="Normal">
+      <point arm="81" mass="1600"/>
+      <point arm="95.9" mass="1600"/>
+      <point arm="95.9" mass="2600"/>
+      <point arm="90" mass="2600"/>
+      <point arm="81" mass="1925"/>
+    </envelope>
+  </wb>
+  <distances distfactor="0.3048" unitname="m">
+    <tkoffdist name="Flaps 25" vrotate="56" mass="2600">
+      <point da="0" gnddist="756" obstdist="1578"/>
+      <point da="1000" gnddist="867" obstdist="1800"/>
+      <point da="2000" gnddist="956" obstdist="2000"/>
+      <point da="3000" gnddist="1067" obstdist="2244"/>
+      <point da="4000" gnddist="1200" obstdist="2533"/>
+      <point da="5000" gnddist="1311" obstdist="2889"/>
+      <point da="6000" gnddist="1489" obstdist="3311"/>
+      <point da="7000" gnddist="1667" obstdist="3867"/>
+      <point da="8000" gnddist="1867" obstdist="4556"/>
+      <gndpoly>231.5217697,0.0301318404,-1.78569697e-07,2.126929293e-10</gndpoly>
+      <obstpoly>481.3284606,0.06740452612,-3.239764502e-06,1.122474747e-09</obstpoly>
+    </tkoffdist>
+    <tkoffdist name="Flaps 0" vrotate="56" mass="2600">
+      <point da="0" gnddist="1022" obstdist="1800"/>
+      <point da="1000" gnddist="1156" obstdist="2022"/>
+      <point da="2000" gnddist="1289" obstdist="2267"/>
+      <point da="3000" gnddist="1422" obstdist="2533"/>
+      <point da="4000" gnddist="1600" obstdist="2867"/>
+      <point da="5000" gnddist="1755" obstdist="3244"/>
+      <point da="6000" gnddist="1978" obstdist="3689"/>
+      <point da="7000" gnddist="2200" obstdist="4244"/>
+      <point da="8000" gnddist="2467" obstdist="5000"/>
+      <gndpoly>312.0382303,0.03910174228,1.42943723e-09,2.483555556e-10</gndpoly>
+      <obstpoly>546.0137939,0.07547091371,-3.179178355e-06,1.118882828e-09</obstpoly>
+    </tkoffdist>
+    <ldgdist name="Flaps 40" vrotate="56" mass="2600">
+      <point da="0" gnddist="773" obstdist="1351"/>
+      <point da="1000" gnddist="800" obstdist="1369"/>
+      <point da="2000" gnddist="827" obstdist="1396"/>
+      <point da="3000" gnddist="853" obstdist="1431"/>
+      <point da="4000" gnddist="880" obstdist="1449"/>
+      <point da="5000" gnddist="898" obstdist="1476"/>
+      <point da="6000" gnddist="924" obstdist="1502"/>
+      <point da="7000" gnddist="951" obstdist="1520"/>
+      <gndpoly>235.3748727,0.009267371429,-4.75012987e-07,3.694545455e-11</gndpoly>
+      <obstpoly>411.3414545,0.006219371429,6.887688312e-07,-7.389090909e-11</obstpoly>
+    </ldgdist>
+  </distances>
+  <climb>
+    <curve name="Normal" mass="2600" ceiling="17134.3" climbtime="3593.15" mode="rateofclimb">
+      <point pa="0" rate="910" fuelflow="14" cas="82.5527"/>
+      <point pa="18000" rate="0" fuelflow="8" cas="82.5527"/>
+      <ratepoly>910,-0.05055555556</ratepoly>
+      <fuelflowpoly>14,-0.0003333333333</fuelflowpoly>
+      <caspoly>82.5527</caspoly>
+      <climbtimepoly>0,0.1150253633,-5.336742064e-05,2.164656388e-08,-3.966208416e-12,3.746815973e-16,-1.758188857e-20,3.270290682e-25</climbtimepoly>
+      <climbaltpoly>0,15.13182994,-0.006233278474,1.576194999e-06,-2.367737127e-10,1.600622568e-14</climbaltpoly>
+      <climbdistpoly>0,0.02291962453,2.573354327e-06,-5.009044218e-10</climbdistpoly>
+      <climbfuelpoly>0,0.003885058906,-6.849714406e-07,1.732036272e-10,-2.601730719e-14</climbfuelpoly>
+    </curve>
+  </climb>
+  <descent rate="500">
+    <curve name="45%, 2400 RPM" mass="2600" ceiling="17000" climbtime="2040.07" mode="rateofclimb">
+      <point pa="0" rate="500" fuelflow="8.33333" cas="104.712"/>
+      <point pa="1000" rate="500" fuelflow="8.33333" cas="104.482"/>
+      <point pa="2000" rate="500" fuelflow="8.33333" cas="104.227"/>
+      <point pa="3000" rate="500" fuelflow="8.33333" cas="103.946"/>
+      <point pa="4000" rate="500" fuelflow="8.33333" cas="103.641"/>
+      <point pa="5000" rate="500" fuelflow="8.33333" cas="103.313"/>
+      <point pa="6000" rate="500" fuelflow="8.33333" cas="102.959"/>
+      <point pa="7000" rate="500" fuelflow="8.33333" cas="102.584"/>
+      <point pa="8000" rate="500" fuelflow="8.33333" cas="102.184"/>
+      <point pa="9000" rate="500" fuelflow="8.33333" cas="101.763"/>
+      <point pa="10000" rate="500" fuelflow="8.33333" cas="101.318"/>
+      <point pa="11000" rate="500" fuelflow="8.33333" cas="100.852"/>
+      <point pa="12000" rate="500" fuelflow="8.33333" cas="100.365"/>
+      <point pa="13000" rate="500" fuelflow="8.33333" cas="99.8583"/>
+      <point pa="14000" rate="500" fuelflow="8.33333" cas="99.3294"/>
+      <point pa="15000" rate="500" fuelflow="8.33333" cas="98.7819"/>
+      <point pa="16000" rate="500" fuelflow="8.33333" cas="98.2129"/>
+      <point pa="17000" rate="500" fuelflow="8.33333" cas="96.9552"/>
+      <ratepoly>500</ratepoly>
+      <fuelflowpoly>8.33333</fuelflowpoly>
+      <caspoly>104.7746614,-0.0002888085215,7.915693665e-10,-5.845324789e-13</caspoly>
+      <climbtimepoly>0,0.1199999082</climbtimepoly>
+      <climbaltpoly>0,8.333061265,1.093059483e-06,-1.251457606e-09,5.416231899e-13,-8.695083575e-17</climbaltpoly>
+      <climbdistpoly>0,0.02910245104,1.427391433e-06</climbdistpoly>
+      <climbfuelpoly>0,0.002314813889</climbfuelpoly>
+    </curve>
+    <curve name="55%, 2100 RPM" mass="2600" ceiling="17000" climbtime="2040.07" mode="rateofclimb">
+      <point pa="0" rate="500" fuelflow="9" cas="114.27"/>
+      <point pa="1000" rate="500" fuelflow="9" cas="113.905"/>
+      <point pa="2000" rate="500" fuelflow="9" cas="113.515"/>
+      <point pa="3000" rate="500" fuelflow="9" cas="113.101"/>
+      <point pa="4000" rate="500" fuelflow="9" cas="112.663"/>
+      <point pa="5000" rate="500" fuelflow="9" cas="112.204"/>
+      <point pa="6000" rate="500" fuelflow="9" cas="111.72"/>
+      <point pa="7000" rate="500" fuelflow="9" cas="111.215"/>
+      <point pa="8000" rate="500" fuelflow="9" cas="110.687"/>
+      <point pa="9000" rate="500" fuelflow="9" cas="110.139"/>
+      <point pa="10000" rate="500" fuelflow="9.5" cas="109.567"/>
+      <point pa="11000" rate="500" fuelflow="9.5" cas="108.977"/>
+      <point pa="12000" rate="500" fuelflow="9.5" cas="108.366"/>
+      <point pa="13000" rate="500" fuelflow="9.5" cas="107.735"/>
+      <point pa="14000" rate="500" fuelflow="9.5" cas="107.084"/>
+      <point pa="15000" rate="500" fuelflow="8.33333" cas="98.7819"/>
+      <point pa="16000" rate="500" fuelflow="8.33333" cas="98.2129"/>
+      <point pa="17000" rate="500" fuelflow="8.33333" cas="96.9552"/>
+      <ratepoly>500</ratepoly>
+      <fuelflowpoly>9.137427076,-0.0001942153781,4.138723125e-08,-1.97082115e-12</fuelflowpoly>
+      <caspoly>114.7114481,-0.001004605733,1.38667332e-07,-8.523400395e-12</caspoly>
+      <climbtimepoly>0,0.1199999082</climbtimepoly>
+      <climbaltpoly>0,8.333061265,1.093059483e-06,-1.251457606e-09,5.416231899e-13,-8.695083575e-17</climbaltpoly>
+      <climbdistpoly>0,0.03186040658,7.801889216e-07,8.710622782e-10,-2.240868773e-13</climbdistpoly>
+      <climbfuelpoly>0,0.002538400143,-2.251931962e-07,2.662962493e-10,-7.921577705e-14</climbfuelpoly>
+    </curve>
+    <curve name="55%, 2400 RPM" mass="2600" ceiling="17000" climbtime="2040.07" mode="rateofclimb">
+      <point pa="0" rate="500" fuelflow="9.5" cas="114.27"/>
+      <point pa="1000" rate="500" fuelflow="9.5" cas="113.905"/>
+      <point pa="2000" rate="500" fuelflow="9.5" cas="113.515"/>
+      <point pa="3000" rate="500" fuelflow="9.5" cas="113.101"/>
+      <point pa="4000" rate="500" fuelflow="9.5" cas="112.663"/>
+      <point pa="5000" rate="500" fuelflow="9.5" cas="112.204"/>
+      <point pa="6000" rate="500" fuelflow="9.5" cas="111.72"/>
+      <point pa="7000" rate="500" fuelflow="9.5" cas="111.215"/>
+      <point pa="8000" rate="500" fuelflow="9.5" cas="110.687"/>
+      <point pa="9000" rate="500" fuelflow="9.5" cas="110.139"/>
+      <point pa="10000" rate="500" fuelflow="9.5" cas="109.567"/>
+      <point pa="11000" rate="500" fuelflow="9.5" cas="108.977"/>
+      <point pa="12000" rate="500" fuelflow="9.5" cas="108.366"/>
+      <point pa="13000" rate="500" fuelflow="9.5" cas="107.735"/>
+      <point pa="14000" rate="500" fuelflow="9.5" cas="107.084"/>
+      <point pa="15000" rate="500" fuelflow="8.33333" cas="98.7819"/>
+      <point pa="16000" rate="500" fuelflow="8.33333" cas="98.2129"/>
+      <point pa="17000" rate="500" fuelflow="8.33333" cas="96.9552"/>
+      <ratepoly>500</ratepoly>
+      <fuelflowpoly>9.561403684,-9.280785604e-05,2.182238777e-08,-1.254160217e-12</fuelflowpoly>
+      <caspoly>114.7114481,-0.001004605733,1.38667332e-07,-8.523400395e-12</caspoly>
+      <climbtimepoly>0,0.1199999082</climbtimepoly>
+      <climbaltpoly>0,8.333061265,1.093059483e-06,-1.251457606e-09,5.416231899e-13,-8.695083575e-17</climbaltpoly>
+      <climbdistpoly>0,0.03186040658,7.801889216e-07,8.710622782e-10,-2.240868773e-13</climbdistpoly>
+      <climbfuelpoly>0,0.002656052941,-1.076280776e-07,1.404237286e-10,-5.040654569e-14</climbfuelpoly>
+    </curve>
+    <curve name="65%, 2100 RPM" mass="2600" ceiling="17000" climbtime="2040.07" mode="rateofclimb">
+      <point pa="0" rate="500" fuelflow="10.1667" cas="124.264"/>
+      <point pa="1000" rate="500" fuelflow="10.1667" cas="124.014"/>
+      <point pa="2000" rate="500" fuelflow="10.1667" cas="123.733"/>
+      <point pa="3000" rate="500" fuelflow="10.1667" cas="123.34"/>
+      <point pa="4000" rate="500" fuelflow="10.1667" cas="123.001"/>
+      <point pa="5000" rate="500" fuelflow="10.1667" cas="122.632"/>
+      <point pa="6000" rate="500" fuelflow="10.6667" cas="122.237"/>
+      <point pa="7000" rate="500" fuelflow="10.6667" cas="121.734"/>
+      <point pa="8000" rate="500" fuelflow="10.6667" cas="121.284"/>
+      <point pa="9000" rate="500" fuelflow="10.6667" cas="120.806"/>
+      <point pa="10000" rate="500" fuelflow="9.5" cas="109.567"/>
+      <point pa="11000" rate="500" fuelflow="9.5" cas="108.977"/>
+      <point pa="12000" rate="500" fuelflow="9.5" cas="108.366"/>
+      <point pa="13000" rate="500" fuelflow="9.5" cas="107.735"/>
+      <point pa="14000" rate="500" fuelflow="9.5" cas="107.084"/>
+      <point pa="15000" rate="500" fuelflow="8.33333" cas="98.7819"/>
+      <point pa="16000" rate="500" fuelflow="8.33333" cas="98.2129"/>
+      <point pa="17000" rate="500" fuelflow="8.33333" cas="96.9552"/>
+      <ratepoly>500</ratepoly>
+      <fuelflowpoly>9.971763333,0.0001894605908,-1.963775155e-08,1.170988132e-13</fuelflowpoly>
+      <caspoly>123.0785381,0.001273004001,-2.841248534e-07,6.822313987e-12</caspoly>
+      <climbtimepoly>0,0.1199999082</climbtimepoly>
+      <climbaltpoly>0,8.333061265,1.093059483e-06,-1.251457606e-09,5.416231899e-13,-8.695083575e-17</climbaltpoly>
+      <climbdistpoly>0,0.03418675741,3.526425985e-06,-1.56701075e-09</climbdistpoly>
+      <climbfuelpoly>0,0.002769713038,2.194828136e-07,-1.262976935e-10</climbfuelpoly>
+    </curve>
+    <curve name="65%, 2400 RPM" mass="2600" ceiling="17000" climbtime="2040.07" mode="rateofclimb">
+      <point pa="0" rate="500" fuelflow="10.6667" cas="124.264"/>
+      <point pa="1000" rate="500" fuelflow="10.6667" cas="124.014"/>
+      <point pa="2000" rate="500" fuelflow="10.6667" cas="123.733"/>
+      <point pa="3000" rate="500" fuelflow="10.6667" cas="123.34"/>
+      <point pa="4000" rate="500" fuelflow="10.6667" cas="123.001"/>
+      <point pa="5000" rate="500" fuelflow="10.6667" cas="122.632"/>
+      <point pa="6000" rate="500" fuelflow="10.6667" cas="122.237"/>
+      <point pa="7000" rate="500" fuelflow="10.6667" cas="121.734"/>
+      <point pa="8000" rate="500" fuelflow="10.6667" cas="121.284"/>
+      <point pa="9000" rate="500" fuelflow="10.6667" cas="120.806"/>
+      <point pa="10000" rate="500" fuelflow="9.5" cas="109.567"/>
+      <point pa="11000" rate="500" fuelflow="9.5" cas="108.977"/>
+      <point pa="12000" rate="500" fuelflow="9.5" cas="108.366"/>
+      <point pa="13000" rate="500" fuelflow="9.5" cas="107.735"/>
+      <point pa="14000" rate="500" fuelflow="9.5" cas="107.084"/>
+      <point pa="15000" rate="500" fuelflow="8.33333" cas="98.7819"/>
+      <point pa="16000" rate="500" fuelflow="8.33333" cas="98.2129"/>
+      <point pa="17000" rate="500" fuelflow="8.33333" cas="96.9552"/>
+      <ratepoly>500</ratepoly>
+      <fuelflowpoly>10.5507107,0.000143816456,-2.383021801e-08,4.180964052e-13</fuelflowpoly>
+      <caspoly>123.0785381,0.001273004001,-2.841248534e-07,6.822313987e-12</caspoly>
+      <climbtimepoly>0,0.1199999082</climbtimepoly>
+      <climbaltpoly>0,8.333061265,1.093059483e-06,-1.251457606e-09,5.416231899e-13,-8.695083575e-17</climbaltpoly>
+      <climbdistpoly>0,0.03418675741,3.526425985e-06,-1.56701075e-09</climbdistpoly>
+      <climbfuelpoly>0,0.002930583978,1.6669837e-07,-1.532872112e-10,1.681691478e-14</climbfuelpoly>
+    </curve>
+    <curve name="75%, 2400 RPM" mass="2600" ceiling="17000" climbtime="2040.07" mode="rateofclimb">
+      <point pa="0" rate="500" fuelflow="12" cas="132.953"/>
+      <point pa="1000" rate="500" fuelflow="12" cas="132.753"/>
+      <point pa="2000" rate="500" fuelflow="12" cas="132.517"/>
+      <point pa="3000" rate="500" fuelflow="12" cas="132.248"/>
+      <point pa="4000" rate="500" fuelflow="12" cas="131.946"/>
+      <point pa="5000" rate="500" fuelflow="12" cas="131.612"/>
+      <point pa="6000" rate="500" fuelflow="10.6667" cas="122.237"/>
+      <point pa="7000" rate="500" fuelflow="10.6667" cas="121.734"/>
+      <point pa="8000" rate="500" fuelflow="10.6667" cas="121.284"/>
+      <point pa="9000" rate="500" fuelflow="10.6667" cas="120.806"/>
+      <point pa="10000" rate="500" fuelflow="9.5" cas="109.567"/>
+      <point pa="11000" rate="500" fuelflow="9.5" cas="108.977"/>
+      <point pa="12000" rate="500" fuelflow="9.5" cas="108.366"/>
+      <point pa="13000" rate="500" fuelflow="9.5" cas="107.735"/>
+      <point pa="14000" rate="500" fuelflow="9.5" cas="107.084"/>
+      <point pa="15000" rate="500" fuelflow="8.33333" cas="98.7819"/>
+      <point pa="16000" rate="500" fuelflow="8.33333" cas="98.2129"/>
+      <point pa="17000" rate="500" fuelflow="8.33333" cas="96.9552"/>
+      <ratepoly>500</ratepoly>
+      <fuelflowpoly>12.09453175,2.210180599e-05,-3.500984907e-08,1.220736584e-12</fuelflowpoly>
+      <caspoly>133.1680979,0.0005477833098,-3.682895387e-07,1.248788806e-11</caspoly>
+      <climbtimepoly>0,0.1199999082</climbtimepoly>
+      <climbaltpoly>0,8.333061265,1.093059483e-06,-1.251457606e-09,5.416231899e-13,-8.695083575e-17</climbaltpoly>
+      <climbdistpoly>0,0.0369924097,2.838229031e-06,-2.134671338e-09,2.532868836e-13</climbdistpoly>
+      <climbfuelpoly>0,0.003359562428,2.594337249e-08,-2.252574593e-10,4.908732189e-14</climbfuelpoly>
+    </curve>
+  </descent>
+  <cruise>
+    <curve name="45%, 2400 RPM" mass="2600" rpm="2400" flags="interpolate">
+      <point pa="0" bhp="90" tas="104.712" fuelflow="8.33333"/>
+      <point pa="1000" bhp="90" tas="106.015" fuelflow="8.33333"/>
+      <point pa="2000" bhp="90" tas="107.319" fuelflow="8.33333"/>
+      <point pa="3000" bhp="90" tas="108.622" fuelflow="8.33333"/>
+      <point pa="4000" bhp="90" tas="109.925" fuelflow="8.33333"/>
+      <point pa="5000" bhp="90" tas="111.229" fuelflow="8.33333"/>
+      <point pa="6000" bhp="90" tas="112.532" fuelflow="8.33333"/>
+      <point pa="7000" bhp="90" tas="113.836" fuelflow="8.33333"/>
+      <point pa="8000" bhp="90" tas="115.139" fuelflow="8.33333"/>
+      <point pa="9000" bhp="90" tas="116.443" fuelflow="8.33333"/>
+      <point pa="10000" bhp="90" tas="117.746" fuelflow="8.33333"/>
+      <point pa="11000" bhp="90" tas="119.05" fuelflow="8.33333"/>
+      <point pa="12000" bhp="90" tas="120.353" fuelflow="8.33333"/>
+      <point pa="13000" bhp="90" tas="121.657" fuelflow="8.33333"/>
+      <point pa="14000" bhp="90" tas="122.96" fuelflow="8.33333"/>
+      <point pa="15000" bhp="90" tas="124.264" fuelflow="8.33333"/>
+      <point pa="16000" bhp="90" tas="125.567" fuelflow="8.33333"/>
+      <point pa="17000" bhp="90" tas="126.002" fuelflow="8.33333"/>
+    </curve>
+    <curve name="55%, 2100 RPM" mass="2600" rpm="2100" flags="interpolate">
+      <point pa="0" bhp="110" tas="114.27" fuelflow="9"/>
+      <point pa="1000" bhp="110" tas="115.574" fuelflow="9"/>
+      <point pa="2000" bhp="110" tas="116.877" fuelflow="9"/>
+      <point pa="3000" bhp="110" tas="118.181" fuelflow="9"/>
+      <point pa="4000" bhp="110" tas="119.484" fuelflow="9"/>
+      <point pa="5000" bhp="110" tas="120.788" fuelflow="9"/>
+      <point pa="6000" bhp="110" tas="122.091" fuelflow="9"/>
+      <point pa="7000" bhp="110" tas="123.395" fuelflow="9"/>
+      <point pa="8000" bhp="110" tas="124.698" fuelflow="9"/>
+      <point pa="9000" bhp="110" tas="126.002" fuelflow="9"/>
+    </curve>
+    <curve name="55%, 2400 RPM" mass="2600" rpm="2400" flags="interpolate">
+      <point pa="0" bhp="110" tas="114.27" fuelflow="9.5"/>
+      <point pa="1000" bhp="110" tas="115.574" fuelflow="9.5"/>
+      <point pa="2000" bhp="110" tas="116.877" fuelflow="9.5"/>
+      <point pa="3000" bhp="110" tas="118.181" fuelflow="9.5"/>
+      <point pa="4000" bhp="110" tas="119.484" fuelflow="9.5"/>
+      <point pa="5000" bhp="110" tas="120.788" fuelflow="9.5"/>
+      <point pa="6000" bhp="110" tas="122.091" fuelflow="9.5"/>
+      <point pa="7000" bhp="110" tas="123.395" fuelflow="9.5"/>
+      <point pa="8000" bhp="110" tas="124.698" fuelflow="9.5"/>
+      <point pa="9000" bhp="110" tas="126.002" fuelflow="9.5"/>
+      <point pa="10000" bhp="110" tas="127.305" fuelflow="9.5"/>
+      <point pa="11000" bhp="110" tas="128.608" fuelflow="9.5"/>
+      <point pa="12000" bhp="110" tas="129.912" fuelflow="9.5"/>
+      <point pa="13000" bhp="110" tas="131.215" fuelflow="9.5"/>
+      <point pa="14000" bhp="110" tas="132.519" fuelflow="9.5"/>
+    </curve>
+    <curve name="65%, 2100 RPM" mass="2600" rpm="2100" flags="interpolate">
+      <point pa="0" bhp="130" tas="124.264" fuelflow="10.1667"/>
+      <point pa="1000" bhp="130" tas="125.828" fuelflow="10.1667"/>
+      <point pa="2000" bhp="130" tas="127.392" fuelflow="10.1667"/>
+      <point pa="3000" bhp="130" tas="128.869" fuelflow="10.1667"/>
+      <point pa="4000" bhp="130" tas="130.433" fuelflow="10.1667"/>
+      <point pa="5000" bhp="130" tas="131.997" fuelflow="10.1667"/>
+    </curve>
+    <curve name="65%, 2400 RPM" mass="2600" rpm="2400" flags="interpolate">
+      <point pa="0" bhp="130" tas="124.264" fuelflow="10.6667"/>
+      <point pa="1000" bhp="130" tas="125.828" fuelflow="10.6667"/>
+      <point pa="2000" bhp="130" tas="127.392" fuelflow="10.6667"/>
+      <point pa="3000" bhp="130" tas="128.869" fuelflow="10.6667"/>
+      <point pa="4000" bhp="130" tas="130.433" fuelflow="10.6667"/>
+      <point pa="5000" bhp="130" tas="131.997" fuelflow="10.6667"/>
+      <point pa="6000" bhp="130" tas="133.562" fuelflow="10.6667"/>
+      <point pa="7000" bhp="130" tas="135.039" fuelflow="10.6667"/>
+      <point pa="8000" bhp="130" tas="136.603" fuelflow="10.6667"/>
+      <point pa="9000" bhp="130" tas="138.167" fuelflow="10.6667"/>
+    </curve>
+    <curve name="75%, 2400 RPM" mass="2600" rpm="2400" flags="interpolate">
+      <point pa="0" bhp="150" tas="132.953" fuelflow="12"/>
+      <point pa="1000" bhp="150" tas="134.691" fuelflow="12"/>
+      <point pa="2000" bhp="150" tas="136.429" fuelflow="12"/>
+      <point pa="3000" bhp="150" tas="138.167" fuelflow="12"/>
+      <point pa="4000" bhp="150" tas="139.905" fuelflow="12"/>
+      <point pa="5000" bhp="150" tas="141.643" fuelflow="12"/>
+    </curve>
+    <PistonPower>
+      <point pa="0" isaoffs="0" bhp="110" rpm="2100" mp="22.9"/>
+      <point pa="0" isaoffs="0" bhp="130" rpm="2100" mp="25.9"/>
+      <point pa="0" isaoffs="0" bhp="90" rpm="2400" mp="17.9"/>
+      <point pa="0" isaoffs="0" bhp="110" rpm="2400" mp="20.4"/>
+      <point pa="0" isaoffs="0" bhp="130" rpm="2400" mp="22.9"/>
+      <point pa="0" isaoffs="0" bhp="150" rpm="2400" mp="25.5"/>
+      <point pa="1000" isaoffs="0" bhp="110" rpm="2100" mp="22.7"/>
+      <point pa="1000" isaoffs="0" bhp="130" rpm="2100" mp="25.6"/>
+      <point pa="1000" isaoffs="0" bhp="90" rpm="2400" mp="17.7"/>
+      <point pa="1000" isaoffs="0" bhp="110" rpm="2400" mp="20.2"/>
+      <point pa="1000" isaoffs="0" bhp="130" rpm="2400" mp="22.7"/>
+      <point pa="1000" isaoffs="0" bhp="150" rpm="2400" mp="25.2"/>
+      <point pa="2000" isaoffs="0" bhp="110" rpm="2100" mp="22.4"/>
+      <point pa="2000" isaoffs="0" bhp="130" rpm="2100" mp="25.4"/>
+      <point pa="2000" isaoffs="0" bhp="90" rpm="2400" mp="17.5"/>
+      <point pa="2000" isaoffs="0" bhp="110" rpm="2400" mp="20"/>
+      <point pa="2000" isaoffs="0" bhp="130" rpm="2400" mp="22.5"/>
+      <point pa="2000" isaoffs="0" bhp="150" rpm="2400" mp="25"/>
+      <point pa="3000" isaoffs="0" bhp="110" rpm="2100" mp="22.2"/>
+      <point pa="3000" isaoffs="0" bhp="130" rpm="2100" mp="25.1"/>
+      <point pa="3000" isaoffs="0" bhp="90" rpm="2400" mp="17.3"/>
+      <point pa="3000" isaoffs="0" bhp="110" rpm="2400" mp="19.8"/>
+      <point pa="3000" isaoffs="0" bhp="130" rpm="2400" mp="22.2"/>
+      <point pa="3000" isaoffs="0" bhp="150" rpm="2400" mp="24.7"/>
+      <point pa="4000" isaoffs="0" bhp="110" rpm="2100" mp="21.9"/>
+      <point pa="4000" isaoffs="0" bhp="130" rpm="2100" mp="24.8"/>
+      <point pa="4000" isaoffs="0" bhp="90" rpm="2400" mp="17"/>
+      <point pa="4000" isaoffs="0" bhp="110" rpm="2400" mp="19.5"/>
+      <point pa="4000" isaoffs="0" bhp="130" rpm="2400" mp="22"/>
+      <point pa="4000" isaoffs="0" bhp="150" rpm="2400" mp="24.4"/>
+      <point pa="5000" isaoffs="0" bhp="110" rpm="2100" mp="21.7"/>
+      <point pa="5000" isaoffs="0" bhp="130" rpm="2100" mp="24.5"/>
+      <point pa="5000" isaoffs="0" bhp="90" rpm="2400" mp="16.8"/>
+      <point pa="5000" isaoffs="0" bhp="110" rpm="2400" mp="19.3"/>
+      <point pa="5000" isaoffs="0" bhp="130" rpm="2400" mp="21.7"/>
+      <point pa="5000" isaoffs="0" bhp="150" rpm="2400" mp="24.2"/>
+      <point pa="6000" isaoffs="0" bhp="110" rpm="2100" mp="21.4"/>
+      <point pa="6000" isaoffs="0" bhp="90" rpm="2400" mp="16.6"/>
+      <point pa="6000" isaoffs="0" bhp="110" rpm="2400" mp="19.1"/>
+      <point pa="6000" isaoffs="0" bhp="130" rpm="2400" mp="21.5"/>
+      <point pa="7000" isaoffs="0" bhp="110" rpm="2100" mp="21.2"/>
+      <point pa="7000" isaoffs="0" bhp="90" rpm="2400" mp="16.4"/>
+      <point pa="7000" isaoffs="0" bhp="110" rpm="2400" mp="18.9"/>
+      <point pa="7000" isaoffs="0" bhp="130" rpm="2400" mp="21.3"/>
+      <point pa="8000" isaoffs="0" bhp="110" rpm="2100" mp="21"/>
+      <point pa="8000" isaoffs="0" bhp="90" rpm="2400" mp="16.2"/>
+      <point pa="8000" isaoffs="0" bhp="110" rpm="2400" mp="18.7"/>
+      <point pa="8000" isaoffs="0" bhp="130" rpm="2400" mp="21"/>
+      <point pa="9000" isaoffs="0" bhp="110" rpm="2100" mp="20.8"/>
+      <point pa="9000" isaoffs="0" bhp="90" rpm="2400" mp="16"/>
+      <point pa="9000" isaoffs="0" bhp="110" rpm="2400" mp="18.5"/>
+      <point pa="9000" isaoffs="0" bhp="130" rpm="2400" mp="20.8"/>
+      <point pa="10000" isaoffs="0" bhp="90" rpm="2400" mp="15.8"/>
+      <point pa="10000" isaoffs="0" bhp="110" rpm="2400" mp="18.3"/>
+      <point pa="11000" isaoffs="0" bhp="90" rpm="2400" mp="15.6"/>
+      <point pa="11000" isaoffs="0" bhp="110" rpm="2400" mp="18.1"/>
+      <point pa="12000" isaoffs="0" bhp="90" rpm="2400" mp="15.3"/>
+      <point pa="12000" isaoffs="0" bhp="110" rpm="2400" mp="17.8"/>
+      <point pa="13000" isaoffs="0" bhp="90" rpm="2400" mp="15.1"/>
+      <point pa="13000" isaoffs="0" bhp="110" rpm="2400" mp="17.6"/>
+      <point pa="14000" isaoffs="0" bhp="90" rpm="2400" mp="14.9"/>
+      <point pa="14000" isaoffs="0" bhp="110" rpm="2400" mp="17.4"/>
+      <point pa="15000" isaoffs="0" bhp="90" rpm="2400" mp="14.7"/>
+      <point pa="16000" isaoffs="0" bhp="90" rpm="2400" mp="14.5"/>
+      <point pa="17000" isaoffs="0" bhp="90" rpm="2400" mp="14.3"/>
+    </PistonPower>
+  </cruise>
+</aircraft>

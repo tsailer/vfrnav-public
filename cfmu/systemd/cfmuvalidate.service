@@ -1,0 +1,16 @@
+[Unit]
+Description=CFMU Validator Webservice
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/tmp
+EnvironmentFile=-/etc/sysconfig/cfmuvalidate
+ExecStart=/usr/libexec/vfrnav/cfmuvalidateserver --socketserver=/run/vfrnav/validator/socket $OPTIONS
+Restart=always
+RestartSec=2
+User=vfrnav
+Group=vfrnav
+
+;[Install]
+;WantedBy=multi-user.target

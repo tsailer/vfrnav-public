@@ -1,0 +1,20 @@
+Source: vfrnav
+Section: user/navigation
+Priority: extra
+Maintainer: Thomas Sailer <t.sailer@alumni.ethz.ch>
+Build-Depends: debhelper (>= 5), autotools-dev
+Standards-Version: 3.7.2
+
+Package: vfrnav
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, librsvg2-common
+Description: VFR Navigation
+ .
+ This is a navigation application for VFR flying.
+
+Package: vfrnav-utils
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Utilities for vfrnav
+ .
+ Utilities for vfrnav.
