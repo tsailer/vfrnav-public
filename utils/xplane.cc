@@ -144,7 +144,7 @@ Glib::ustring XPlaneParser::convert_surface_code(unsigned int code)
         case 12: // Dry lakebed runway (eg. at KEDW Edwards AFB).
                 return "LAK";
 
-        case 13: // Water runways.  Nothing will be displayed in X-Plane.  May use buoys as edge markings. 
+        case 13: // Water runways.  Nothing will be displayed in X-Plane.  May use buoys as edge markings.
                 return "WTR";
 
         case 14: // Snow or ice runways.
@@ -191,7 +191,7 @@ XPlaneParser::XPlaneParser(const Glib::ustring& output_dir, bool purgedb)
         m_reclength[114] = 100; // Node (close loop) point with Bezier control point (eg. to close a pavement chunk boundary).
         m_reclength[115] = 100; // Node (end) point to terminate a linear feature.
         m_reclength[116] = 100; // Node (end) point with Bezier control point (to terminate a linear feature).
-        m_reclength[14] = 5; // Tower view location. 
+        m_reclength[14] = 5; // Tower view location.
         m_reclength[15] = 4; // Ramp startup positions.
         m_reclength[18] = 4; // Airport light beacons (usually "rotating beacons" in the USA).  Different colours may be defined.
         m_reclength[19] = 4; // Airport windsocks.
@@ -1262,7 +1262,7 @@ bool XPlaneParser::parse_airport(void)
 		case 1200: // Header indicating that taxi route network data follows
 		case 1201: // Taxi route network node Must connect two nodes
 		case 1202: // Taxi route network edge Can refer to up to 4 runway ends
-		case 1204: // Taxi route edge active zone 
+		case 1204: // Taxi route edge active zone
 		case 1300: // Airport location Not explicitly connected to taxi route network
 			break;
                 }

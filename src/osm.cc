@@ -197,28 +197,28 @@ std::string OpenStreetMap::Tags::to_str(void) const
 	return oss.str();
 }
 
-OpenStreetMap::OSMObject::OSMObject(int64_t id, const std::string& access, 
-				    const std::string& addr_housename, const std::string& addr_housenumber, 
-				    const std::string& addr_interpolation, const std::string& admin_level, 
-				    const std::string& aerialway, const std::string& aeroway, 
-				    const std::string& amenity, const std::string& area, 
-				    const std::string& barrier, const std::string& bicycle, 
-				    const std::string& brand, const std::string& bridge, 
-				    const std::string& boundary, const std::string& building, 
+OpenStreetMap::OSMObject::OSMObject(int64_t id, const std::string& access,
+				    const std::string& addr_housename, const std::string& addr_housenumber,
+				    const std::string& addr_interpolation, const std::string& admin_level,
+				    const std::string& aerialway, const std::string& aeroway,
+				    const std::string& amenity, const std::string& area,
+				    const std::string& barrier, const std::string& bicycle,
+				    const std::string& brand, const std::string& bridge,
+				    const std::string& boundary, const std::string& building,
 				    const std::string& construction, const std::string& covered,
 				    const std::string& culvert, const std::string& cutting,
 				    const std::string& denomination, const std::string& disused,
-				    const std::string& embankment, const std::string& foot, 
-				    const std::string& generator_source, const std::string& harbour, 
-				    const std::string& highway, const std::string& historic, 
-				    const std::string& horse, const std::string& intermittent, 
-				    const std::string& junction, const std::string& landuse, 
-				    const std::string& layer, const std::string& leisure, 
-				    const std::string& lock, const std::string& man_made, 
-				    const std::string& military, const std::string& motorcar, 
-				    const std::string& name, const std::string& natural, 
-				    const std::string& office, const std::string& oneway, 
-				    const std::string& oper, const std::string& place, 
+				    const std::string& embankment, const std::string& foot,
+				    const std::string& generator_source, const std::string& harbour,
+				    const std::string& highway, const std::string& historic,
+				    const std::string& horse, const std::string& intermittent,
+				    const std::string& junction, const std::string& landuse,
+				    const std::string& layer, const std::string& leisure,
+				    const std::string& lock, const std::string& man_made,
+				    const std::string& military, const std::string& motorcar,
+				    const std::string& name, const std::string& natural,
+				    const std::string& office, const std::string& oneway,
+				    const std::string& oper, const std::string& place,
 				    const std::string& population, const std::string& power,
 				    const std::string& power_source, const std::string& public_transport,
 				    const std::string& railway, const std::string& ref,
@@ -608,45 +608,45 @@ std::string OpenStreetMap::OSMObject::to_str(void) const
 	return oss.str().substr(0, sz);
 }
 
-OpenStreetMap::OSMPoint::OSMPoint(int64_t id, const std::string& access, 
-				  const std::string& addr_housename, const std::string& addr_housenumber, 
-				  const std::string& addr_interpolation, const std::string& admin_level, 
-				  const std::string& aerialway, const std::string& aeroway, 
-				  const std::string& amenity, const std::string& area, 
-				  const std::string& barrier, const std::string& bicycle, 
-				  const std::string& brand, const std::string& bridge, 
-				  const std::string& boundary, const std::string& building, 
-				  const std::string& capital, const std::string& construction, 
-				  const std::string& covered, const std::string& culvert, 
-				  const std::string& cutting, const std::string& denomination, 
-				  const std::string& disused, const std::string& ele, 
-				  const std::string& embankment, const std::string& foot, 
-				  const std::string& generator_source, const std::string& harbour, 
-				  const std::string& highway, const std::string& historic, 
-				  const std::string& horse, const std::string& intermittent, 
-				  const std::string& junction, const std::string& landuse, 
-				  const std::string& layer, const std::string& leisure, 
-				  const std::string& lock, const std::string& man_made, 
-				  const std::string& military, const std::string& motorcar, 
-				  const std::string& name, const std::string& natural, 
-				  const std::string& office, const std::string& oneway, 
-				  const std::string& oper, const std::string& place, 
-				  const std::string& poi, const std::string& population, 
-				  const std::string& power, const std::string& power_source, 
-				  const std::string& public_transport, const std::string& railway, 
-				  const std::string& ref, const std::string& religion, 
-				  const std::string& route, const std::string& service, 
-				  const std::string& shop, const std::string& sport, 
-				  const std::string& surface, const std::string& toll, 
-				  const std::string& tourism, const std::string& tower_type, 
-				  const std::string& tunnel, const std::string& water, 
-				  const std::string& waterway, const std::string& wetland, 
-				  const std::string& width, const std::string& wood, 
+OpenStreetMap::OSMPoint::OSMPoint(int64_t id, const std::string& access,
+				  const std::string& addr_housename, const std::string& addr_housenumber,
+				  const std::string& addr_interpolation, const std::string& admin_level,
+				  const std::string& aerialway, const std::string& aeroway,
+				  const std::string& amenity, const std::string& area,
+				  const std::string& barrier, const std::string& bicycle,
+				  const std::string& brand, const std::string& bridge,
+				  const std::string& boundary, const std::string& building,
+				  const std::string& capital, const std::string& construction,
+				  const std::string& covered, const std::string& culvert,
+				  const std::string& cutting, const std::string& denomination,
+				  const std::string& disused, const std::string& ele,
+				  const std::string& embankment, const std::string& foot,
+				  const std::string& generator_source, const std::string& harbour,
+				  const std::string& highway, const std::string& historic,
+				  const std::string& horse, const std::string& intermittent,
+				  const std::string& junction, const std::string& landuse,
+				  const std::string& layer, const std::string& leisure,
+				  const std::string& lock, const std::string& man_made,
+				  const std::string& military, const std::string& motorcar,
+				  const std::string& name, const std::string& natural,
+				  const std::string& office, const std::string& oneway,
+				  const std::string& oper, const std::string& place,
+				  const std::string& poi, const std::string& population,
+				  const std::string& power, const std::string& power_source,
+				  const std::string& public_transport, const std::string& railway,
+				  const std::string& ref, const std::string& religion,
+				  const std::string& route, const std::string& service,
+				  const std::string& shop, const std::string& sport,
+				  const std::string& surface, const std::string& toll,
+				  const std::string& tourism, const std::string& tower_type,
+				  const std::string& tunnel, const std::string& water,
+				  const std::string& waterway, const std::string& wetland,
+				  const std::string& width, const std::string& wood,
 				  int32_t z_order, const Tags& tags, const Point& pt)
-	: OSMObject(id, access, addr_housename, addr_housenumber, addr_interpolation, admin_level, aerialway, aeroway, amenity, area, 
+	: OSMObject(id, access, addr_housename, addr_housenumber, addr_interpolation, admin_level, aerialway, aeroway, amenity, area,
 		    barrier, bicycle, brand, bridge, boundary, building, construction, covered, culvert, cutting,
-		    denomination, disused, embankment, foot, generator_source, harbour, highway, historic, horse, intermittent, 
-		    junction, landuse, layer, leisure, lock, man_made, military, motorcar, name, natural, 
+		    denomination, disused, embankment, foot, generator_source, harbour, highway, historic, horse, intermittent,
+		    junction, landuse, layer, leisure, lock, man_made, military, motorcar, name, natural,
 		    office, oneway, oper, place, population, power, power_source, public_transport, railway, ref,
 		    religion, route, service, shop, sport, surface, toll, tourism, tower_type, tunnel,
 		    water, waterway, wetland, width, wood, z_order, tags),
@@ -692,28 +692,28 @@ std::string OpenStreetMap::OSMPoint::to_str(void) const
 	return oss.str();
 }
 
-OpenStreetMap::OSMObject2D::OSMObject2D(int64_t id, const std::string& access, 
-					const std::string& addr_housename, const std::string& addr_housenumber, 
-					const std::string& addr_interpolation, const std::string& admin_level, 
-					const std::string& aerialway, const std::string& aeroway, 
-					const std::string& amenity, const std::string& area, 
-					const std::string& barrier, const std::string& bicycle, 
-					const std::string& brand, const std::string& bridge, 
-					const std::string& boundary, const std::string& building, 
+OpenStreetMap::OSMObject2D::OSMObject2D(int64_t id, const std::string& access,
+					const std::string& addr_housename, const std::string& addr_housenumber,
+					const std::string& addr_interpolation, const std::string& admin_level,
+					const std::string& aerialway, const std::string& aeroway,
+					const std::string& amenity, const std::string& area,
+					const std::string& barrier, const std::string& bicycle,
+					const std::string& brand, const std::string& bridge,
+					const std::string& boundary, const std::string& building,
 					const std::string& construction, const std::string& covered,
 					const std::string& culvert, const std::string& cutting,
 					const std::string& denomination, const std::string& disused,
 					const std::string& embankment, const std::string& foot,
-					const std::string& generator_source, const std::string& harbour, 
-					const std::string& highway, const std::string& historic, 
-					const std::string& horse, const std::string& intermittent, 
-					const std::string& junction, const std::string& landuse, 
-					const std::string& layer, const std::string& leisure, 
-					const std::string& lock, const std::string& man_made, 
-					const std::string& military, const std::string& motorcar, 
-					const std::string& name, const std::string& natural, 
-					const std::string& office, const std::string& oneway, 
-					const std::string& oper, const std::string& place, 
+					const std::string& generator_source, const std::string& harbour,
+					const std::string& highway, const std::string& historic,
+					const std::string& horse, const std::string& intermittent,
+					const std::string& junction, const std::string& landuse,
+					const std::string& layer, const std::string& leisure,
+					const std::string& lock, const std::string& man_made,
+					const std::string& military, const std::string& motorcar,
+					const std::string& name, const std::string& natural,
+					const std::string& office, const std::string& oneway,
+					const std::string& oper, const std::string& place,
 					const std::string& population, const std::string& power,
 					const std::string& power_source, const std::string& public_transport,
 					const std::string& railway, const std::string& ref,
@@ -722,14 +722,14 @@ OpenStreetMap::OSMObject2D::OSMObject2D(int64_t id, const std::string& access,
 					const std::string& sport, const std::string& surface,
 					const std::string& toll, const std::string& tourism,
 					const std::string& tower_type, const std::string& tracktype,
-					const std::string& tunnel, const std::string& water, 
-					const std::string& waterway, const std::string& wetland, 
-					const std::string& width, const std::string& wood, 
+					const std::string& tunnel, const std::string& water,
+					const std::string& waterway, const std::string& wetland,
+					const std::string& width, const std::string& wood,
 					int32_t z_order, double way_area, const Tags& tags)
-	: OSMObject(id, access, addr_housename, addr_housenumber, addr_interpolation, admin_level, aerialway, aeroway, amenity, area, 
+	: OSMObject(id, access, addr_housename, addr_housenumber, addr_interpolation, admin_level, aerialway, aeroway, amenity, area,
 		    barrier, bicycle, brand, bridge, boundary, building, construction, covered, culvert, cutting,
-		    denomination, disused, embankment, foot, generator_source, harbour, highway, historic, horse, intermittent, 
-		    junction, landuse, layer, leisure, lock, man_made, military, motorcar, name, natural, 
+		    denomination, disused, embankment, foot, generator_source, harbour, highway, historic, horse, intermittent,
+		    junction, landuse, layer, leisure, lock, man_made, military, motorcar, name, natural,
 		    office, oneway, oper, place, population, power, power_source, public_transport, railway, ref,
 		    religion, route, service, shop, sport, surface, toll, tourism, tower_type, tunnel,
 		    water, waterway, wetland, width, wood, z_order, tags),
@@ -777,28 +777,28 @@ std::string OpenStreetMap::OSMObject2D::to_str(void) const
 	return oss.str().substr(0, sz);
 }
 
-OpenStreetMap::OSMLine::OSMLine(int64_t id, const std::string& access, 
-				const std::string& addr_housename, const std::string& addr_housenumber, 
-				const std::string& addr_interpolation, const std::string& admin_level, 
-				const std::string& aerialway, const std::string& aeroway, 
-				const std::string& amenity, const std::string& area, 
-				const std::string& barrier, const std::string& bicycle, 
-				const std::string& brand, const std::string& bridge, 
-				const std::string& boundary, const std::string& building, 
+OpenStreetMap::OSMLine::OSMLine(int64_t id, const std::string& access,
+				const std::string& addr_housename, const std::string& addr_housenumber,
+				const std::string& addr_interpolation, const std::string& admin_level,
+				const std::string& aerialway, const std::string& aeroway,
+				const std::string& amenity, const std::string& area,
+				const std::string& barrier, const std::string& bicycle,
+				const std::string& brand, const std::string& bridge,
+				const std::string& boundary, const std::string& building,
 				const std::string& construction, const std::string& covered,
 				const std::string& culvert, const std::string& cutting,
 				const std::string& denomination, const std::string& disused,
 				const std::string& embankment, const std::string& foot,
-				const std::string& generator_source, const std::string& harbour, 
-				const std::string& highway, const std::string& historic, 
-				const std::string& horse, const std::string& intermittent, 
-				const std::string& junction, const std::string& landuse, 
-				const std::string& layer, const std::string& leisure, 
-				const std::string& lock, const std::string& man_made, 
-				const std::string& military, const std::string& motorcar, 
-				const std::string& name, const std::string& natural, 
-				const std::string& office, const std::string& oneway, 
-				const std::string& oper, const std::string& place, 
+				const std::string& generator_source, const std::string& harbour,
+				const std::string& highway, const std::string& historic,
+				const std::string& horse, const std::string& intermittent,
+				const std::string& junction, const std::string& landuse,
+				const std::string& layer, const std::string& leisure,
+				const std::string& lock, const std::string& man_made,
+				const std::string& military, const std::string& motorcar,
+				const std::string& name, const std::string& natural,
+				const std::string& office, const std::string& oneway,
+				const std::string& oper, const std::string& place,
 				const std::string& population, const std::string& power,
 				const std::string& power_source, const std::string& public_transport,
 				const std::string& railway, const std::string& ref,
@@ -807,14 +807,14 @@ OpenStreetMap::OSMLine::OSMLine(int64_t id, const std::string& access,
 				const std::string& sport, const std::string& surface,
 				const std::string& toll, const std::string& tourism,
 				const std::string& tower_type, const std::string& tracktype,
-				const std::string& tunnel, const std::string& water, 
-				const std::string& waterway, const std::string& wetland, 
-				const std::string& width, const std::string& wood, 
+				const std::string& tunnel, const std::string& water,
+				const std::string& waterway, const std::string& wetland,
+				const std::string& width, const std::string& wood,
 				int32_t z_order, double way_area, const Tags& tags, const LineString& line)
-	: OSMObject2D(id, access, addr_housename, addr_housenumber, addr_interpolation, admin_level, aerialway, aeroway, amenity, area, 
+	: OSMObject2D(id, access, addr_housename, addr_housenumber, addr_interpolation, admin_level, aerialway, aeroway, amenity, area,
 		      barrier, bicycle, brand, bridge, boundary, building, construction, covered, culvert, cutting,
-		      denomination, disused, embankment, foot, generator_source, harbour, highway, historic, horse, intermittent, 
-		      junction, landuse, layer, leisure, lock, man_made, military, motorcar, name, natural, 
+		      denomination, disused, embankment, foot, generator_source, harbour, highway, historic, horse, intermittent,
+		      junction, landuse, layer, leisure, lock, man_made, military, motorcar, name, natural,
 		      office, oneway, oper, place, population, power, power_source, public_transport, railway, ref,
 		      religion, route, service, shop, sport, surface, toll, tourism, tower_type, tracktype,
 		      tunnel, water, waterway, wetland, width, wood, z_order, way_area, tags),
@@ -829,28 +829,28 @@ std::string OpenStreetMap::OSMLine::to_str(void) const
 	return oss.str();
 }
 
-OpenStreetMap::OSMPolygon::OSMPolygon(int64_t id, const std::string& access, 
-				      const std::string& addr_housename, const std::string& addr_housenumber, 
-				      const std::string& addr_interpolation, const std::string& admin_level, 
-				      const std::string& aerialway, const std::string& aeroway, 
-				      const std::string& amenity, const std::string& area, 
-				      const std::string& barrier, const std::string& bicycle, 
-				      const std::string& brand, const std::string& bridge, 
-				      const std::string& boundary, const std::string& building, 
+OpenStreetMap::OSMPolygon::OSMPolygon(int64_t id, const std::string& access,
+				      const std::string& addr_housename, const std::string& addr_housenumber,
+				      const std::string& addr_interpolation, const std::string& admin_level,
+				      const std::string& aerialway, const std::string& aeroway,
+				      const std::string& amenity, const std::string& area,
+				      const std::string& barrier, const std::string& bicycle,
+				      const std::string& brand, const std::string& bridge,
+				      const std::string& boundary, const std::string& building,
 				      const std::string& construction, const std::string& covered,
 				      const std::string& culvert, const std::string& cutting,
 				      const std::string& denomination, const std::string& disused,
 				      const std::string& embankment, const std::string& foot,
-				      const std::string& generator_source, const std::string& harbour, 
-				      const std::string& highway, const std::string& historic, 
-				      const std::string& horse, const std::string& intermittent, 
-				      const std::string& junction, const std::string& landuse, 
-				      const std::string& layer, const std::string& leisure, 
-				      const std::string& lock, const std::string& man_made, 
-				      const std::string& military, const std::string& motorcar, 
-				      const std::string& name, const std::string& natural, 
-				      const std::string& office, const std::string& oneway, 
-				      const std::string& oper, const std::string& place, 
+				      const std::string& generator_source, const std::string& harbour,
+				      const std::string& highway, const std::string& historic,
+				      const std::string& horse, const std::string& intermittent,
+				      const std::string& junction, const std::string& landuse,
+				      const std::string& layer, const std::string& leisure,
+				      const std::string& lock, const std::string& man_made,
+				      const std::string& military, const std::string& motorcar,
+				      const std::string& name, const std::string& natural,
+				      const std::string& office, const std::string& oneway,
+				      const std::string& oper, const std::string& place,
 				      const std::string& population, const std::string& power,
 				      const std::string& power_source, const std::string& public_transport,
 				      const std::string& railway, const std::string& ref,
@@ -859,14 +859,14 @@ OpenStreetMap::OSMPolygon::OSMPolygon(int64_t id, const std::string& access,
 				      const std::string& sport, const std::string& surface,
 				      const std::string& toll, const std::string& tourism,
 				      const std::string& tower_type, const std::string& tracktype,
-				      const std::string& tunnel, const std::string& water, 
-				      const std::string& waterway, const std::string& wetland, 
-				      const std::string& width, const std::string& wood, 
+				      const std::string& tunnel, const std::string& water,
+				      const std::string& waterway, const std::string& wetland,
+				      const std::string& width, const std::string& wood,
 				      int32_t z_order, double way_area, const Tags& tags, const MultiPolygonHole& poly)
-	: OSMObject2D(id, access, addr_housename, addr_housenumber, addr_interpolation, admin_level, aerialway, aeroway, amenity, area, 
+	: OSMObject2D(id, access, addr_housename, addr_housenumber, addr_interpolation, admin_level, aerialway, aeroway, amenity, area,
 		      barrier, bicycle, brand, bridge, boundary, building, construction, covered, culvert, cutting,
-		      denomination, disused, embankment, foot, generator_source, harbour, highway, historic, horse, intermittent, 
-		      junction, landuse, layer, leisure, lock, man_made, military, motorcar, name, natural, 
+		      denomination, disused, embankment, foot, generator_source, harbour, highway, historic, horse, intermittent,
+		      junction, landuse, layer, leisure, lock, man_made, military, motorcar, name, natural,
 		      office, oneway, oper, place, population, power, power_source, public_transport, railway, ref,
 		      religion, route, service, shop, sport, surface, toll, tourism, tower_type, tracktype,
 		      tunnel, water, waterway, wetland, width, wood, z_order, way_area, tags),
@@ -956,77 +956,77 @@ void OpenStreetMap::PGTransactor::operator()(transaction_t& tran)
 void OpenStreetMap::PGTransactor::get_points(transaction_t& tran)
 {
 	// Schema of planet_osm_point
-	// osm_id             | bigint               | 
-	// access             | text                 | 
-	// addr:housename     | text                 | 
-	// addr:housenumber   | text                 | 
-	// addr:interpolation | text                 | 
-	// admin_level        | text                 | 
-	// aerialway          | text                 | 
-	// aeroway            | text                 | 
-	// amenity            | text                 | 
-	// area               | text                 | 
-	// barrier            | text                 | 
-	// bicycle            | text                 | 
-	// brand              | text                 | 
-	// bridge             | text                 | 
-	// boundary           | text                 | 
-	// building           | text                 | 
-	// capital            | text                 | 
-	// construction       | text                 | 
-	// covered            | text                 | 
-	// culvert            | text                 | 
-	// cutting            | text                 | 
-	// denomination       | text                 | 
-	// disused            | text                 | 
-	// ele                | text                 | 
-	// embankment         | text                 | 
-	// foot               | text                 | 
-	// generator:source   | text                 | 
-	// harbour            | text                 | 
-	// highway            | text                 | 
-	// historic           | text                 | 
-	// horse              | text                 | 
-	// intermittent       | text                 | 
-	// junction           | text                 | 
-	// landuse            | text                 | 
-	// layer              | text                 | 
-	// leisure            | text                 | 
-	// lock               | text                 | 
-	// man_made           | text                 | 
-	// military           | text                 | 
-	// motorcar           | text                 | 
-	// name               | text                 | 
-	// natural            | text                 | 
-	// office             | text                 | 
-	// oneway             | text                 | 
-	// operator           | text                 | 
-	// place              | text                 | 
-	// poi                | text                 | 
-	// population         | text                 | 
-	// power              | text                 | 
-	// power_source       | text                 | 
-	// public_transport   | text                 | 
-	// railway            | text                 | 
-	// ref                | text                 | 
-	// religion           | text                 | 
-	// route              | text                 | 
-	// service            | text                 | 
-	// shop               | text                 | 
-	// sport              | text                 | 
-	// surface            | text                 | 
-	// toll               | text                 | 
-	// tourism            | text                 | 
-	// tower:type         | text                 | 
-	// tunnel             | text                 | 
-	// water              | text                 | 
-	// waterway           | text                 | 
-	// wetland            | text                 | 
-	// width              | text                 | 
-	// wood               | text                 | 
-	// z_order            | integer              | 
-	// tags               | hstore               | 
-	// way                | geometry(Point,4326) | 
+	// osm_id             | bigint               |
+	// access             | text                 |
+	// addr:housename     | text                 |
+	// addr:housenumber   | text                 |
+	// addr:interpolation | text                 |
+	// admin_level        | text                 |
+	// aerialway          | text                 |
+	// aeroway            | text                 |
+	// amenity            | text                 |
+	// area               | text                 |
+	// barrier            | text                 |
+	// bicycle            | text                 |
+	// brand              | text                 |
+	// bridge             | text                 |
+	// boundary           | text                 |
+	// building           | text                 |
+	// capital            | text                 |
+	// construction       | text                 |
+	// covered            | text                 |
+	// culvert            | text                 |
+	// cutting            | text                 |
+	// denomination       | text                 |
+	// disused            | text                 |
+	// ele                | text                 |
+	// embankment         | text                 |
+	// foot               | text                 |
+	// generator:source   | text                 |
+	// harbour            | text                 |
+	// highway            | text                 |
+	// historic           | text                 |
+	// horse              | text                 |
+	// intermittent       | text                 |
+	// junction           | text                 |
+	// landuse            | text                 |
+	// layer              | text                 |
+	// leisure            | text                 |
+	// lock               | text                 |
+	// man_made           | text                 |
+	// military           | text                 |
+	// motorcar           | text                 |
+	// name               | text                 |
+	// natural            | text                 |
+	// office             | text                 |
+	// oneway             | text                 |
+	// operator           | text                 |
+	// place              | text                 |
+	// poi                | text                 |
+	// population         | text                 |
+	// power              | text                 |
+	// power_source       | text                 |
+	// public_transport   | text                 |
+	// railway            | text                 |
+	// ref                | text                 |
+	// religion           | text                 |
+	// route              | text                 |
+	// service            | text                 |
+	// shop               | text                 |
+	// sport              | text                 |
+	// surface            | text                 |
+	// toll               | text                 |
+	// tourism            | text                 |
+	// tower:type         | text                 |
+	// tunnel             | text                 |
+	// water              | text                 |
+	// waterway           | text                 |
+	// wetland            | text                 |
+	// width              | text                 |
+	// wood               | text                 |
+	// z_order            | integer              |
+	// tags               | hstore               |
+	// way                | geometry(Point,4326) |
 
 	m_osmpoints.clear();
 	std::string qstr("select osm_id,access,\"addr:housename\",\"addr:housenumber\",\"addr:interpolation\",admin_level,aerialway,aeroway,amenity,area,"
@@ -1068,76 +1068,76 @@ void OpenStreetMap::PGTransactor::get_points(transaction_t& tran)
 void OpenStreetMap::PGTransactor::get_lines(transaction_t& tran)
 {
 	// Schema of planet_osm_line
-	// osm_id             | bigint                    | 
-	// access             | text                      | 
-	// addr:housename     | text                      | 
-	// addr:housenumber   | text                      | 
-	// addr:interpolation | text                      | 
-	// admin_level        | text                      | 
-	// aerialway          | text                      | 
-	// aeroway            | text                      | 
-	// amenity            | text                      | 
-	// area               | text                      | 
-	// barrier            | text                      | 
-	// bicycle            | text                      | 
-	// brand              | text                      | 
-	// bridge             | text                      | 
-	// boundary           | text                      | 
-	// building           | text                      | 
-	// construction       | text                      | 
-	// covered            | text                      | 
-	// culvert            | text                      | 
-	// cutting            | text                      | 
-	// denomination       | text                      | 
-	// disused            | text                      | 
-	// embankment         | text                      | 
-	// foot               | text                      | 
-	// generator:source   | text                      | 
-	// harbour            | text                      | 
-	// highway            | text                      | 
-	// historic           | text                      | 
-	// horse              | text                      | 
-	// intermittent       | text                      | 
-	// junction           | text                      | 
-	// landuse            | text                      | 
-	// layer              | text                      | 
-	// leisure            | text                      | 
-	// lock               | text                      | 
-	// man_made           | text                      | 
-	// military           | text                      | 
-	// motorcar           | text                      | 
-	// name               | text                      | 
-	// natural            | text                      | 
-	// office             | text                      | 
-	// oneway             | text                      | 
-	// operator           | text                      | 
-	// place              | text                      | 
-	// population         | text                      | 
-	// power              | text                      | 
-	// power_source       | text                      | 
-	// public_transport   | text                      | 
-	// railway            | text                      | 
-	// ref                | text                      | 
-	// religion           | text                      | 
-	// route              | text                      | 
-	// service            | text                      | 
-	// shop               | text                      | 
-	// sport              | text                      | 
-	// surface            | text                      | 
-	// toll               | text                      | 
-	// tourism            | text                      | 
-	// tower:type         | text                      | 
-	// tracktype          | text                      | 
-	// tunnel             | text                      | 
-	// water              | text                      | 
-	// waterway           | text                      | 
-	// wetland            | text                      | 
-	// width              | text                      | 
-	// wood               | text                      | 
-	// z_order            | integer                   | 
-	// way_area           | real                      | 
-	// tags               | hstore                    | 
-	// way                | geometry(LineString,4326) | 
+	// osm_id             | bigint                    |
+	// access             | text                      |
+	// addr:housename     | text                      |
+	// addr:housenumber   | text                      |
+	// addr:interpolation | text                      |
+	// admin_level        | text                      |
+	// aerialway          | text                      |
+	// aeroway            | text                      |
+	// amenity            | text                      |
+	// area               | text                      |
+	// barrier            | text                      |
+	// bicycle            | text                      |
+	// brand              | text                      |
+	// bridge             | text                      |
+	// boundary           | text                      |
+	// building           | text                      |
+	// construction       | text                      |
+	// covered            | text                      |
+	// culvert            | text                      |
+	// cutting            | text                      |
+	// denomination       | text                      |
+	// disused            | text                      |
+	// embankment         | text                      |
+	// foot               | text                      |
+	// generator:source   | text                      |
+	// harbour            | text                      |
+	// highway            | text                      |
+	// historic           | text                      |
+	// horse              | text                      |
+	// intermittent       | text                      |
+	// junction           | text                      |
+	// landuse            | text                      |
+	// layer              | text                      |
+	// leisure            | text                      |
+	// lock               | text                      |
+	// man_made           | text                      |
+	// military           | text                      |
+	// motorcar           | text                      |
+	// name               | text                      |
+	// natural            | text                      |
+	// office             | text                      |
+	// oneway             | text                      |
+	// operator           | text                      |
+	// place              | text                      |
+	// population         | text                      |
+	// power              | text                      |
+	// power_source       | text                      |
+	// public_transport   | text                      |
+	// railway            | text                      |
+	// ref                | text                      |
+	// religion           | text                      |
+	// route              | text                      |
+	// service            | text                      |
+	// shop               | text                      |
+	// sport              | text                      |
+	// surface            | text                      |
+	// toll               | text                      |
+	// tourism            | text                      |
+	// tower:type         | text                      |
+	// tracktype          | text                      |
+	// tunnel             | text                      |
+	// water              | text                      |
+	// waterway           | text                      |
+	// wetland            | text                      |
+	// width              | text                      |
+	// wood               | text                      |
+	// z_order            | integer                   |
+	// way_area           | real                      |
+	// tags               | hstore                    |
+	// way                | geometry(LineString,4326) |
 
 	m_osmlines.clear();
 	std::string qstr("select osm_id,access,\"addr:housename\",\"addr:housenumber\",\"addr:interpolation\",admin_level,aerialway,aeroway,amenity,area,"
@@ -1179,76 +1179,76 @@ void OpenStreetMap::PGTransactor::get_lines(transaction_t& tran)
 void OpenStreetMap::PGTransactor::get_roads(transaction_t& tran)
 {
 	// Schema of planet_osm_roads
-	// osm_id             | bigint                    | 
-	// access             | text                      | 
-	// addr:housename     | text                      | 
-	// addr:housenumber   | text                      | 
-	// addr:interpolation | text                      | 
-	// admin_level        | text                      | 
-	// aerialway          | text                      | 
-	// aeroway            | text                      | 
-	// amenity            | text                      | 
-	// area               | text                      | 
-	// barrier            | text                      | 
-	// bicycle            | text                      | 
-	// brand              | text                      | 
-	// bridge             | text                      | 
-	// boundary           | text                      | 
-	// building           | text                      | 
-	// construction       | text                      | 
-	// covered            | text                      | 
-	// culvert            | text                      | 
-	// cutting            | text                      | 
-	// denomination       | text                      | 
-	// disused            | text                      | 
-	// embankment         | text                      | 
-	// foot               | text                      | 
-	// generator:source   | text                      | 
-	// harbour            | text                      | 
-	// highway            | text                      | 
-	// historic           | text                      | 
-	// horse              | text                      | 
-	// intermittent       | text                      | 
-	// junction           | text                      | 
-	// landuse            | text                      | 
-	// layer              | text                      | 
-	// leisure            | text                      | 
-	// lock               | text                      | 
-	// man_made           | text                      | 
-	// military           | text                      | 
-	// motorcar           | text                      | 
-	// name               | text                      | 
-	// natural            | text                      | 
-	// office             | text                      | 
-	// oneway             | text                      | 
-	// operator           | text                      | 
-	// place              | text                      | 
-	// population         | text                      | 
-	// power              | text                      | 
-	// power_source       | text                      | 
-	// public_transport   | text                      | 
-	// railway            | text                      | 
-	// ref                | text                      | 
-	// religion           | text                      | 
-	// route              | text                      | 
-	// service            | text                      | 
-	// shop               | text                      | 
-	// sport              | text                      | 
-	// surface            | text                      | 
-	// toll               | text                      | 
-	// tourism            | text                      | 
-	// tower:type         | text                      | 
-	// tracktype          | text                      | 
-	// tunnel             | text                      | 
-	// water              | text                      | 
-	// waterway           | text                      | 
-	// wetland            | text                      | 
-	// width              | text                      | 
-	// wood               | text                      | 
-	// z_order            | integer                   | 
-	// way_area           | real                      | 
-	// tags               | hstore                    | 
-	// way                | geometry(LineString,4326) | 
+	// osm_id             | bigint                    |
+	// access             | text                      |
+	// addr:housename     | text                      |
+	// addr:housenumber   | text                      |
+	// addr:interpolation | text                      |
+	// admin_level        | text                      |
+	// aerialway          | text                      |
+	// aeroway            | text                      |
+	// amenity            | text                      |
+	// area               | text                      |
+	// barrier            | text                      |
+	// bicycle            | text                      |
+	// brand              | text                      |
+	// bridge             | text                      |
+	// boundary           | text                      |
+	// building           | text                      |
+	// construction       | text                      |
+	// covered            | text                      |
+	// culvert            | text                      |
+	// cutting            | text                      |
+	// denomination       | text                      |
+	// disused            | text                      |
+	// embankment         | text                      |
+	// foot               | text                      |
+	// generator:source   | text                      |
+	// harbour            | text                      |
+	// highway            | text                      |
+	// historic           | text                      |
+	// horse              | text                      |
+	// intermittent       | text                      |
+	// junction           | text                      |
+	// landuse            | text                      |
+	// layer              | text                      |
+	// leisure            | text                      |
+	// lock               | text                      |
+	// man_made           | text                      |
+	// military           | text                      |
+	// motorcar           | text                      |
+	// name               | text                      |
+	// natural            | text                      |
+	// office             | text                      |
+	// oneway             | text                      |
+	// operator           | text                      |
+	// place              | text                      |
+	// population         | text                      |
+	// power              | text                      |
+	// power_source       | text                      |
+	// public_transport   | text                      |
+	// railway            | text                      |
+	// ref                | text                      |
+	// religion           | text                      |
+	// route              | text                      |
+	// service            | text                      |
+	// shop               | text                      |
+	// sport              | text                      |
+	// surface            | text                      |
+	// toll               | text                      |
+	// tourism            | text                      |
+	// tower:type         | text                      |
+	// tracktype          | text                      |
+	// tunnel             | text                      |
+	// water              | text                      |
+	// waterway           | text                      |
+	// wetland            | text                      |
+	// width              | text                      |
+	// wood               | text                      |
+	// z_order            | integer                   |
+	// way_area           | real                      |
+	// tags               | hstore                    |
+	// way                | geometry(LineString,4326) |
 
 	m_osmroads.clear();
 	std::string qstr("select osm_id,access,\"addr:housename\",\"addr:housenumber\",\"addr:interpolation\",admin_level,aerialway,aeroway,amenity,area,"
@@ -1290,76 +1290,76 @@ void OpenStreetMap::PGTransactor::get_roads(transaction_t& tran)
 void OpenStreetMap::PGTransactor::get_polygons(transaction_t& tran)
 {
 	// Schema of planet_osm_polygon
-	// osm_id             | bigint                  | 
-	// access             | text                    | 
-	// addr:housename     | text                    | 
-	// addr:housenumber   | text                    | 
-	// addr:interpolation | text                    | 
-	// admin_level        | text                    | 
-	// aerialway          | text                    | 
-	// aeroway            | text                    | 
-	// amenity            | text                    | 
-	// area               | text                    | 
-	// barrier            | text                    | 
-	// bicycle            | text                    | 
-	// brand              | text                    | 
-	// bridge             | text                    | 
-	// boundary           | text                    | 
-	// building           | text                    | 
-	// construction       | text                    | 
-	// covered            | text                    | 
-	// culvert            | text                    | 
-	// cutting            | text                    | 
-	// denomination       | text                    | 
-	// disused            | text                    | 
-	// embankment         | text                    | 
-	// foot               | text                    | 
-	// generator:source   | text                    | 
-	// harbour            | text                    | 
-	// highway            | text                    | 
-	// historic           | text                    | 
-	// horse              | text                    | 
-	// intermittent       | text                    | 
-	// junction           | text                    | 
-	// landuse            | text                    | 
-	// layer              | text                    | 
-	// leisure            | text                    | 
-	// lock               | text                    | 
-	// man_made           | text                    | 
-	// military           | text                    | 
-	// motorcar           | text                    | 
-	// name               | text                    | 
-	// natural            | text                    | 
-	// office             | text                    | 
-	// oneway             | text                    | 
-	// operator           | text                    | 
-	// place              | text                    | 
-	// population         | text                    | 
-	// power              | text                    | 
-	// power_source       | text                    | 
-	// public_transport   | text                    | 
-	// railway            | text                    | 
-	// ref                | text                    | 
-	// religion           | text                    | 
-	// route              | text                    | 
-	// service            | text                    | 
-	// shop               | text                    | 
-	// sport              | text                    | 
-	// surface            | text                    | 
-	// toll               | text                    | 
-	// tourism            | text                    | 
-	// tower:type         | text                    | 
-	// tracktype          | text                    | 
-	// tunnel             | text                    | 
-	// water              | text                    | 
-	// waterway           | text                    | 
-	// wetland            | text                    | 
-	// width              | text                    | 
-	// wood               | text                    | 
-	// z_order            | integer                 | 
-	// way_area           | real                    | 
-	// tags               | hstore                  | 
-	// way                | geometry(Geometry,4326) | 
+	// osm_id             | bigint                  |
+	// access             | text                    |
+	// addr:housename     | text                    |
+	// addr:housenumber   | text                    |
+	// addr:interpolation | text                    |
+	// admin_level        | text                    |
+	// aerialway          | text                    |
+	// aeroway            | text                    |
+	// amenity            | text                    |
+	// area               | text                    |
+	// barrier            | text                    |
+	// bicycle            | text                    |
+	// brand              | text                    |
+	// bridge             | text                    |
+	// boundary           | text                    |
+	// building           | text                    |
+	// construction       | text                    |
+	// covered            | text                    |
+	// culvert            | text                    |
+	// cutting            | text                    |
+	// denomination       | text                    |
+	// disused            | text                    |
+	// embankment         | text                    |
+	// foot               | text                    |
+	// generator:source   | text                    |
+	// harbour            | text                    |
+	// highway            | text                    |
+	// historic           | text                    |
+	// horse              | text                    |
+	// intermittent       | text                    |
+	// junction           | text                    |
+	// landuse            | text                    |
+	// layer              | text                    |
+	// leisure            | text                    |
+	// lock               | text                    |
+	// man_made           | text                    |
+	// military           | text                    |
+	// motorcar           | text                    |
+	// name               | text                    |
+	// natural            | text                    |
+	// office             | text                    |
+	// oneway             | text                    |
+	// operator           | text                    |
+	// place              | text                    |
+	// population         | text                    |
+	// power              | text                    |
+	// power_source       | text                    |
+	// public_transport   | text                    |
+	// railway            | text                    |
+	// ref                | text                    |
+	// religion           | text                    |
+	// route              | text                    |
+	// service            | text                    |
+	// shop               | text                    |
+	// sport              | text                    |
+	// surface            | text                    |
+	// toll               | text                    |
+	// tourism            | text                    |
+	// tower:type         | text                    |
+	// tracktype          | text                    |
+	// tunnel             | text                    |
+	// water              | text                    |
+	// waterway           | text                    |
+	// wetland            | text                    |
+	// width              | text                    |
+	// wood               | text                    |
+	// z_order            | integer                 |
+	// way_area           | real                    |
+	// tags               | hstore                  |
+	// way                | geometry(Geometry,4326) |
 
 	m_osmpolygons.clear();
 	std::string qstr("select osm_id,access,\"addr:housename\",\"addr:housenumber\",\"addr:interpolation\",admin_level,aerialway,aeroway,amenity,area,"
@@ -1411,8 +1411,8 @@ void OpenStreetMap::PGTransactor::on_doubt(void) throw()
 void OpenStreetMap::PGTransactor::on_commit(void)
 {
 	m_osm.m_osmpoints = m_osmpoints;
-	m_osm.m_osmlines = m_osmlines;   
-	m_osm.m_osmroads = m_osmroads;   
+	m_osm.m_osmlines = m_osmlines;
+	m_osm.m_osmroads = m_osmroads;
 	m_osm.m_osmpolygons = m_osmpolygons;
 }
 
@@ -1434,20 +1434,19 @@ OpenStreetMap::OpenStreetMap(const Rect& bbox)
 {
 }
 
-void OpenStreetMap::load(const std::string& db)
-{
 #ifdef HAVE_PQXX
+
+void OpenStreetMap::load(pqxx::connection_base& conn)
+{
 	try {
-		pqxx::connection conn(db);
-		{
-			PGTransactor osm(*this, m_bbox);
-			conn.perform(osm);
-		}
+		PGTransactor osm(*this, m_bbox);
+		conn.perform(osm);
 	} catch (const pqxx::pqxx_exception& e) {
 		std::cerr << "pqxx exception: " << e.base().what() << std::endl;
 	}
-#endif
 }
+
+#endif
 
 bool OpenStreetMap::empty(void) const
 {
@@ -1485,7 +1484,7 @@ bool OpenStreetMapDraw::Render::Object::AttrMatch::is_match(const OSMObject& x) 
 	default:
 	case match_exact:
 		return val == get_value();
-		
+
 	case match_startswith:
 		if (val.size() < get_value().size())
 			return false;
@@ -1502,7 +1501,7 @@ bool OpenStreetMapDraw::Render::Object::AttrMatch::is_match(const OSMPoint& x) c
 	default:
 	case match_exact:
 		return val == get_value();
-		
+
 	case match_startswith:
 		if (val.size() < get_value().size())
 			return false;
@@ -1519,7 +1518,7 @@ bool OpenStreetMapDraw::Render::Object::AttrMatch::is_match(const OSMObject2D& x
 	default:
 	case match_exact:
 		return val == get_value();
-		
+
 	case match_startswith:
 		if (val.size() < get_value().size())
 			return false;
@@ -1613,7 +1612,7 @@ const OpenStreetMapDraw::Render::Object OpenStreetMapDraw::Render::dflt("backgro
 OpenStreetMapDraw::Render::Render(void)
 {
 }
-		
+
 void OpenStreetMapDraw::Render::clear(void)
 {
 	m_objects.clear();
@@ -1622,7 +1621,7 @@ void OpenStreetMapDraw::Render::clear(void)
 void OpenStreetMapDraw::Render::add(const Object& obj)
 {
 	m_objects.push_back(obj);
-}	
+}
 
 const OpenStreetMapDraw::Render::Object& OpenStreetMapDraw::Render::get(const OSMObject& x) const
 {

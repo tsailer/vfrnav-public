@@ -4,7 +4,7 @@
 // Description: Database Objects: Airway
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2013, 2016
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2013, 2016, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -221,7 +221,7 @@ void DbBaseElements::Airway::load(const pqxx::tuple& cursor, pqxx::basic_transac
 	m_modtime = cursor[20].as<time_t>(0);
 }
 
-void DbBaseElements::Airway::save(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Airway::save(pqxx::connection_base& conn, bool rtree)
 {
 	pqxx::work w(conn);
 	Rect bbox(get_bbox());
@@ -248,7 +248,7 @@ void DbBaseElements::Airway::save(pqxx::connection& conn, bool rtree)
 	w.commit();
 }
 
-void DbBaseElements::Airway::erase(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Airway::erase(pqxx::connection_base& conn, bool rtree)
 {
 	if (!is_valid())
 		return;
@@ -260,7 +260,7 @@ void DbBaseElements::Airway::erase(pqxx::connection& conn, bool rtree)
 	m_id = 0;
 }
 
-void DbBaseElements::Airway::update_index(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Airway::update_index(pqxx::connection_base& conn, bool rtree)
 {
 	if (!m_id)
 		return;
@@ -474,7 +474,7 @@ std::string AirwaysDb::get_airways_area_select_string(bool auxtable, const Rect&
 				oss << " OR ";
 			needor = true;
 			if (tr.second < tr.first) {
-				oss << "(TILE BETWEEN " << tr.first << " AND " << (tr.first | mask) 
+				oss << "(TILE BETWEEN " << tr.first << " AND " << (tr.first | mask)
 				    << ") OR (TILE BETWEEN " << (tr.second & ~mask) << " AND " << tr.second << ')';
 			} else {
 				oss << "(TILE BETWEEN " << tr.first << " AND " << tr.second << ')';
@@ -671,7 +671,7 @@ std::string AirwaysPGDb::get_airways_area_select_string(pqxx::basic_transaction&
 				oss << " OR ";
 			needor = true;
 			if (tr.second < tr.first) {
-				oss << "(TILE BETWEEN " << tr.first << " AND " << (tr.first | mask) 
+				oss << "(TILE BETWEEN " << tr.first << " AND " << (tr.first | mask)
 				    << ") OR (TILE BETWEEN " << (tr.second & ~mask) << " AND " << tr.second << ')';
 			} else {
 				oss << "(TILE BETWEEN " << tr.first << " AND " << tr.second << ')';

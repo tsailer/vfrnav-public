@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2007, 2008, 2009, 2011, 2012 by Thomas Sailer           *
+ *   Copyright (C) 2007, 2008, 2009, 2011, 2012, 2017 by Thomas Sailer     *
  *   t.sailer@alumni.ethz.ch                                               *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -110,6 +110,13 @@ bool FlightDeckWindow::fpldb_select_function(const Glib::RefPtr<Gtk::TreeModel>&
 	return selection->count_selected_rows() == 0;
 }
 
+void FlightDeckWindow::fpldirpage_set_default_fpl(FPlanRoute::id_t id)
+{
+	if (!m_sensors)
+		return;
+	m_sensors->get_configfile().set_integer(cfggroup_mainwindow, cfgkey_mainwindow_fplid, id);
+}
+
 void FlightDeckWindow::fpldb_selection_changed(void)
 {
 	bool ena(false), enam(false);
@@ -124,8 +131,7 @@ void FlightDeckWindow::fpldb_selection_changed(void)
 				if (iter) {
 					Gtk::TreeModel::Row row(*iter);
 					enam = row[m_fpldbcolumns.m_wptnr] == RouteListModelColumns::nowptnr;
-					if (m_sensors)
-						m_sensors->get_configfile().set_integer(cfggroup_mainwindow, cfgkey_mainwindow_fplid, row[m_fpldbcolumns.m_id]);
+					fpldirpage_set_default_fpl(row[m_fpldbcolumns.m_id]);
 				}
 			}
 		}

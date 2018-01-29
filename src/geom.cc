@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2007, 2009, 2012, 2013, 2014, 2015, 2016                *
+ *   Copyright (C) 2007, 2009, 2012, 2013, 2014, 2015, 2016, 2017, 2018    *
  *     by Thomas Sailer t.sailer@alumni.ethz.ch                            *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -84,8 +84,8 @@ const unsigned int Point::setstr_flags_ch1903;
 
 void Point::set_invalid(void)
 {
-	lon = 0;
-	lat = 0x80000000;
+	m_lon = 0;
+	m_lat = 0x80000000;
 }
 
 int Point::compare(const Point& x) const
@@ -110,7 +110,7 @@ Rect Point::get_bbox(void) const
  * cf. Joseph O'Rourke, Computational Geometry in C
  */
 
-/* 
+/*
  * softSurfer's (www.softsurfer.com) variant uses less multiplications,
  * but computes the same value
  * http://geometryalgorithms.com/Archive/algorithm_0103/algorithm_0103.htm
@@ -267,13 +267,13 @@ bool Point::is_convex(const Point& vprev, const Point& vnext) const
 bool Point::is_in_cone(const Point& vprev, const Point& v, const Point& vnext) const
 {
 	if (v.is_convex(vprev, vnext))
-		return vprev.is_strictly_left(v, *this) && 
+		return vprev.is_strictly_left(v, *this) &&
 				vnext.is_strictly_left(*this, v);
-	return !(vnext.is_left_or_on(v, *this) && 
+	return !(vnext.is_left_or_on(v, *this) &&
 			vprev.is_left_or_on(*this, v));
 }
 
-/* 
+/*
  * based on an algorithm by softSurfer (www.softsurfer.com)
  * http://geometryalgorithms.com/Archive/algorithm_0103/algorithm_0103.htm
  */
@@ -1061,7 +1061,7 @@ err:
 	return false;
 
 ok:
-	lon = c;
+	m_lon = c;
 	return true;
 }
 
@@ -1096,7 +1096,7 @@ err:
 	return false;
 
 ok:
-	lat = c;
+	m_lat = c;
 	return true;
 }
 
@@ -1265,7 +1265,7 @@ std::string Point::get_locator(unsigned int digits) const
 		r += (char)('A' + londig);
 		r += (char)('A' + latdig);
 	}
-	return r;	
+	return r;
 }
 
 unsigned int Point::set_str_ch1903(std::string::const_iterator& si, std::string::const_iterator se)
@@ -1671,7 +1671,7 @@ const uint8_t *Point::wkbdecode(const uint8_t *cp, const uint8_t *ep, uint8_t by
 		set_lon_deg_dbl(lon);
 		set_lat_deg_dbl(lat);
 	}
-	return cp;	
+	return cp;
 }
 
 uint8_t *Point::to_wkb(uint8_t *cp, uint8_t *ep) const
@@ -2038,8 +2038,8 @@ bool Rect::is_empty(void) const
 
 void Rect::set_empty(void)
 {
-	southwest = Point(0, 0x80000001);
-	northeast = Point(0, 0x80000000);
+	m_southwest = Point(0, 0x80000001);
+	m_northeast = Point(0, 0x80000000);
 }
 
 int64_t Rect::area2(void) const
@@ -2216,7 +2216,7 @@ int MultiPoint::compare(const MultiPoint& x) const
 		if (c)
 			return c;
 	}
-	return 0;	
+	return 0;
 }
 
 std::ostream& MultiPoint::print(std::ostream& os) const
@@ -2240,7 +2240,7 @@ uint8_t *MultiPoint::wkbencode(uint8_t *cp, uint8_t *ep) const
 	cp = Geometry::wkbencode(cp, ep, (uint32_t)size());
 	for (const_iterator i(begin()), e(end()); i != e; ++i)
 		cp = i->to_wkb(cp, ep);
-	return cp;	
+	return cp;
 }
 
 const uint8_t *MultiPoint::wkbdecode(const uint8_t *cp, const uint8_t *ep, uint8_t byteorder)
@@ -2545,7 +2545,7 @@ const uint8_t *LineString::wkbdecode(const uint8_t *cp, const uint8_t *ep, uint8
 		cp = pt.wkbdecode(cp, ep, byteorder);
 		push_back(pt);
 	}
-	return cp;	
+	return cp;
 }
 
 uint8_t *LineString::to_wkb(uint8_t *cp, uint8_t *ep) const
@@ -2651,7 +2651,7 @@ int MultiLineString::compare(const MultiLineString& x) const
 		if (c)
 			return c;
 	}
-	return 0;	
+	return 0;
 }
 
 std::ostream& MultiLineString::print(std::ostream& os) const
@@ -2688,7 +2688,7 @@ const uint8_t *MultiLineString::wkbdecode(const uint8_t *cp, const uint8_t *ep, 
 		ls.from_wkb(cp, ep);
 		push_back(ls);
 	}
-	return cp;	
+	return cp;
 }
 
 uint8_t *MultiLineString::to_wkb(uint8_t *cp, uint8_t *ep) const
@@ -2875,6 +2875,12 @@ PolygonSimple::ScanLine PolygonSimple::ScanLine::combine(const ScanLine& sl2, in
 }
 
 const bool PolygonSimple::InsideHelper::debug;
+const int64_t PolygonSimple::InsideHelper::bordertolerance;
+
+PolygonSimple::InsideHelper::InsideHelper(void)
+	: m_origin(Point::invalid), m_end(-1), m_simd(simd_none)
+{
+}
 
 PolygonSimple::InsideHelper::InsideHelper(const Point& pt0, const Point& pt1, bool enable_simd)
 	: m_origin(pt0), m_end(-1), m_simd(simd_none)
@@ -2994,9 +3000,9 @@ PolygonSimple::inside_t PolygonSimple::InsideHelper::get_result(void) const
 			std::cerr << "InsideHelper: marked as error, result " << ::to_str(inside_error) << std::endl;
 		return inside_error;
 	}
-	const interval_t::Intvl ib0(-1, 2);
-	const interval_t::Intvl ib1(m_end-1, m_end+2);
-	const interval_t::Intvl iins(2, (m_end >= 3) ? m_end-1 : 2);
+	const interval_t::Intvl ib0(get_startintvl());
+	const interval_t::Intvl ib1(get_endintvl());
+	const interval_t::Intvl iins(get_insideintvl());
 	inside_t r(inside_none);
 	if (!(*this & ib0).is_empty())
 		r |= inside_point0;
@@ -3053,9 +3059,49 @@ PolygonSimple::borderpoints_t PolygonSimple::InsideHelper::get_borderpoints(void
 	return b;
 }
 
+void PolygonSimple::InsideHelper::limit(int64_t min, int64_t max)
+{
+	{
+		int64_t x(max + 1);
+		if (x > max)
+			max = x;
+	}
+	if (max <= min) {
+		set_empty();
+		return;
+	}
+	*this &= Intvl(min, max);
+}
+
 void PolygonSimple::InsideHelper::clear(void)
 {
 	set_empty();
+}
+
+void PolygonSimple::InsideHelper::invert(void)
+{
+	*this = operator~();
+}
+
+std::string PolygonSimple::InsideHelper::to_str(void) const
+{
+	if (get_end() <= 0)
+		return "error";
+	bool subseq(false);
+	std::ostringstream r;
+	r << std::fixed << std::setprecision(3);
+	double emul(1.0 / get_end());
+	for (const_iterator i(begin()), e(end()); i != e; ++i) {
+		if (i->is_empty())
+			continue;
+		if (subseq)
+			r << '|';
+		subseq = true;
+		r << '[' << (i->get_lower() * emul) << ',' << (i->get_upper() * emul) << ')';
+	}
+	if (subseq)
+		return r.str();
+	return "[)";
 }
 
 std::string to_str(PolygonSimple::inside_t i)
@@ -3626,7 +3672,7 @@ unsigned int PolygonSimple::zap_leastimportant(Point& pt)
 	}
 	pt = operator[](idx);
 	erase(begin() + idx);
-	return idx;	
+	return idx;
 }
 
 std::ostream& PolygonSimple::print_nrvertices(std::ostream& os, bool prarea) const
@@ -3822,7 +3868,7 @@ const uint8_t *PolygonSimple::wkbdecode(const uint8_t *cp, const uint8_t *ep, ui
 	}
 	if (size() >= 2 && front() == back())
 		resize(size() - 1);
-	return cp;	
+	return cp;
 }
 
 uint8_t *PolygonSimple::to_wkb(uint8_t *cp, uint8_t *ep) const
@@ -4128,7 +4174,7 @@ int PolygonHole::compare(const PolygonHole& x) const
 		if (c)
 			return c;
 	}
-	return 0;	
+	return 0;
 }
 
 void PolygonHole::normalize(void)
@@ -4768,7 +4814,7 @@ int MultiPolygonHole::compare(const MultiPolygonHole& x) const
 		if (c)
 			return c;
 	}
-	return 0;	
+	return 0;
 }
 
 void MultiPolygonHole::make_fat_lines_helper(MultiPolygonHole& ph, float radius, bool roundcaps, float angleincr, bool rawcoord) const
@@ -4937,7 +4983,7 @@ uint8_t *MultiPolygonHole::blobencode(const PolygonHole& p, uint8_t *data)
 	data = PolygonHole::blobencode(p.get_exterior(), data);
 	for (unsigned int i = 0; i < n; ++i)
 		data = PolygonHole::blobencode(p[i], data);
-	return data;	
+	return data;
 }
 
 uint8_t const *MultiPolygonHole::blobdecode(PolygonHole& p, uint8_t const *data, uint8_t const *end)
@@ -5087,6 +5133,291 @@ Json::Value MultiPolygonHole::to_json(void) const
 
 #endif
 
+const Point3D::alt_t Point3D::invalid_alt = std::numeric_limits<alt_t>::min();
+
+void Point3D::set_invalid(void)
+{
+	Point::set_invalid();
+	unset_alt();
+}
+
+std::ostream& Point3D::print(std::ostream& os) const
+{
+	os << '(' << (std::string)get_lon_str() << ',' << (std::string)get_lat_str()<< ',';
+	if (is_alt_valid())
+		os << get_alt();
+	else
+		os << "--";
+	os << ')';
+	return os;
+}
+
+std::ostream& Point3D::to_wktpt(std::ostream& os) const
+{
+	os << get_lon_deg_dbl() << ' ' << get_lat_deg_dbl();
+	if (is_alt_valid())
+		os << ' ' << get_alt();
+	return os;
+}
+
+std::ostream& Point3D::to_wkt(std::ostream& os) const
+{
+	return to_wktpt(os << "POINT(") << ')';
+}
+
+#ifdef HAVE_JSONCPP
+
+Json::Value Point3D::to_json(void) const
+{
+	Json::Value r;
+	r["type"] = "Point";
+	Json::Value& c(r["coordinates"]);
+	c.append(get_lon_deg_dbl());
+	c.append(get_lat_deg_dbl());
+	if (is_alt_valid())
+		c.append((double)get_alt());
+	return r;
+}
+
+void Point3D::from_json(const Json::Value& g)
+{
+	set_invalid();
+	if (!g.isMember("type") || !g["type"].isString() || g["type"].asString() != "Point")
+		throw std::runtime_error("Point3D::from_json: invalid type");
+	if (!g.isMember("coordinates"))
+		throw std::runtime_error("Point3D::from_json: no coordinates");
+	const Json::Value& c(g["coordinates"]);
+	if (!c.isArray() || c.size() < 2 || !c[0].isNumeric() || !c[1].isNumeric())
+		throw std::runtime_error("Point3D::from_json: invalid coordinates");
+	set_lon_deg_dbl(c[0].asDouble());
+	set_lat_deg_dbl(c[1].asDouble());
+	if (c.size() >= 3 && c[2].isNumeric())
+		set_alt(round<alt_t,double>(c[2].asDouble()));
+}
+
+#endif
+
+LineString3D::LineString3D(void)
+{
+}
+
+LineString3D::LineString3D(const LineString& ls)
+{
+	insert(end(), ls.begin(), ls.end());
+}
+
+Rect LineString3D::get_bbox(void) const
+{
+	if (!size()) {
+		Rect r;
+		r.set_empty();
+		return r;
+	}
+	Point::coord_t lat(front().get_lat()), latmin(lat), latmax(lat);
+	int64_t lon(front().get_lon()), lonmin(lon), lonmax(lon);
+	for (size_type i(1), n(size()); i < n; ++i) {
+		Point p(operator[](i) - operator[](i - 1));
+		lat += p.get_lat();
+		lon += p.get_lon();
+		latmin = std::min(latmin, lat);
+		latmax = std::max(latmax, lat);
+		lonmin = std::min(lonmin, lon);
+		lonmax = std::max(lonmax, lon);
+	}
+	return Rect(Point(lonmin, latmin), Point(lonmax, latmax));
+}
+
+LineString3D::operator LineString(void) const
+{
+	LineString ls;
+	ls.reserve(size());
+	for (const_iterator i(begin()), e(end()); i != e; ++i)
+		ls.push_back(*i);
+	return ls;
+}
+
+std::ostream& LineString3D::print(std::ostream& os) const
+{
+	os << '(';
+	bool subseq(false);
+	for (const_iterator i(begin()), e(end()); i != e; ++i) {
+		if (subseq)
+			os << ", ";
+		subseq = true;
+		os << i->get_lon_str2() << ' ' << i->get_lat_str2() << ' ';
+		if (i->is_alt_valid())
+			os << i->get_alt();
+		else
+			os << "--";
+	}
+	return os << ')';
+}
+
+std::ostream& LineString3D::to_wktlst(std::ostream& os) const
+{
+	os << '(';
+	static const char comma[] = ",";
+	const char *del(comma + 1);
+	for (const_iterator i(begin()), e(end()); i != e; ++i) {
+		i->to_wktpt(os << del);
+		del = comma;
+	}
+	return os << ')';
+}
+
+std::ostream& LineString3D::to_wkt(std::ostream& os) const
+{
+	return to_wktlst(os << "LINESTRING");
+}
+
+#ifdef HAVE_JSONCPP
+
+Json::Value LineString3D::to_json(void) const
+{
+	Json::Value r;
+	r["type"] = "LineString";
+	Json::Value& c(r["coordinates"]);
+	for (const_iterator i(begin()), e(end()); i != e; ++i) {
+		Json::Value p;
+		p.append(i->get_lon_deg_dbl());
+		p.append(i->get_lat_deg_dbl());
+		if (i->is_alt_valid())
+			p.append((double)i->get_alt());
+		c.append(p);
+	}
+	return r;
+}
+
+void LineString3D::from_json(const Json::Value& g)
+{
+	clear();
+	if (!g.isMember("type") || !g["type"].isString() || g["type"].asString() != "LineString")
+		throw std::runtime_error("LineString3D::from_json: invalid type");
+	if (!g.isMember("coordinates"))
+		throw std::runtime_error("LineString3D::from_json: no coordinates");
+	const Json::Value& c(g["coordinates"]);
+	if (!c.isArray())
+		throw std::runtime_error("LineString3D::from_json: invalid coordinates");
+	for (Json::ArrayIndex i = 0; i < c.size(); ++i) {
+		const Json::Value& cc(c[i]);
+		if (!cc.isArray() || cc.size() < 2 || !cc[0].isNumeric() || !cc[1].isNumeric())
+			throw std::runtime_error("LineString3D::from_json: invalid coordinates");
+		Point3D pt;
+		pt.set_lon_deg_dbl(cc[0].asDouble());
+		pt.set_lat_deg_dbl(cc[1].asDouble());
+		if (cc.size() >= 3 && cc[2].isNumeric())
+			pt.set_alt(Point3D::round<Point3D::alt_t,double>(cc[2].asDouble()));
+		push_back(pt);
+	}
+}
+
+#endif
+
+PolygonSimple3D::PolygonSimple3D(void)
+{
+}
+
+PolygonSimple3D::PolygonSimple3D(const PolygonSimple& ps)
+{
+	insert(end(), ps.begin(), ps.end());
+}
+
+PolygonSimple3D::reference PolygonSimple3D::operator[](size_type x)
+{
+	size_type y(size());
+	if (x >= y && y > 0)
+		x %= y;
+	return base_t::operator[](x);
+}
+
+PolygonSimple3D::const_reference PolygonSimple3D::operator[](size_type x) const
+{
+	size_type y(size());
+	if (x >= y && y > 0)
+		x %= y;
+	return base_t::operator[](x);
+}
+
+PolygonSimple3D::operator PolygonSimple(void) const
+{
+	PolygonSimple ps;
+	ps.reserve(size());
+	for (const_iterator i(begin()), e(end()); i != e; ++i)
+		ps.push_back(*i);
+	return ps;
+}
+
+std::ostream& PolygonSimple3D::to_wktpoly(std::ostream& os) const
+{
+	os << '(';
+	static const char comma[] = ",";
+	const char *del(comma + 1);
+	for (const_iterator i(begin()), e(end()); i != e; ++i) {
+		i->to_wktpt(os << del);
+		del = comma;
+	}
+	if (!empty()) {
+		front().to_wktpt(os << del);
+		del = comma;
+	}
+	return os << ')';
+}
+
+std::ostream& PolygonSimple3D::to_wkt(std::ostream& os) const
+{
+	return to_wktpoly(os << "POLYGON(") << ')';
+}
+
+#ifdef HAVE_JSONCPP
+
+Json::Value PolygonSimple3D::to_json(void) const
+{
+	Json::Value r;
+	r["type"] = "Polygon";
+	Json::Value& c(r["coordinates"]);
+	Json::Value ri;
+	for (const_iterator i(begin()), e(end()); i != e; ++i) {
+		Json::Value p;
+		p.append(i->get_lon_deg_dbl());
+		p.append(i->get_lat_deg_dbl());
+		if (i->is_alt_valid())
+			p.append((double)i->get_alt());
+		ri.append(p);
+	}
+	c.append(ri);
+	return r;
+}
+
+void PolygonSimple3D::from_json(const Json::Value& g)
+{
+	clear();
+	if (!g.isMember("type") || !g["type"].isString() || g["type"].asString() != "Polygon")
+		throw std::runtime_error("PolygonSimple::from_json: invalid type");
+	if (!g.isMember("coordinates"))
+		throw std::runtime_error("PolygonSimple::from_json: no coordinates");
+	const Json::Value& c(g["coordinates"]);
+	if (!c.isArray() || c.size() != 1)
+		throw std::runtime_error("PolygonSimple::from_json: invalid coordinates");
+	{
+		const Json::Value& cc(c[0]);
+		if (!cc.isArray())
+			throw std::runtime_error("PolygonSimple::from_json: invalid coordinates");
+		for (Json::ArrayIndex ii = 0; ii < cc.size(); ++ii) {
+			const Json::Value& ccc(cc[ii]);
+			if (!ccc.isArray() || ccc.size() < 2 || !ccc[0].isNumeric() || !ccc[1].isNumeric())
+				throw std::runtime_error("PolygonSimple::from_json: invalid coordinates");
+			Point3D pt;
+			pt.set_lon_deg_dbl(ccc[0].asDouble());
+			pt.set_lat_deg_dbl(ccc[1].asDouble());
+			if (ccc.size() >= 3 && ccc[2].isNumeric())
+				pt.set_alt(Point3D::round<Point3D::alt_t,double>(ccc[2].asDouble()));
+			push_back(pt);
+		}
+	}
+}
+
+#endif
+
 const IntervalBoundingBox::int_t::type_t IntervalBoundingBox::lmin(std::numeric_limits<Point::coord_t>::min());
 const IntervalBoundingBox::int_t::type_t IntervalBoundingBox::lmax(std::numeric_limits<Point::coord_t>::max() + lone);
 const IntervalBoundingBox::int_t::type_t IntervalBoundingBox::lone;
@@ -5171,7 +5502,7 @@ void IntervalBoundingBox::add(const PolygonSimple& p)
 	for (PolygonSimple::size_type j(n-1), i(0); i < n; j = i, ++i)
 		add(p[j], p[i]);
 }
-	
+
 void IntervalBoundingBox::add(const PolygonHole& p)
 {
 	add(p.get_exterior());
@@ -5317,37 +5648,37 @@ const std::string& to_str(Geometry::type_t t)
 		static const std::string r("POINT");
 		return r;
 	}
-	
+
 	case Geometry::type_linestring:
 	{
 		static const std::string r("LINESTRING");
 		return r;
 	}
-	
+
 	case Geometry::type_polygon:
 	{
 		static const std::string r("POLYGON");
 		return r;
 	}
-	
+
 	case Geometry::type_multipoint:
 	{
 		static const std::string r("MULTIPOINT");
 		return r;
 	}
-	
+
 	case Geometry::type_multilinestring:
 	{
 		static const std::string r("MULTILINESTRING");
 		return r;
 	}
-	
+
 	case Geometry::type_multipolygon:
 	{
 		static const std::string r("MULTIPOLYGON");
 		return r;
 	}
-	
+
 	case Geometry::type_geometrycollection:
 	{
 		static const std::string r("GEOMETRYCOLLECTION");
@@ -5979,7 +6310,7 @@ Geometry::ptr_t GeometryCollection::flatten(void) const
 			Geometry::ptr_t p(g[i]);
 			if (!p)
 				continue;
-			gn.m_el.push_back(p);			
+			gn.m_el.push_back(p);
 		}
 	}
 	if (gn.m_el.size() == 1)
@@ -6187,7 +6518,7 @@ template <typename T> constexpr typename PolarVector3D<T>::float_t PolarVector3D
 template <typename T> constexpr typename PolarVector3D<T>::float_t PolarVector3D<T>::to_deg;
 
 template <typename T>
-PolarVector3D<T>::PolarVector3D(const Point& pt, int16_t altft)
+PolarVector3D<T>::PolarVector3D(const Point& pt, int32_t altft)
 	: m_lat(pt.get_lat_rad()), m_lon(pt.get_lon_rad()), m_r(altft * ft_to_m + earth_radius)
 {
 }

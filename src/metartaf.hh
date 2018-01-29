@@ -179,13 +179,15 @@ public:
 
 	typedef std::vector<Station> stations_t;
 	typedef std::set<FIR> firs_t;
-	
+
 	MetarTafSet(void);
 	void add_fir(const std::string& id = "", const MultiPolygonHole& poly = MultiPolygonHole());
 	void loadstn_sqlite(const std::string& dbpath, const Rect& bbox,
 			    unsigned int metarhistory, unsigned int tafhistory);
-	void loadstn_pg(const std::string& dbpath, const Rect& bbox, time_t tmin, time_t tmax,
+#ifdef HAVE_PQXX
+	void loadstn_pg(pqxx::connection_base& conn, const Rect& bbox, time_t tmin, time_t tmax,
 			unsigned int metarhistory, unsigned int tafhistory);
+#endif
 
 	const stations_t& get_stations(void) const { return m_stations; }
 	stations_t& get_stations(void) { return m_stations; }
@@ -207,9 +209,6 @@ protected:
 	class PGMetarTransactor;
 	class PGTafTransactor;
 	class PGSigmetTransactor;
-#ifdef HAVE_PQXX
-	std::unique_ptr<pqxx::connection> m_conn;
-#endif
 };
 
 #endif /* METARTAF_H */

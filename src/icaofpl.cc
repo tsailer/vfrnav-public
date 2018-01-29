@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2012, 2013, 2014, 2015 by Thomas Sailer                 *
+ *   Copyright (C) 2012, 2013, 2014, 2015, 2017 by Thomas Sailer           *
  *   t.sailer@alumni.ethz.ch                                               *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -91,7 +91,7 @@ public:
 	SortAirwayDist(const Point& pt) : m_point(pt) {}
 	bool operator()(const AirwaysDb::element_t& a, const AirwaysDb::element_t& b) const {
 		return std::min(m_point.simple_distance_rel(a.get_begin_coord()),
-				m_point.simple_distance_rel(a.get_end_coord())) < 
+				m_point.simple_distance_rel(a.get_end_coord())) <
 			std::min(m_point.simple_distance_rel(b.get_begin_coord()),
 				 m_point.simple_distance_rel(b.get_end_coord()));
 	}
@@ -165,7 +165,7 @@ void IcaoFlightPlan::FindCoord::async_connectdone(void)
 		m_airwayquery->connect(sigc::mem_fun(*this, &FindCoord::async_done));
 	if (m_areaquery)
 		m_areaquery->connect(sigc::mem_fun(*this, &FindCoord::async_done));
-}		
+}
 
 void IcaoFlightPlan::FindCoord::async_done(void)
 {
@@ -717,7 +717,7 @@ std::string IcaoFlightPlan::Waypoint::get_coordstr(void) const
 	oss << std::setw(3) << std::setfill('0') << ci;
 	ci = floor(c + 0.5) + 0.01;
 	oss << std::setw(2) << std::setfill('0') << ci << ch;
-	return oss.str();	
+	return oss.str();
 }
 
 bool IcaoFlightPlan::Waypoint::enforce_pathcode_vfrifr(void)
@@ -966,7 +966,7 @@ Point IcaoFlightPlan::ParseWaypoint::parse_coord(const std::string& txt)
 			pt.set_lat_deg(-(deg * (1.0 / 60.0) * min));
 		else if (txt[i] == 'N')
 			pt.set_lat_deg(deg * (1.0 / 60.0) * min);
-		else 
+		else
 			return ptinv;
 		++i;
 	}
@@ -985,7 +985,7 @@ Point IcaoFlightPlan::ParseWaypoint::parse_coord(const std::string& txt)
 			pt.set_lon_deg(-(deg * (1.0 / 60.0) * min));
 		else if (txt[i] == 'E')
 			pt.set_lon_deg(deg * (1.0 / 60.0) * min);
-		else 
+		else
 			return ptinv;
 		++i;
 	}
@@ -1877,9 +1877,12 @@ std::ostream& IcaoFlightPlan::ParseState::print(std::ostream& os) const
 const bool IcaoFlightPlan::trace_parsestate;
 
 IcaoFlightPlan::IcaoFlightPlan(Engine& engine)
-	: m_engine(engine), m_aircraftid("ZZZZZ"), m_aircrafttype("P28R"), m_equipment("SDFGLOR"), m_transponder("S"),
-	  m_departuretime(0), m_totaleet(0), m_endurance(0), m_pbn(Aircraft::pbn_b2), m_number(1), m_personsonboard(0),
-	  m_departureflags(0), m_destinationflags(0), m_defaultalt(5000), m_flighttype('G'), m_wakecategory('L')
+	: m_engine(engine), m_aircraftid("ZZZZZ"), m_aircrafttype("P28R"), m_departuretime(0), m_totaleet(0), m_endurance(0),
+	  m_nav(Aircraft::nav_lpv | Aircraft::nav_dme | Aircraft::nav_adf | Aircraft::nav_gnss | Aircraft::nav_pbn),
+	  m_com(Aircraft::com_standard | Aircraft::com_vhf_833), m_transponder(Aircraft::transponder_modes_s),
+	  m_emergency(Aircraft::emergency_radio_elt), m_pbn(Aircraft::pbn_b2), m_number(1), m_personsonboard(0),
+	  m_departureflags(0), m_destinationflags(0), m_dinghiesnumber(0), m_dinghiescapacity(0),
+	  m_defaultalt(5000), m_flighttype('G'), m_wakecategory('L')
 {
 	m_departurecoord.set_invalid();
 	m_destinationcoord.set_invalid();
@@ -1899,8 +1902,10 @@ void IcaoFlightPlan::clear(void)
 	m_otherinfo.clear();
 	m_aircraftid = "ZZZZZ";
 	m_aircrafttype = "P28R";
-	m_equipment = "SDFGLOR";
-	m_transponder = "S";
+	m_nav = Aircraft::nav_lpv | Aircraft::nav_dme | Aircraft::nav_adf | Aircraft::nav_gnss | Aircraft::nav_pbn;
+	m_com = Aircraft::com_standard | Aircraft::com_vhf_833;
+	m_transponder = Aircraft::transponder_modes_s;
+	m_emergency = Aircraft::emergency_radio_elt;
 	m_cruisespeed.clear();
 	m_departure.clear();
 	m_destination.clear();
@@ -1908,13 +1913,10 @@ void IcaoFlightPlan::clear(void)
 	m_alternate2.clear();
 	m_sid.clear();
 	m_star.clear();
+	m_dinghiescolor.clear();
 	m_colourmarkings.clear();
 	m_remarks.clear();
 	m_picname.clear();
-	m_emergencyradio.clear();
-	m_survival.clear();
-	m_lifejackets.clear();
-	m_dinghies.clear();
 	m_cruisespeeds.clear();
 	m_departurecoord.set_invalid();
 	m_destinationcoord.set_invalid();
@@ -1926,6 +1928,8 @@ void IcaoFlightPlan::clear(void)
 	m_personsonboard = 0;
 	m_departureflags = 0;
 	m_destinationflags = 0;
+	m_dinghiesnumber = 0;
+	m_dinghiescapacity = 0;
 	m_defaultalt = 5000;
 	m_flighttype = 'G';
 	m_wakecategory = 'L';
@@ -2226,7 +2230,10 @@ IcaoFlightPlan::parseresult_t IcaoFlightPlan::parse(std::string::const_iterator 
 			errors.push_back("invalid equipment");
 			return std::make_pair(txti, errors);
 		}
-		set_equipment(s);
+		if (!set_equipment(s)) {
+			errors.push_back("invalid equipment");
+			return std::make_pair(txti, errors);
+		}
 	}
 	if (txti == txte || *txti != '/') {
 		errors.push_back("slash expected");
@@ -2240,7 +2247,10 @@ IcaoFlightPlan::parseresult_t IcaoFlightPlan::parse(std::string::const_iterator 
 			errors.push_back("invalid transponder");
 			return std::make_pair(txti, errors);
 		}
-		set_transponder(s);
+		if (!set_transponder(s)) {
+			errors.push_back("invalid transponder");
+			return std::make_pair(txti, errors);
+		}
 	}
 	trim(txti, txte);
 	if (txti == txte || *txti != '-') {
@@ -2383,14 +2393,18 @@ IcaoFlightPlan::parseresult_t IcaoFlightPlan::parse(std::string::const_iterator 
 				errors.push_back("invalid other information");
 				return std::make_pair(txti, errors);
 			}
-			if (cat == "PBN")
-				set_pbn(s);
-			else
+			if (cat == "PBN") {
+				if (!set_pbn(s)) {
+					errors.push_back("invalid PBN");
+					return std::make_pair(txti, errors);
+				}
+			} else {
 				otherinfo_add(cat, s);
+			}
 		}
 		if (txti != txte && *txti == '-') {
 			++txti;
-			std::string cat;
+			std::string cat, emergencyradio, survival, lifejackets, dinghies;
 			while (txti != txte && *txti != '-' && *txti != ')') {
 				std::string s;
 				if (!parsetxt(s, 0, txti, txte)) {
@@ -2422,6 +2436,10 @@ IcaoFlightPlan::parseresult_t IcaoFlightPlan::parse(std::string::const_iterator 
 						}
 						continue;
 					}
+					if (cat == "S")
+						set_survival(get_survival() | Aircraft::emergency_survival);
+					if (cat == "J")
+						set_lifejackets(get_lifejackets() | Aircraft::emergency_jackets);
 					continue;
 				}
 				if (cat.empty()) {
@@ -2450,33 +2468,45 @@ IcaoFlightPlan::parseresult_t IcaoFlightPlan::parse(std::string::const_iterator 
 					continue;
 				}
 				if (cat == "R") {
-					if (get_emergencyradio().empty())
-						set_emergencyradio(s);
-					else
-						set_emergencyradio(get_emergencyradio() + " " + s);
+					if (!emergencyradio.empty())
+						emergencyradio.push_back(' ');
+					emergencyradio += s;
 					continue;
 				}
 				if (cat == "S") {
-					if (get_survival().empty())
-						set_survival(s);
-					else
-						set_survival(get_survival() + " " + s);
+			        	if (!survival.empty())
+						survival.push_back(' ');
+					survival += s;
 					continue;
 				}
 				if (cat == "J") {
-					if (get_lifejackets().empty())
-						set_lifejackets(s);
-					else
-						set_lifejackets(get_lifejackets() + " " + s);
+			        	if (!lifejackets.empty())
+						lifejackets.push_back(' ');
+					lifejackets += s;
 					continue;
 				}
 				if (cat == "D") {
-					if (get_dinghies().empty())
-						set_dinghies(s);
-					else
-						set_dinghies(get_dinghies() + " " + s);
+					if (!dinghies.empty())
+						dinghies.push_back(' ');
+					dinghies += s;
 					continue;
 				}
+			}
+			if (!set_emergencyradio(emergencyradio)) {
+				errors.push_back("invalid emergency radio");
+				return std::make_pair(txti, errors);
+			}
+			if (!set_survival(survival)) {
+				errors.push_back("invalid survival equipment");
+				return std::make_pair(txti, errors);
+			}
+			if (!set_lifejackets(lifejackets)) {
+				errors.push_back("invalid lifejackets");
+				return std::make_pair(txti, errors);
+			}
+			if (!set_dinghies(dinghies)) {
+				errors.push_back("invalid dinghies");
+				return std::make_pair(txti, errors);
 			}
 		}
 	}
@@ -2637,6 +2667,229 @@ IcaoFlightPlan::parseresult_t IcaoFlightPlan::parse_route(std::vector<FPlanWaypo
 	return std::make_pair(txti, errors);
 }
 
+IcaoFlightPlan::parseresult_t IcaoFlightPlan::parse_garminpilot(std::string::const_iterator txti, std::string::const_iterator txte, bool do_expand_airways)
+{
+	errors_t errors;
+	{
+		static const char prefix[] = "garminpilot://flightplan?";
+		std::string::const_iterator ti(txti);
+		for (const char *cp = prefix; *cp; ++cp, ++ti)
+			if (ti == txte || *cp != *ti) {
+				errors.push_back("invalid prefix");
+				return std::make_pair(txti, errors);
+			}
+		txti = ti;
+	}
+	typedef std::map<std::string,std::string> params_t;
+	params_t params;
+	while (txti != txte) {
+		std::string::const_iterator ti1(txti);
+		while (ti1 != txte && *ti1 != '=' && *ti1 != '&')
+			++ti1;
+		std::string::const_iterator ti2(ti1);
+		if (ti2 != txte && *ti2 == '=')
+			++ti2;
+		std::string::const_iterator ti3(ti2);
+		while (ti3 != txte && *ti3 != '&')
+			++ti3;
+		if (ti1 == txti) {
+			errors.push_back("empty parameter");
+			txti = ti3;
+			continue;
+		}
+		if (!params.insert(params_t::value_type(std::string(txti, ti1), std::string(ti2, ti3))).second)
+			errors.push_back("duplicate parameter " + std::string(txti, ti1));
+		txti = ti3;
+		if (txti != txte)
+			++txti;
+	}
+	// aircraft
+	{
+		params_t::const_iterator pi(params.find("aircraft"));
+		if (pi != params.end())
+			set_aircraftid(pi->second);
+	}
+	// etd
+	{
+		params_t::const_iterator pi(params.find("etd"));
+		if (pi != params.end()) {
+			const char *cp(pi->second.c_str());
+			char *cp1;
+			time_t tm(strtoul(cp, &cp1, 10));
+			if (cp1 == cp || *cp1)
+				errors.push_back("invalid etd " + pi->second);
+			else
+				set_departuretime(tm);
+		}
+	}
+	// speed
+	double speed(std::numeric_limits<double>::quiet_NaN());
+	{
+		params_t::const_iterator pi(params.find("speed"));
+		if (pi != params.end()) {
+			const char *cp(pi->second.c_str());
+			char *cp1;
+			double spd(strtod(cp, &cp1));
+			if (cp1 == cp || *cp1) {
+				errors.push_back("invalid speed " + pi->second);
+			} else {
+				speed = spd;
+				std::ostringstream oss;
+				oss << 'N' << std::setw(4) << std::fixed << std::setprecision(0) << std::setfill('0') << speed;
+				set_cruisespeed(oss.str());
+			}
+		}
+	}
+	// altitude
+	int32_t altitude(5000);
+	{
+		params_t::const_iterator pi(params.find("altitude"));
+		if (pi != params.end()) {
+			const char *cp(pi->second.c_str());
+			char *cp1;
+			int32_t alt(strtol(cp, &cp1, 10));
+			if (cp1 == cp || *cp1)
+				errors.push_back("invalid altitude " + pi->second);
+			else
+				altitude = alt;
+		}
+	}
+	// route
+	ParseState state(m_engine);
+	if (!std::isnan(speed))
+		state.add_cruisespeed(altitude, speed);
+	{
+		params_t::const_iterator pi(params.find("route"));
+		if (pi != params.end()) {
+			m_departureflags = FPlanWaypoint::altflag_ifr | FPlanWaypoint::altflag_standard;
+			m_sid.clear();
+			m_star.clear();
+			m_route.clear();
+			for (std::string::const_iterator ri(pi->second.begin()), re(pi->second.end()); ri != re; ) {
+				std::string::const_iterator wi0(ri);
+				while (ri != re && *ri != '+')
+					++ri;
+				std::string::const_iterator wi1(ri);
+				if (ri != re)
+					++ri;
+				if (wi0 == wi1)
+					continue;
+				ParseWaypoint w;
+				w.set_icao(std::string(wi0, wi1));
+				w.set_type(FPlanWaypoint::type_undefined);
+				w.set_coord(Point::invalid);
+				w.set_typemask(ParseWaypoint::Vertex::typemask_navaid |
+					       ParseWaypoint::Vertex::typemask_intersection |
+					       ParseWaypoint::Vertex::typemask_mapelement);
+				w.set_altitude(altitude);
+				w.set_flags(m_departureflags);
+				// check for coordinate waypoint
+				{
+					const char *cp(w.get_icao().c_str());
+					char *cp1;
+					double lat(strtod(cp, &cp1));
+					if (cp1 != cp && *cp1 == '/') {
+						cp = cp1 + 1;
+						double lon(strtod(cp, &cp1));
+						if (cp1 != cp && !*cp1) {
+							Point pt;
+							pt.set_lat_deg_dbl(lat);
+							pt.set_lon_deg_dbl(lon);
+							w.set_coord(pt);
+							w.set_type(FPlanWaypoint::type_user);
+							w.set_icao(pt.get_fpl_str(Point::fplstrmode_degminsec));
+						}
+					}
+				}
+				state.add(w);
+			}
+		}
+	}
+	if (!state.empty()) {
+		state.front().set_type(FPlanWaypoint::type_airport);
+		state.front().set_typemask(ParseWaypoint::Vertex::typemask_airport);
+		state.back().set_type(FPlanWaypoint::type_airport);
+		state.back().set_typemask(ParseWaypoint::Vertex::typemask_airport);
+	}
+	if (trace_parsestate)
+		state.print(std::cerr << "Flight Plan after Parsing" << std::endl);
+	state.process_speedalt();
+	if (trace_parsestate)
+		state.print(std::cerr << "Flight Plan after Speed/Alt processing" << std::endl);
+	state.process_dblookup();
+	if (trace_parsestate)
+		state.print(std::cerr << "Flight Plan after DB lookup" << std::endl);
+	state.process_airways(do_expand_airways);
+	if (trace_parsestate)
+		state.print(std::cerr << "Flight Plan after airways processing" << std::endl);
+	{
+		ParseState::wpts_t::size_type n(state.size());
+		if (n < 2) {
+			errors.push_back("no waypoints after processing");
+			return std::make_pair(txti, errors);
+		}
+		const ParseWaypoint& dep(state[0]);
+		const ParseWaypoint& dest(state[n - 1]);
+		const ParseWaypoint& destp(state[n - 2]);
+		m_departure = dep.get_icao();
+		m_destination = dest.get_icao();
+		set_departuretime(dep.get_time());
+		m_departureflags = dep.get_flags() & ~FPlanWaypoint::altflag_standard;
+		m_destinationflags = dest.get_flags() & ~FPlanWaypoint::altflag_standard;
+		m_departurecoord = dep.get_coord();
+		m_destinationcoord = dest.get_coord();
+		if (dep.get_pathcode() == FPlanWaypoint::pathcode_sid)
+			m_sid = dep.get_pathname();
+		if (destp.get_pathcode() == FPlanWaypoint::pathcode_star)
+			m_star = destp.get_pathname();
+		for (ParseState::wpts_t::size_type i(2); i < n; ++i) {
+			m_route.push_back(state[i - 1]);
+			if (m_route.back().get_altitude() == std::numeric_limits<int32_t>::min())
+				m_route.back().set_altitude(m_defaultalt);
+		}
+	}
+	if (!std::isnan(speed) && speed > 0) {
+		double dist(0);
+		for (ParseState::wpts_t::size_type i0(0), n(state.size()); i0 < n; ) {
+			ParseWaypoint& w0(state[i0]);
+			if (w0.get_coord().is_invalid()) {
+				++i0;
+				continue;
+			}
+			ParseState::wpts_t::size_type i1(i0 + 1);
+			while (i1 < n && state[i1].get_coord().is_invalid())
+				++i1;
+			if (i1 >= n)
+				break;
+			const ParseWaypoint& w1(state[i1]);
+			dist += w0.get_coord().spheric_distance_nmi_dbl(w1.get_coord());
+			i0 = i1;
+		}
+		dist /= speed;
+		dist *= 3600;
+		if (!std::isnan(dist) && dist > 0)
+			set_totaleet(Point::round<time_t,double>(dist));
+	}
+	if (AirportsDb::Airport::is_fpl_zzzz(m_departure)) {
+		m_departure = "ZZZZ";
+		if (!m_departurecoord.is_invalid() && otherinfo_get("DEP").empty())
+			otherinfo_add("DEP", m_departurecoord.get_fpl_str());
+	} else if (!m_departurecoord.is_invalid()) {
+		otherinfo_clear("DEP");
+	}
+	if (AirportsDb::Airport::is_fpl_zzzz(m_destination)) {
+		m_departure = "ZZZZ";
+		if (!m_destinationcoord.is_invalid() && otherinfo_get("DEST").empty())
+			otherinfo_add("DEST", m_destinationcoord.get_fpl_str());
+	} else if (!m_destinationcoord.is_invalid()) {
+		otherinfo_clear("DEST");
+	}
+	m_cruisespeeds = state.get_cruisespeeds();
+	normalize_pogo();
+	errors.insert(errors.end(), state.get_errors().begin(), state.get_errors().end());
+	return std::make_pair(txti, errors);
+}
+
 Rect IcaoFlightPlan::get_bbox(void) const
 {
 	route_t::const_iterator ri(m_route.begin()), re(m_route.end());
@@ -2679,7 +2932,12 @@ char IcaoFlightPlan::get_flightrules(void) const
 		if (ft)
 			break;
 	}
-	return frules[ftype];	
+	return frules[ftype];
+}
+
+void IcaoFlightPlan::equipment_canonicalize(void)
+{
+	Aircraft::equipment_with_standard(m_nav, m_com);
 }
 
 IcaoFlightPlan::nameset_t IcaoFlightPlan::intersect(const nameset_t& s1, const nameset_t& s2)
@@ -2738,7 +2996,7 @@ void IcaoFlightPlan::populate(const FPlanRoute& route, awymode_t awymode, double
 			m_route.push_back(route[nr]);
 			m_route.back().set_time(route[nr].get_time_unix() - route[0].get_time_unix());
 			if (nr + 2 == nrwpt)
-				m_route.back().set_flags(m_route.back().get_flags() ^ 
+				m_route.back().set_flags(m_route.back().get_flags() ^
 							 ((m_route.back().get_flags() ^ m_destinationflags) & FPlanWaypoint::altflag_ifr));
 			have_ifr = have_ifr || m_route.back().is_ifr();
 			if (route[nr].is_ifr() && route[nr].get_pathcode() == FPlanWaypoint::pathcode_star)
@@ -3257,7 +3515,7 @@ void IcaoFlightPlan::find_airways(void)
 			tie(ei0, ei1) = boost::edge_range(uu1, uu2, areagraph);
 #else
 			tie(ei0, ei1) = boost::out_edges(uu1, areagraph);
-#endif			
+#endif
 			for (; ei0 != ei1; ++ei0) {
 #if 1
 				if (boost::target(*ei0, areagraph) != uu2)
@@ -3430,7 +3688,7 @@ std::string IcaoFlightPlan::untokenize(const std::vector<std::string>& s)
 			r.push_back(' ');
 		else
 			space = true;
-		r += *si;		
+		r += *si;
 	}
 	return r;
 }
@@ -3582,6 +3840,32 @@ bool IcaoFlightPlan::is_route_pogo(const std::string& dep, const std::string& de
 	return is_aiport_paris_tma(dep) && is_aiport_paris_tma(dest);
 }
 
+int32_t IcaoFlightPlan::get_route_pogo_alt(const std::string& dep, const std::string& dest)
+{
+	if (!is_route_pogo(dep, dest))
+		return 0;
+	static const struct pogoalt {
+		const char *icao;
+		int32_t alt;
+	} pogoalt[] = {
+		{ "LFOB", 4000 },
+		{ "LFPB", 3000 },
+		{ "LFPC", 3000 }, // ??
+		{ "LFPG", 5000 },
+		{ "LFPM", 3000 }, // ??
+		{ "LFPN", 3000 },
+		{ "LFPO", 5000 },
+		{ "LFPT", 3000 },
+		{ "LFPV", 3000 },
+		{ 0, 3000 }
+	};
+	const struct pogoalt *pg = pogoalt;
+	for (; pg->icao; ++pg)
+		if (dep == pg->icao)
+			return pg->alt;
+	return 0;
+}
+
 void IcaoFlightPlan::normalize_pogo(void)
 {
 	static const std::string remark("RMK");
@@ -3631,7 +3915,7 @@ std::string IcaoFlightPlan::get_fpl(bool line_breaks)
 	if (get_number() > 1U)
 		fpl << get_number();
 	fpl << get_aircrafttype() << '/' << get_wakecategory()
-	    << " -" << get_equipment() << '/' << get_transponder();
+	    << " -" << get_equipment_string() << '/' << get_transponder_string();
 	if (line_breaks)
 		fpl << std::endl;
 	else
@@ -3720,28 +4004,28 @@ std::string IcaoFlightPlan::get_fpl(bool line_breaks)
 				fpl << std::setw(3) << std::setfill('0') << get_personsonboard();
 			subseq = true;
 		}
-		if (!get_emergencyradio().empty()) {
+		if (get_emergencyradio()) {
 			if (subseq)
 				fpl << ' ';
-			fpl << "R/" << get_emergencyradio();
+			fpl << "R/" << get_emergencyradio_string();
 			subseq = true;
 		}
-		if (!get_survival().empty()) {
+		if (get_survival()) {
 			if (subseq)
 				fpl << ' ';
-			fpl << "S/" << get_survival();
+			fpl << "S/" << get_survival_string();
 			subseq = true;
 		}
-		if (!get_lifejackets().empty()) {
+		if (get_lifejackets()) {
 			if (subseq)
 				fpl << ' ';
-			fpl << "J/" << get_lifejackets();
+			fpl << "J/" << get_lifejackets_string();
 			subseq = true;
 		}
-		if (!get_dinghies().empty()) {
+		if (get_dinghies()) {
 			if (subseq)
 				fpl << ' ';
-			fpl << "D/" << get_dinghies();
+			fpl << "D/" << get_dinghies_string();
 			subseq = true;
 		}
 		if (!get_colourmarkings().empty()) {
@@ -4010,19 +4294,25 @@ void IcaoFlightPlan::set_aircraft(const Aircraft& acft, const Aircraft::Cruise::
 		}
 	}
 	set_wakecategory(acft.get_wakecategory());
-	if (!acft.get_equipment().empty())
-		set_equipment(acft.get_equipment());
-	if (!acft.get_transponder().empty())
+	if (acft.get_nav() || acft.get_com()) {
+		set_nav(acft.get_nav());
+		set_com(acft.get_com());
+	}
+	if (acft.get_transponder())
 		set_transponder(acft.get_transponder());
 	set_pbn(acft.get_pbn());
-	if (!acft.get_emergencyradio().empty())
+	if (acft.get_emergencyradio())
 		set_emergencyradio(acft.get_emergencyradio());
-	if (!acft.get_survival().empty())
+	if (acft.get_survival())
 		set_survival(acft.get_survival());
-	if (!acft.get_lifejackets().empty())
+	if (acft.get_lifejackets())
 		set_lifejackets(acft.get_lifejackets());
-	if (!acft.get_dinghies().empty())
+	if (acft.get_dinghies()) {
 		set_dinghies(acft.get_dinghies());
+		set_dinghiesnumber(acft.get_dinghiesnumber());
+		set_dinghiescapacity(acft.get_dinghiescapacity());
+		set_dinghiescolor(acft.get_dinghiescolor());
+	}
 	if (!acft.get_picname().empty())
 		set_picname(Aircraft::to_ascii(acft.get_picname()));
 	for (Aircraft::otherinfo_const_iterator_t oii(acft.otherinfo_begin()), oie(acft.otherinfo_end()); oii != oie; ++oii)

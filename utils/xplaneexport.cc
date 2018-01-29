@@ -329,7 +329,7 @@ bool XplaneWriter::ForEachAirport::operator()(const AirportsDb::Airport & e)
         for (unsigned int ihp = 0; ihp < e.get_nrhelipads(); ++ihp) {
                 const AirportsDb::Airport::Helipad& hp(e.get_helipad(ihp));
                 m_xplanew() << "102 " << hp.get_ident() << ' ' << hp.get_coord().get_lat_deg() << ' ' << hp.get_coord().get_lon_deg()
-                            << ' ' << (hp.get_hdg() * FPlanLeg::to_deg) << ' ' << (hp.get_length() * Point::ft_to_m) << ' ' << (hp.get_width() * Point::ft_to_m) 
+                            << ' ' << (hp.get_hdg() * FPlanLeg::to_deg) << ' ' << (hp.get_length() * Point::ft_to_m) << ' ' << (hp.get_width() * Point::ft_to_m)
                             << ' ' << convert_surface_code(hp.get_surface()) << ' ' << helipad_marking(hp) << ' ' << convert_shoulder_code(hp.get_surface())
                             << " 0.25 0" << std::endl;
         }

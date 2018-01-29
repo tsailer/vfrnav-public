@@ -774,7 +774,7 @@ static void georef_page(PoDoFo::PdfDocument& doc, PoDoFo::PdfPage *page, const J
 			PoDoFo::PdfDictionary disp;
 			disp.AddKey("Type", PoDoFo::PdfName("Projection"));
 			disp.AddKey("ProjectionType", PoDoFo::PdfString("GEODETIC"));
-			disp.AddKey("Datum", PoDoFo::PdfString("WE")); // WGS 84		
+			disp.AddKey("Datum", PoDoFo::PdfString("WE")); // WGS 84
 			lgidict->GetDictionary().AddKey("Display", disp);
 		}
 		{

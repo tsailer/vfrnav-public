@@ -1069,9 +1069,7 @@ void Sensors::initacft(void)
 	std::string afile(Glib::build_filename(PACKAGE_DATA_DIR, "aircraft", acft));
 	if (Glib::file_test(mfile, Glib::FILE_TEST_EXISTS) && m_aircraft.load_file(mfile)) {
 		m_aircraftfile = mfile;
-		if (m_aircraft.get_dist().recalculatepoly(false) ||
-		    m_aircraft.get_climb().recalculatepoly(false) ||
-		    m_aircraft.get_descent().recalculatepoly(false))
+		if (m_aircraft.recompute())
 			m_aircraft.save_file(mfile);
 		return;
 	}
@@ -1084,9 +1082,7 @@ void Sensors::initacft(void)
 		afile += ".xml";
 		if (Glib::file_test(mfile, Glib::FILE_TEST_EXISTS) && m_aircraft.load_file(mfile)) {
 			m_aircraftfile = mfile;
-			if (m_aircraft.get_dist().recalculatepoly(false) ||
-			    m_aircraft.get_climb().recalculatepoly(false) ||
-			    m_aircraft.get_descent().recalculatepoly(false))
+			if (m_aircraft.recompute())
 				m_aircraft.save_file(mfile);
 			return;
 		}

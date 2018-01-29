@@ -133,14 +133,14 @@ void main(void)
 #endif
 
 /** The "workhorse" function for sun rise/set times
- * 
+ *
  * @param year calendar year, 1801-2099 only
  * @param month calendar month (1..12)
  * @param day calendar day
  * @param lon Eastern longitude positive, Western longitude negative
  * @param lat Northern latitude positive, Southern latitude negative
  * @param altit the altitude which the Sun should cross;
- * Set to -35/60 degrees for rise/set, -6 degrees for civil, 
+ * Set to -35/60 degrees for rise/set, -6 degrees for civil,
  * -12 degrees for nautical and -18 degrees for astronomical twilight
  * @param upper_limb true -> upper limb, false -> center
  * Set to true when computing rise/set times, and to false when computing start/end
@@ -237,7 +237,7 @@ int SunriseSunset::__sunriset__( int year, int month, int day, double lon, doubl
 
 
 /**The "workhorse" function for day length
- * 
+ *
  * @param year calendar year, 1801-2099 only
  * @param month calendar month (1..12)
  * @param day calendar day

@@ -267,7 +267,7 @@ int main(int argc, char *argv[])
 			  << "     -s, --stations    US Stations file" << std::endl
 			  << "     -c, --csv         Dump as CSV" << std::endl << std::endl;
                 return EX_USAGE;
-        }	
+        }
 	std::istringstream iss;
 	{
 		GetCURL curl(stnlist);

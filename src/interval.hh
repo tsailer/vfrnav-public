@@ -29,6 +29,8 @@ public:
 	bool is_overlap(const Interval& x) const;
 	bool is_adjacent(const Interval& x) const;
 	bool is_overlap_or_adjacent(const Interval& x) const;
+	void set_lower(type_t val) { m_lower = val; }
+	void set_upper(type_t val) { m_upper = val; }
 	void set_empty(void);
 	void set_full(void);
 	std::string to_str(void) const;
@@ -39,6 +41,8 @@ public:
 	bool operator<=(const Interval& x) const { return compare(x) <= 0; }
 	bool operator>(const Interval& x) const { return compare(x) > 0; }
 	bool operator>=(const Interval& x) const { return compare(x) >= 0; }
+	Interval& operator&=(const Interval& x) { *this = *this & x; return *this; }
+	Interval operator&(const Interval& x) const;
 
 	template<class Archive> void hibernate(Archive& ar) {
 		ar.io(m_lower);
@@ -129,6 +133,8 @@ protected:
 		typedef Interval<TT> Intvl;
 
 		static inline bool add(set_t& set, const Interval<TT>& iv) {
+			if (iv.is_empty())
+				return false;
 			return set.insert(iv).second;
 		}
 	};
@@ -139,6 +145,8 @@ protected:
 		typedef Interval<TT> Intvl;
 
 		static inline bool add(set_t& set, const Interval<TT>& iv) {
+			if (iv.is_empty())
+				return false;
 			set.push_back(iv);
 			return true;
 		}
@@ -148,6 +156,9 @@ public:
 	typedef typename set_t::const_iterator const_iterator;
 	const_iterator begin(void) const { return m_set.begin(); }
 	const_iterator end(void) const { return m_set.end(); }
+	typedef typename set_t::const_reverse_iterator const_reverse_iterator;
+	const_reverse_iterator rbegin(void) const { return m_set.rbegin(); }
+	const_reverse_iterator rend(void) const { return m_set.rend(); }
 
 protected:
 	set_t m_set;

@@ -4,7 +4,7 @@
 // Description: GRIB2 File Header Dump
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2013, 2015
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2013, 2015, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -12,7 +12,9 @@
 
 // http://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_doc.shtml
 // http://www.wmo.int/pages/prog/www/WMOCodes/Guides/GRIB/GRIB2_062006.pdf
+// http://www.wmo.int/pages/prog/www/DPS/FM92-GRIB2-11-2003.pdf
 // http://www.ftp.ncep.noaa.gov/data/nccf/com/gfs/prod/gfs.2013032306/gfs.t06z.pgrb2f03
+// https://rda.ucar.edu/libraries/grib/c_routines/unpackgrib2.c
 
 #include "sysdeps.h"
 #include <sys/types.h>
@@ -36,8 +38,15 @@
 
 class GRIB2File : public GRIB2 {
 public:
-	GRIB2File(void);
+	typedef enum {
+		dump_none        = 0,
+		dump_filedata    = 1 << 0,
+		dump_rawdata     = 1 << 1,
+		dump_decodeddata = 1 << 2,
+		dump_all         = dump_filedata | dump_rawdata | dump_decodeddata
+	} dump_t;
 
+	GRIB2File(dump_t dump = dump_none);
 
 	int parse(const std::string& filename);
 
@@ -69,7 +78,7 @@ protected:
 	static const struct simple16_id datareprtempl_id[];
 	static const struct simple_id bitmapind_id[];
 	static const struct simple_id timerangeunit_id[];
-	static const struct simple_id cplxpkgorigfieldtype_id[];
+	static const struct simple_id origfieldtype_id[];
 	static const struct simple_id cplxpkggrpsplit_id[];
 	static const struct simple_id cplxpkgmissvalmgmt_id[];
 	static const struct simple_id cplxpkgspatdifforder_id[];
@@ -83,12 +92,14 @@ protected:
 	static const struct simple_id statprocess_id[];
 	static const struct simple_id stattimeincr_id[];
 
+	LayerComplexPackingSpatialDiffParam m_layerparam;
+	std::vector<uint8_t> m_bitmap;
+	Glib::RefPtr<Grid> m_lastgrid;
+	Glib::RefPtr<Grid> m_grid;
 	uint16_t m_centerid;
 	uint16_t m_datarepresentation;
 	uint8_t m_productdiscipline;
-	float m_scaler;
-	int16_t m_scalee;
-	int16_t m_scaled;
+	dump_t m_dump;
 };
 
 const struct GRIB2File::simple_id GRIB2File::sigreftime_id[] = {
@@ -288,7 +299,7 @@ const struct GRIB2File::simple_id GRIB2File::stattimeincr_id[] = {
 	{ 0, 0 }
 };
 
-const struct GRIB2File::simple_id GRIB2File::cplxpkgorigfieldtype_id[] = {
+const struct GRIB2File::simple_id GRIB2File::origfieldtype_id[] = {
 	{ 0, "Floating Point" },
 	{ 1, "Integer" },
 	{ 255, "Missing" },
@@ -318,8 +329,8 @@ const struct GRIB2File::simple_id GRIB2File::cplxpkgspatdifforder_id[] = {
 	{ 0, 0 }
 };
 
-GRIB2File::GRIB2File(void)
-	: m_centerid(0xffff), m_datarepresentation(0), m_productdiscipline(255), m_scaler(0), m_scalee(0), m_scaled(0)
+GRIB2File::GRIB2File(dump_t dump)
+	: m_centerid(0xffff), m_datarepresentation(0), m_productdiscipline(255), m_dump(dump)
 {
 }
 
@@ -481,6 +492,7 @@ int GRIB2File::section2(const uint8_t *sec, unsigned int len)
 
 int GRIB2File::section3(const uint8_t *sec, unsigned int len)
 {
+	m_grid.reset();
 	if (len < 10)
 		return -2;
 	unsigned int ndata(sec[4] | (((unsigned int)sec[3]) << 8) |
@@ -579,6 +591,56 @@ int GRIB2File::section3(const uint8_t *sec, unsigned int len)
 			  << "  " << ((sec[66] & 64) ? "Points in the first row or column scan in the +j (+y) direction" : "Points in the first row or column scan in the -j (-y) direction") << std::endl
 			  << "  " << ((sec[66] & 32) ? "Adjacent points in the j (y) direction are consecutive" : "Adjacent points in the i (x) direction are consecutive") << std::endl
 			  << "  " << ((sec[66] & 16) ? "Adjacent rows scan in the opposite direction" : "All rows scan in the same direction") << std::endl;
+		// we do not (yet) care about the exact earth definition
+		// FIXME: subdivbasicangle should not be zero, old GFS data
+		if (basicangle || (subdivbasicangle != 0 && subdivbasicangle != (uint32_t)~0UL)) {
+			std::cerr << "Grid: basic angle/subdivisions not supported" << std::endl;
+			break;
+		}
+		if (Ni * Nj != ndata) {
+			std::cerr << "Grid: Ni * Nj does not match number of data points: " << Ni << '*' << Nj << "!=" << ndata << std::endl;
+			break;
+		}
+		if (Ni < 2 || Nj < 2) {
+			std::cerr << "Grid: Ni / Nj must be at least 2" << std::endl;
+			break;
+		}
+		if (sec[66] & 16) {
+			std::cerr << "Grid: opposite row scanning not supported" << std::endl;
+			break;
+		}
+		if (sec[49] & 8) {
+			std::cerr << "Grid: u/v vector components not aligned to easterly/northerly direction" << std::endl;
+			break;
+		}
+		Point origin;
+		Point ptsz;
+		int scu((sec[66] & 32) ? Nj : 1);
+		int scv((sec[66] & 32) ? 1 : Ni);
+		int offs(0);
+		origin.set_lat_deg_dbl(((sec[66] & 64) ? lat1 : lat2) * 1e-6);
+		origin.set_lon_deg_dbl(((sec[66] & 128) ? lon2 : lon1) * 1e-6);
+		if (!(sec[49] & 32)) {
+			int32_t ld(lon2 - lon1);
+			if (ld < 0)
+				ld += 360000000;
+			if (ld >= 360000000)
+				ld -= 360000000;
+			Di = (ld + (Ni - 1)/2) / (Ni - 1);
+		}
+		if (!(sec[49] & 16))
+			Dj = ((sec[66] & 64) ? lat2 - lat1 : lat1 - lat2) / (Nj - 1);
+		ptsz.set_lat(static_cast<Point::coord_t>(ceil(abs(Dj) * (1e-6 * Point::from_deg_dbl))));
+		ptsz.set_lon(static_cast<Point::coord_t>(ceil(abs(Di) * (1e-6 * Point::from_deg_dbl))));
+		if (sec[66] & 128) {
+			offs += scu * (Ni - 1);
+			scu = -scu;
+		}
+		if (!(sec[66] & 64)) {
+			offs += scv * (Nj - 1);
+			scv = -scv;
+		}
+		m_grid = Glib::RefPtr<GridLatLon>(new GridLatLon(origin, ptsz, Ni, Nj, scu, scv, offs));
 		break;
 	}
 
@@ -687,22 +749,60 @@ int GRIB2File::section4(const uint8_t *sec, unsigned int len)
 
 int GRIB2File::section5(const uint8_t *sec, unsigned int len)
 {
-	m_scaler = 0;
-	m_scalee = 0;
-	m_scaled = 0;
+	m_layerparam = LayerComplexPackingSpatialDiffParam();
 	if (len < 6)
 		return -2;
 	uint32_t nrdp(sec[3] | (((unsigned int)sec[2]) << 8) |
 		      (((uint32_t)sec[1]) << 16) | (((uint32_t)sec[0]) << 24));
-	uint16_t datareprtempl(sec[5] | (((unsigned int)sec[4]) << 8));
-	m_datarepresentation = datareprtempl;
+	m_datarepresentation = sec[5] | (((unsigned int)sec[4]) << 8);
 	const struct simple16_id *drid(datareprtempl_id);
-	while (drid->str && drid->id != datareprtempl)
+	while (drid->str && drid->id != m_datarepresentation)
 		++drid;
 	std::cerr << "Section 5: Data Representation Section" << std::endl
 		  << "Number of data points " << nrdp << std::endl
-		  << "Data representation template " << datareprtempl << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
-	switch (datareprtempl) {
+		  << "Data representation template " << m_datarepresentation << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
+	switch (m_datarepresentation) {
+	case 0:
+	{
+		if (len < 16)
+			return -2;
+		union {
+			float f;
+			uint32_t w;
+			uint8_t b[4];
+		} r;
+		r.w = sec[9] | (((uint32_t)sec[8]) << 8) |
+			(((uint32_t)sec[7]) << 16) | (((uint32_t)sec[6]) << 24);
+		int16_t e(sec[11] | (((unsigned int)sec[10]) << 8));
+		if (e & 0x8000) {
+			e &= 0x7fff;
+			e = -e;
+		}
+		int16_t d(sec[13] | (((unsigned int)sec[12]) << 8));
+		if (d & 0x8000) {
+			d &= 0x7fff;
+			d = -d;
+		}
+		double sc(exp((-M_LN10) * d));
+		m_layerparam.set_datascale(std::ldexp(sc, e));
+		m_layerparam.set_dataoffset(r.f * sc);
+		m_layerparam.set_nbitsgroupref(sec[14]);
+		m_layerparam.set_fieldvaluetype(sec[15]);
+		std::cerr << "Reference value (R) " << r.f << std::endl
+			  << "Binary scale factor (E) " << e << std::endl
+			  << "Decimal scale factor (D) " << d << std::endl
+			  << "Number of bits used for each group reference value for complex packing or spatial differencing "
+			  << m_layerparam.get_nbitsgroupref() << std::endl;
+		{
+			const struct simple_id *drid(origfieldtype_id);
+			while (drid->str && drid->id != m_layerparam.get_fieldvaluetype())
+				++drid;
+			std::cerr << "Type of original field values " << (unsigned int)m_layerparam.get_fieldvaluetype()
+				  << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
+		}
+		break;
+	}
+
 	case 2:
 	{
 		if (len < 42)
@@ -724,45 +824,63 @@ int GRIB2File::section5(const uint8_t *sec, unsigned int len)
 			d &= 0x7fff;
 			d = -d;
 		}
-		m_scaler = r.f;
-		m_scalee = e;
-		m_scaled = d;
+		double sc(exp((-M_LN10) * d));
+		m_layerparam.set_datascale(std::ldexp(sc, e));
+		m_layerparam.set_dataoffset(r.f * sc);
+		m_layerparam.set_nbitsgroupref(sec[14]);
+		m_layerparam.set_fieldvaluetype(sec[15]);
 		std::cerr << "Reference value (R) " << r.f << std::endl
 			  << "Binary scale factor (E) " << e << std::endl
 			  << "Decimal scale factor (D) " << d << std::endl
-			  << "Number of bits used for each group reference value for complex packing or spatial differencing " << (unsigned int)sec[14] << std::endl;
+			  << "Number of bits used for each group reference value for complex packing or spatial differencing "
+			  << m_layerparam.get_nbitsgroupref() << std::endl;
 		{
-			const struct simple_id *drid(cplxpkgorigfieldtype_id);
-			while (drid->str && drid->id != sec[15])
+			const struct simple_id *drid(origfieldtype_id);
+			while (drid->str && drid->id != m_layerparam.get_fieldvaluetype())
 				++drid;
-			std::cerr << "Type of original field values " << (unsigned int)sec[15] << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
+			std::cerr << "Type of original field values " << (unsigned int)m_layerparam.get_fieldvaluetype()
+				  << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
 		}
+		m_layerparam.set_groupsplitmethod(sec[16]);
+		m_layerparam.set_missingvaluemgmt(sec[17]);
+	        m_layerparam.set_primarymissingvalue(sec[21] | (((uint32_t)sec[20]) << 8) | (((uint32_t)sec[19]) << 16) | (((uint32_t)sec[18]) << 24));
+		m_layerparam.set_secondarymissingvalue(sec[25] | (((uint32_t)sec[24]) << 8) | (((uint32_t)sec[23]) << 16) | (((uint32_t)sec[22]) << 24));
+		m_layerparam.set_ngroups(sec[29] | (((uint32_t)sec[28]) << 8) | (((uint32_t)sec[27]) << 16) | (((uint32_t)sec[26]) << 24));
+		m_layerparam.set_refgroupwidth(sec[30]);
+		m_layerparam.set_nbitsgroupwidth(sec[31]);
+		m_layerparam.set_refgrouplength(sec[35] | (((uint32_t)sec[34]) << 8) | (((uint32_t)sec[33]) << 16) | (((uint32_t)sec[32]) << 24));
+		m_layerparam.set_incrgrouplength(sec[36]);
+		m_layerparam.set_lastgrouplength(sec[40] | (((uint32_t)sec[39]) << 8) | (((uint32_t)sec[38]) << 16) | (((uint32_t)sec[37]) << 24));
+		m_layerparam.set_nbitsgrouplength(sec[41]);
 		{
 			const struct simple_id *drid(cplxpkggrpsplit_id);
-			while (drid->str && drid->id != sec[16])
+			while (drid->str && drid->id != m_layerparam.get_groupsplitmethod())
 				++drid;
-			std::cerr << "Group splitting method " << (unsigned int)sec[16] << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
+			std::cerr << "Group splitting method " << (unsigned int)m_layerparam.get_groupsplitmethod()
+				  << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
 		}
 		{
 			const struct simple_id *drid(cplxpkgmissvalmgmt_id);
-			while (drid->str && drid->id != sec[17])
+			while (drid->str && drid->id != m_layerparam.get_missingvaluemgmt())
 				++drid;
-			std::cerr << "Missing value management " << (unsigned int)sec[17] << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
+			std::cerr << "Missing value management " << (unsigned int)m_layerparam.get_missingvaluemgmt()
+				  << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
 		}
-		uint32_t primmiss(sec[21] | (((uint32_t)sec[20]) << 8) | (((uint32_t)sec[19]) << 16) | (((uint32_t)sec[18]) << 24));
-		uint32_t secmiss(sec[25] | (((uint32_t)sec[24]) << 8) | (((uint32_t)sec[23]) << 16) | (((uint32_t)sec[22]) << 24));
-		uint32_t ng(sec[29] | (((uint32_t)sec[28]) << 8) | (((uint32_t)sec[27]) << 16) | (((uint32_t)sec[26]) << 24));
-		uint32_t reggl(sec[35] | (((uint32_t)sec[34]) << 8) | (((uint32_t)sec[33]) << 16) | (((uint32_t)sec[32]) << 24));
-		uint32_t lastgrplen(sec[40] | (((uint32_t)sec[39]) << 8) | (((uint32_t)sec[38]) << 16) | (((uint32_t)sec[37]) << 24));
-		std::cerr << "Primary missing value substitute " << primmiss << std::endl
-			  << "Secondary missing value substitute " << secmiss << std::endl
-			  << "Number of groups of data values " << ng << std::endl
-			  << "Reference for group widths " << (unsigned int)sec[30] << std::endl
-			  << "Number of bits used for the group widths " << (unsigned int)sec[31] << std::endl
-			  << "Reference for group lengths " << reggl << std::endl
-			  << "Length increment for the group lengths " << (unsigned int)sec[36] << std::endl
-			  << "True length of last group " << lastgrplen << std::endl
-			  << "Number of bits used for the scaled group lengths " << (unsigned int)sec[41] << std::endl;
+		std::cerr << "Primary missing value substitute " << m_layerparam.get_primarymissingvalue();
+		if (m_layerparam.is_primarymissingvalue() && m_layerparam.is_fieldvalue_float())
+			std::cerr << " (" << m_layerparam.get_primarymissingvalue_float() << ')';
+		std::cerr << std::endl
+			  << "Secondary missing value substitute " << m_layerparam.get_secondarymissingvalue();
+		if (m_layerparam.is_secondarymissingvalue() && m_layerparam.is_fieldvalue_float())
+			std::cerr << " (" << m_layerparam.get_secondarymissingvalue_float() << ')';
+		std::cerr << std::endl
+			  << "Number of groups of data values " << m_layerparam.get_ngroups() << std::endl
+			  << "Reference for group widths " << m_layerparam.get_refgroupwidth() << std::endl
+			  << "Number of bits used for the group widths " << m_layerparam.get_nbitsgroupwidth() << std::endl
+			  << "Reference for group lengths " << m_layerparam.get_refgrouplength() << std::endl
+			  << "Length increment for the group lengths " << m_layerparam.get_incrgrouplength() << std::endl
+			  << "True length of last group " << m_layerparam.get_lastgrouplength() << std::endl
+			  << "Number of bits used for the scaled group lengths " << m_layerparam.get_nbitsgrouplength() << std::endl;
 		break;
 	}
 
@@ -787,55 +905,76 @@ int GRIB2File::section5(const uint8_t *sec, unsigned int len)
 			d &= 0x7fff;
 			d = -d;
 		}
-		m_scaler = r.f;
-		m_scalee = e;
-		m_scaled = d;
+		double sc(exp((-M_LN10) * d));
+		m_layerparam.set_datascale(std::ldexp(sc, e));
+		m_layerparam.set_dataoffset(r.f * sc);
+		m_layerparam.set_nbitsgroupref(sec[14]);
+		m_layerparam.set_fieldvaluetype(sec[15]);
 		std::cerr << "Reference value (R) " << r.f << std::endl
 			  << "Binary scale factor (E) " << e << std::endl
 			  << "Decimal scale factor (D) " << d << std::endl
-			  << "Number of bits used for each group reference value for complex packing or spatial differencing " << (unsigned int)sec[14] << std::endl;
+			  << "Number of bits used for each group reference value for complex packing or spatial differencing "
+			  << m_layerparam.get_nbitsgroupref() << std::endl;
 		{
-			const struct simple_id *drid(cplxpkgorigfieldtype_id);
-			while (drid->str && drid->id != sec[15])
+			const struct simple_id *drid(origfieldtype_id);
+			while (drid->str && drid->id != m_layerparam.get_fieldvaluetype())
 				++drid;
-			std::cerr << "Type of original field values " << (unsigned int)sec[15] << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
+			std::cerr << "Type of original field values " << (unsigned int)m_layerparam.get_fieldvaluetype()
+				  << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
 		}
+		m_layerparam.set_groupsplitmethod(sec[16]);
+		m_layerparam.set_missingvaluemgmt(sec[17]);
+	        m_layerparam.set_primarymissingvalue(sec[21] | (((uint32_t)sec[20]) << 8) | (((uint32_t)sec[19]) << 16) | (((uint32_t)sec[18]) << 24));
+		m_layerparam.set_secondarymissingvalue(sec[25] | (((uint32_t)sec[24]) << 8) | (((uint32_t)sec[23]) << 16) | (((uint32_t)sec[22]) << 24));
+		m_layerparam.set_ngroups(sec[29] | (((uint32_t)sec[28]) << 8) | (((uint32_t)sec[27]) << 16) | (((uint32_t)sec[26]) << 24));
+		m_layerparam.set_refgroupwidth(sec[30]);
+		m_layerparam.set_nbitsgroupwidth(sec[31]);
+		m_layerparam.set_refgrouplength(sec[35] | (((uint32_t)sec[34]) << 8) | (((uint32_t)sec[33]) << 16) | (((uint32_t)sec[32]) << 24));
+		m_layerparam.set_incrgrouplength(sec[36]);
+		m_layerparam.set_lastgrouplength(sec[40] | (((uint32_t)sec[39]) << 8) | (((uint32_t)sec[38]) << 16) | (((uint32_t)sec[37]) << 24));
+		m_layerparam.set_nbitsgrouplength(sec[41]);
+		m_layerparam.set_spatialdifforder(sec[42]);
+		m_layerparam.set_extradescroctets(sec[43]);
 		{
 			const struct simple_id *drid(cplxpkggrpsplit_id);
-			while (drid->str && drid->id != sec[16])
+			while (drid->str && drid->id != m_layerparam.get_groupsplitmethod())
 				++drid;
-			std::cerr << "Group splitting method " << (unsigned int)sec[16] << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
+			std::cerr << "Group splitting method " << (unsigned int)m_layerparam.get_groupsplitmethod()
+				  << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
 		}
 		{
 			const struct simple_id *drid(cplxpkgmissvalmgmt_id);
-			while (drid->str && drid->id != sec[17])
+			while (drid->str && drid->id != m_layerparam.get_missingvaluemgmt())
 				++drid;
-			std::cerr << "Missing value management " << (unsigned int)sec[17] << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
+			std::cerr << "Missing value management " << (unsigned int)m_layerparam.get_missingvaluemgmt()
+				  << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
 		}
-		uint32_t primmiss(sec[21] | (((uint32_t)sec[20]) << 8) | (((uint32_t)sec[19]) << 16) | (((uint32_t)sec[18]) << 24));
-		uint32_t secmiss(sec[25] | (((uint32_t)sec[24]) << 8) | (((uint32_t)sec[23]) << 16) | (((uint32_t)sec[22]) << 24));
-		uint32_t ng(sec[29] | (((uint32_t)sec[28]) << 8) | (((uint32_t)sec[27]) << 16) | (((uint32_t)sec[26]) << 24));
-		uint32_t reggl(sec[35] | (((uint32_t)sec[34]) << 8) | (((uint32_t)sec[33]) << 16) | (((uint32_t)sec[32]) << 24));
-		uint32_t lastgrplen(sec[40] | (((uint32_t)sec[39]) << 8) | (((uint32_t)sec[38]) << 16) | (((uint32_t)sec[37]) << 24));
-		std::cerr << "Primary missing value substitute " << primmiss << std::endl
-			  << "Secondary missing value substitute " << secmiss << std::endl
-			  << "Number of groups of data values " << ng << std::endl
-			  << "Reference for group widths " << (unsigned int)sec[30] << std::endl
-			  << "Number of bits used for the group widths " << (unsigned int)sec[31] << std::endl
-			  << "Reference for group lengths " << reggl << std::endl
-			  << "Length increment for the group lengths " << (unsigned int)sec[36] << std::endl
-			  << "True length of last group " << lastgrplen << std::endl
-			  << "Number of bits used for the scaled group lengths " << (unsigned int)sec[41] << std::endl;
+		std::cerr << "Primary missing value substitute " << m_layerparam.get_primarymissingvalue();
+		if (m_layerparam.is_primarymissingvalue() && m_layerparam.is_fieldvalue_float())
+			std::cerr << " (" << m_layerparam.get_primarymissingvalue_float() << ')';
+		std::cerr << std::endl
+			  << "Secondary missing value substitute " << m_layerparam.get_secondarymissingvalue();
+		if (m_layerparam.is_secondarymissingvalue() && m_layerparam.is_fieldvalue_float())
+			std::cerr << " (" << m_layerparam.get_secondarymissingvalue_float() << ')';
+		std::cerr << std::endl
+			  << "Number of groups of data values " << m_layerparam.get_ngroups() << std::endl
+			  << "Reference for group widths " << m_layerparam.get_refgroupwidth() << std::endl
+			  << "Number of bits used for the group widths " << m_layerparam.get_nbitsgroupwidth() << std::endl
+			  << "Reference for group lengths " << m_layerparam.get_refgrouplength() << std::endl
+			  << "Length increment for the group lengths " << m_layerparam.get_incrgrouplength() << std::endl
+			  << "True length of last group " << m_layerparam.get_lastgrouplength() << std::endl
+			  << "Number of bits used for the scaled group lengths " << m_layerparam.get_nbitsgrouplength() << std::endl;
 		{
 			const struct simple_id *drid(cplxpkgspatdifforder_id);
-			while (drid->str && drid->id != sec[42])
+			while (drid->str && drid->id != m_layerparam.get_spatialdifforder())
 				++drid;
-			std::cerr << "Order of spatial difference " << (unsigned int)sec[42] << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
+			std::cerr << "Order of spatial difference " << m_layerparam.get_spatialdifforder()
+				  << " (" << (drid->str ? drid->str : "?") << ')' << std::endl;
 		}
-		std::cerr << "Number of octets required in the data section to specify extra descriptors " << (unsigned int)sec[43] << std::endl;
+		std::cerr << "Number of octets required in the data section to specify extra descriptors " << m_layerparam.get_extradescroctets() << std::endl;
 		break;
 	}
-		
+
 	case 40:
 	{
 		if (len < 18)
@@ -857,17 +996,20 @@ int GRIB2File::section5(const uint8_t *sec, unsigned int len)
 			d &= 0x7fff;
 			d = -d;
 		}
-		m_scaler = r.f;
-		m_scalee = e;
-		m_scaled = d;
+		double sc(exp((-M_LN10) * d));
+		m_layerparam.set_datascale(std::ldexp(sc, e));
+		m_layerparam.set_dataoffset(r.f * sc);
+		m_layerparam.set_nbitsgroupref(sec[14]);
+		m_layerparam.set_fieldvaluetype(sec[15]);
 		std::cerr << "Reference value (R) " << r.f << std::endl
 			  << "Binary scale factor (E) " << e << std::endl
 			  << "Decimal scale factor (D) " << d << std::endl
-			  << "Number of bits required to hold the resulting scaled and referenced data values " << (unsigned int)sec[14] << std::endl
+			  << "Number of bits used for each group reference value for complex packing or spatial differencing "
+			  << m_layerparam.get_nbitsgroupref() << std::endl
 			  << "Type of original field values " << (unsigned int)sec[15] << std::endl
 			  << "Type of Compression used " << (unsigned int)sec[16] << std::endl
 			  << "Target compression ratio " << (unsigned int)sec[17] << ":1" << std::endl;
-		break;		
+		break;
 	}
 
 	default:
@@ -879,6 +1021,7 @@ int GRIB2File::section5(const uint8_t *sec, unsigned int len)
 
 int GRIB2File::section6(const uint8_t *sec, unsigned int len)
 {
+	m_bitmap.clear();
 	if (len < 1)
 		return -2;
 	const struct simple_id *bmid(bitmapind_id);
@@ -888,20 +1031,125 @@ int GRIB2File::section6(const uint8_t *sec, unsigned int len)
 		  << "Bitmap indicator " << (unsigned int)sec[0] << " (" << (bmid->str ? bmid->str : "?") << ')';
 	if (!sec[0]) {
 		unsigned int len1(len - 1);
-		if (len1 > 256)
-			len1 = 256;
-		std::ostringstream oss;
-		oss << std::hex;
-		for (unsigned int i = 0; i < len1; ++i) {
-			if (!(i & 15))
-				oss << std::endl << std::setfill('0') << std::setw(4) << i << ':';
-			oss << ' ' << std::setfill('0') << std::setw(2) << (unsigned int)sec[i + 1];
+		m_bitmap.resize(len1);
+		memcpy(&m_bitmap[0], sec + 1, len1);
+		if (m_dump & dump_filedata) {
+			std::ostringstream oss;
+			oss << std::hex;
+			for (unsigned int i = 0; i < len1; ++i) {
+				if (!(i & 15))
+					oss << std::endl << std::setfill('0') << std::setw(4) << i << ':';
+				oss << ' ' << std::setfill('0') << std::setw(2) << (unsigned int)sec[i + 1];
+			}
+			std::cerr << oss.str();
 		}
-		std::cerr << oss.str();
 	}
 	std::cerr << std::endl << std::endl;
 	return 0;
 }
+
+#if defined(HAVE_OPENJPEG) && !defined(HAVE_OPENJPEG1)
+
+namespace {
+
+class OpjMemStream {
+public:
+	OpjMemStream(const std::vector<uint8_t>& filedata);
+	~OpjMemStream();
+	opj_stream_t *get_stream(void) { return m_stream; }
+
+protected:
+	const std::vector<uint8_t>& m_filedata;
+	opj_stream_t *m_stream;
+	OPJ_OFF_T m_offs;
+
+	OPJ_SIZE_T opj_mem_stream_read(void *p_buffer, OPJ_SIZE_T p_nb_bytes);
+	OPJ_SIZE_T opj_mem_stream_write(void *p_buffer, OPJ_SIZE_T p_nb_bytes);
+	OPJ_OFF_T opj_mem_stream_skip(OPJ_OFF_T p_nb_bytes);
+	OPJ_BOOL opj_mem_stream_seek(OPJ_OFF_T p_nb_bytes);
+	void opj_mem_stream_free_user_data(void);
+
+	static OPJ_SIZE_T opj_mem_stream_read_1(void *p_buffer, OPJ_SIZE_T p_nb_bytes, void *p_user_data) {
+		return ((OpjMemStream *)p_user_data)->opj_mem_stream_read(p_buffer, p_nb_bytes);
+	}
+
+	static OPJ_SIZE_T opj_mem_stream_write_1(void *p_buffer, OPJ_SIZE_T p_nb_bytes, void *p_user_data) {
+		return ((OpjMemStream *)p_user_data)->opj_mem_stream_write(p_buffer, p_nb_bytes);
+	}
+
+	static OPJ_OFF_T opj_mem_stream_skip_1(OPJ_OFF_T p_nb_bytes, void *p_user_data) {
+		return ((OpjMemStream *)p_user_data)->opj_mem_stream_skip(p_nb_bytes);
+	}
+
+	static OPJ_BOOL opj_mem_stream_seek_1(OPJ_OFF_T p_nb_bytes, void *p_user_data) {
+		return ((OpjMemStream *)p_user_data)->opj_mem_stream_seek(p_nb_bytes);
+	}
+
+	static void opj_mem_stream_free_user_data_1(void *p_user_data) {
+		return ((OpjMemStream *)p_user_data)->opj_mem_stream_free_user_data();
+	}
+};
+
+OpjMemStream::OpjMemStream(const std::vector<uint8_t>& filedata)
+	: m_filedata(filedata), m_stream(0), m_offs(0)
+{
+	m_stream = opj_stream_create(m_filedata.size(), 1);
+	if (!m_stream)
+		return;
+	opj_stream_set_user_data(m_stream, this, opj_mem_stream_free_user_data_1);
+	opj_stream_set_user_data_length(m_stream, m_filedata.size());
+	opj_stream_set_read_function(m_stream, opj_mem_stream_read_1);
+	opj_stream_set_write_function(m_stream, opj_mem_stream_write_1);
+	opj_stream_set_skip_function(m_stream, opj_mem_stream_skip_1);
+	opj_stream_set_seek_function(m_stream, opj_mem_stream_seek_1);
+}
+
+OpjMemStream::~OpjMemStream()
+{
+	if (m_stream)
+		opj_stream_destroy(m_stream);
+}
+
+OPJ_SIZE_T OpjMemStream::opj_mem_stream_read(void *p_buffer, OPJ_SIZE_T p_nb_bytes)
+{
+	OPJ_SIZE_T r = p_nb_bytes;
+	if (m_offs + r > m_filedata.size())
+		r = m_filedata.size() - m_offs;
+	memcpy(p_buffer, &m_filedata[m_offs], r);
+	m_offs += r;
+	return r;
+}
+
+OPJ_SIZE_T OpjMemStream::opj_mem_stream_write(void *p_buffer, OPJ_SIZE_T p_nb_bytes)
+{
+	return 0;
+}
+
+OPJ_OFF_T OpjMemStream::opj_mem_stream_skip(OPJ_OFF_T p_nb_bytes)
+{
+	OPJ_SIZE_T r = p_nb_bytes;
+	if (m_offs + r > m_filedata.size())
+		r = m_filedata.size() - m_offs;
+	m_offs += r;
+	return r;
+}
+
+OPJ_BOOL OpjMemStream::opj_mem_stream_seek(OPJ_OFF_T p_nb_bytes)
+{
+	m_offs = p_nb_bytes;
+	if (m_offs <= m_filedata.size())
+		return OPJ_TRUE;
+	m_offs = m_filedata.size();
+	return OPJ_FALSE;
+}
+
+void OpjMemStream::opj_mem_stream_free_user_data(void)
+{
+}
+
+};
+
+#endif
 
 int GRIB2File::section7(Glib::RefPtr<Gio::FileInputStream> instream, unsigned int len)
 {
@@ -909,29 +1157,405 @@ int GRIB2File::section7(Glib::RefPtr<Gio::FileInputStream> instream, unsigned in
 		std::cerr << "Empty" << std::endl << std::endl;
 		return 0;
 	}
-	std::vector<uint8_t> buf;
-	buf.resize(len);
+	std::vector<uint8_t> filedata;
+	filedata.resize(len);
 	{
-		gssize r(instream->read(&buf[0], buf.size()));
-		if (r < buf.size())
+		gssize r(instream->read(&filedata[0], filedata.size()));
+		if (r < filedata.size())
 			return -3;
 	}
-	{
+	if (m_dump & dump_filedata) {
 		std::ostringstream oss;
 		oss << std::hex;
-		for (unsigned int i = 0; i < 8 && i < len; ++i)
-			oss << ' ' << std::setfill('0') << std::setw(2) << (unsigned int)buf[i];
-		std::cerr << "Data" << oss.str() << std::endl;
+		for (unsigned int i = 0; i < len; ++i) {
+			if (!(i & 15))
+				oss << std::endl << std::setfill('0') << std::setw(4) << i << ':';
+			oss << ' ' << std::setfill('0') << std::setw(2) << (unsigned int)filedata[i];
+		}
+		std::cerr << "File Data" << oss.str() << std::endl;
 	}
 	switch (m_datarepresentation) {
+	case 0:
+	{
+		if (!(m_dump & (dump_rawdata | dump_decodeddata)))
+			break;
+		if (!m_grid)
+			break;
+		unsigned int usize(m_grid->get_usize());
+		unsigned int vsize(m_grid->get_vsize());
+		unsigned int uvsize(usize * vsize);
+		if (!uvsize)
+			break;
+		std::ostringstream ossr, oss;
+		unsigned int ptr(0), width(m_layerparam.get_nbitsgroupref());
+		for (unsigned int i = 0; i < uvsize; ++i) {
+			if (!(i & 15)) {
+				if (m_dump & dump_rawdata)
+					ossr << std::endl << ' ';
+				if (m_dump & dump_decodeddata)
+					oss << std::endl << ' ';
+			}
+			if (m_bitmap.size() && (i >> 3 < m_bitmap.size()) && !((m_bitmap[i >> 3] << (i & 7)) & 0x80)) {
+				if (m_dump & dump_rawdata)
+					ossr << " ?";
+				if (m_dump & dump_decodeddata)
+					oss << " ?";
+				continue;
+			}
+			unsigned int v(GRIB2::Layer::extract(filedata, ptr, width));
+			if (m_dump & dump_rawdata)
+				ossr << ' ' << v;
+			if (m_dump & dump_decodeddata)
+				oss << ' ' << m_layerparam.scale(v);
+			ptr += width;
+		}
+		if (m_dump & dump_rawdata)
+			std::cerr << "Raw Data (" << usize << 'x' << vsize << ')' << ossr.str() << std::endl;
+		if (m_dump & dump_decodeddata)
+			std::cerr << "Decoded Data (" << usize << 'x' << vsize << ')' << oss.str() << std::endl;
+		break;
+	}
+
+	case 2:
+	{
+		if (!(m_dump & (dump_rawdata | dump_decodeddata)))
+			break;
+		if (!m_grid)
+			break;
+		unsigned int usize(m_grid->get_usize());
+		unsigned int vsize(m_grid->get_vsize());
+		unsigned int uvsize(usize * vsize);
+		if (!uvsize)
+			break;
+		if (!m_layerparam.is_gengroupsplit() || !m_layerparam.get_ngroups())
+			break;
+		std::vector<unsigned int> grpref(m_layerparam.get_ngroups(), 0), grpwidth(m_layerparam.get_ngroups(), 0), grplength(m_layerparam.get_ngroups(), 0);
+		unsigned int ptr(0);
+		for (unsigned int i(0), ng(m_layerparam.get_ngroups()), grw(m_layerparam.get_nbitsgroupref()); i < ng; ++i, ptr += grw)
+			grpref[i] = GRIB2::Layer::extract(filedata, ptr, grw);
+		ptr = (ptr + 7U) & ~7U;
+		for (unsigned int i(0), ng(m_layerparam.get_ngroups()), gww(m_layerparam.get_nbitsgroupwidth()),
+			     gwr(m_layerparam.get_refgroupwidth()); i < ng; ++i, ptr += gww)
+			grpwidth[i] = GRIB2::Layer::extract(filedata, ptr, gww) + gwr;
+		ptr = (ptr + 7U) & ~7U;
+		for (unsigned int i(0), ng(m_layerparam.get_ngroups()), glw(m_layerparam.get_nbitsgrouplength()),
+			     glr(m_layerparam.get_refgrouplength()), gli(m_layerparam.get_incrgrouplength()); i < ng; ++i, ptr += glw)
+			grplength[i] = GRIB2::Layer::extract(filedata, ptr, glw) * gli + glr;
+		if (!grplength.empty())
+			grplength.back() = m_layerparam.get_lastgrouplength();
+		ptr = (ptr + 7U) & ~7U;
+		std::ostringstream ossr, oss;
+		if (m_dump & dump_rawdata) {
+			unsigned int totgrplen(0);
+			for (unsigned int i(0), ng(m_layerparam.get_ngroups()); i < ng; ++i) {
+				ossr << std::endl << "  Group[" << i << "] ref " << grpref[i] << " width " << grpwidth[i] << " length " << grplength[i];
+				totgrplen += grplength[i];
+			}
+			ossr << std::endl << "  Total Length " << totgrplen << " grid " << usize << 'x' << vsize << " = " << uvsize;
+		}
+		{
+			const unsigned int primiss(m_layerparam.get_primarymissingvalue_raw());
+			const unsigned int secmiss(m_layerparam.get_secondarymissingvalue_raw());
+			unsigned int grpidx(0), grpcnt(1U), grpr(0U), grpw(1U), grpprimiss(~0U), grpsecmiss(~0U);
+			if (grpidx < grplength.size()) {
+				grpcnt = grplength[grpidx];
+				grpr = grpref[grpidx];
+				grpw = grpwidth[grpidx];
+				if (grpw > 0 && m_layerparam.is_primarymissingvalue())
+					grpprimiss = (1U << grpw) - 1U;
+				if (grpw > 1 && m_layerparam.is_secondarymissingvalue())
+					grpsecmiss = (1U << grpw) - 2U;
+			}
+			for (unsigned int i = 0; i < uvsize; ++i) {
+				if (!(i & 15)) {
+					if (m_dump & dump_rawdata)
+						ossr << std::endl << ' ';
+					if (m_dump & dump_decodeddata)
+						oss << std::endl << ' ';
+				}
+				if (m_bitmap.size() && (i >> 3 < m_bitmap.size()) && !((m_bitmap[i >> 3] << (i & 7)) & 0x80)) {
+					if (m_dump & dump_rawdata)
+						ossr << " ?";
+					if (m_dump & dump_decodeddata)
+						oss << " ?";
+					continue;
+				}
+				unsigned int v(GRIB2::Layer::extract(filedata, ptr, grpw));
+				if (v == grpprimiss) {
+					if (m_dump & dump_rawdata)
+						ossr << " ?";
+					if (m_dump & dump_decodeddata)
+						oss << ' ' << m_layerparam.get_primarymissingvalue_float();
+					goto cplxnext;
+				}
+				if (v == grpsecmiss) {
+					if (m_dump & dump_rawdata)
+						ossr << " ??";
+					if (m_dump & dump_decodeddata)
+						oss << ' ' << m_layerparam.get_secondarymissingvalue_float();
+					goto cplxnext;
+				}
+				v += grpr;
+				if (v) {
+					if (v == primiss) {
+						if (m_dump & dump_rawdata)
+							ossr << " ?";
+						if (m_dump & dump_decodeddata)
+	        					oss << ' ' << m_layerparam.get_primarymissingvalue_float();
+						goto cplxnext;
+					}
+					if (v == secmiss) {
+						if (m_dump & dump_rawdata)
+							ossr << " ??";
+						if (m_dump & dump_decodeddata)
+							oss << ' ' << m_layerparam.get_secondarymissingvalue_float();
+						goto cplxnext;
+					}
+				}
+				if (m_dump & dump_rawdata)
+					ossr << ' ' << v;
+				if (m_dump & dump_decodeddata)
+					oss << ' ' << m_layerparam.scale(v);
+			  cplxnext:
+				ptr += grpw;
+				--grpcnt;
+				if (grpcnt)
+					continue;
+				++grpidx;
+				grpcnt = 1U;
+				grpr = 0U;
+				grpw = 1U;
+				grpprimiss = grpsecmiss = ~0U;
+				if (grpidx < grplength.size()) {
+					grpcnt = grplength[grpidx];
+					grpr = grpref[grpidx];
+					grpw = grpwidth[grpidx];
+					if (grpw > 0 && m_layerparam.is_primarymissingvalue())
+						grpprimiss = (1U << grpw) - 1U;
+					if (grpw > 1 && m_layerparam.is_secondarymissingvalue())
+						grpsecmiss = (1U << grpw) - 2U;
+				}
+			}
+		}
+		if (m_dump & dump_rawdata)
+			std::cerr << "Raw Data (" << usize << 'x' << vsize << ')' << ossr.str() << std::endl;
+		if (m_dump & dump_decodeddata)
+			std::cerr << "Decoded Data (" << usize << 'x' << vsize << ')' << oss.str() << std::endl;
+		break;
+	}
+
+	case 3:
+	{
+		if (!(m_dump & (dump_rawdata | dump_decodeddata)))
+			break;
+		if (!m_grid)
+			break;
+		if (m_layerparam.get_spatialdifforder() < 1 || m_layerparam.get_spatialdifforder() > 2)
+			break;
+		unsigned int usize(m_grid->get_usize());
+		unsigned int vsize(m_grid->get_vsize());
+		unsigned int uvsize(usize * vsize);
+		if (!uvsize)
+			break;
+		if (uvsize < m_layerparam.get_spatialdifforder())
+			break;
+		if (!m_layerparam.is_gengroupsplit() || !m_layerparam.get_ngroups() || m_layerparam.get_spatialdifforder() > 2U)
+			break;
+		std::vector<unsigned int> grpref(m_layerparam.get_ngroups(), 0), grpwidth(m_layerparam.get_ngroups(), 0), grplength(m_layerparam.get_ngroups(), 0);
+		unsigned int ptr(0);
+		std::vector<int> ddata;
+		unsigned int diffinit[2] = { 0, 0 };
+		std::ostringstream ossr;
+		{
+			ddata.clear();
+			ddata.resize(m_layerparam.get_spatialdifforder(), 0);
+			unsigned int w(m_layerparam.get_extradescroctets() << 3);
+			for (unsigned int i(0), n(m_layerparam.get_spatialdifforder()); i < n; ++i) {
+				diffinit[i] = GRIB2::Layer::extract(filedata, ptr, w);
+				ptr += w;
+			}
+			unsigned int sgn(GRIB2::Layer::extract(filedata, ptr, 1));
+			int ghmin(GRIB2::Layer::extract(filedata, ptr + 1, w - 1));
+			if (sgn)
+				ghmin = -ghmin;
+			ptr += w;
+			ddata.resize(uvsize, ghmin);
+			if (m_dump & dump_rawdata) {
+				ossr << std::endl << "  W " << (w >> 3) << " ghmin " << ghmin << " gh";
+				for (unsigned int i(0), n(m_layerparam.get_spatialdifforder()); i < n; ++i)
+					ossr << ' ' << diffinit[i];
+			}
+		}
+		for (unsigned int i(0), ng(m_layerparam.get_ngroups()), grw(m_layerparam.get_nbitsgroupref()); i < ng; ++i, ptr += grw)
+			grpref[i] = GRIB2::Layer::extract(filedata, ptr, grw);
+		ptr = (ptr + 7U) & ~7U;
+		for (unsigned int i(0), ng(m_layerparam.get_ngroups()), gww(m_layerparam.get_nbitsgroupwidth()),
+			     gwr(m_layerparam.get_refgroupwidth()); i < ng; ++i, ptr += gww)
+			grpwidth[i] = GRIB2::Layer::extract(filedata, ptr, gww) + gwr;
+		ptr = (ptr + 7U) & ~7U;
+		for (unsigned int i(0), ng(m_layerparam.get_ngroups()), glw(m_layerparam.get_nbitsgrouplength()),
+			     glr(m_layerparam.get_refgrouplength()), gli(m_layerparam.get_incrgrouplength()); i < ng; ++i, ptr += glw)
+			grplength[i] = GRIB2::Layer::extract(filedata, ptr, glw) * gli + glr;
+		if (!grplength.empty())
+			grplength.back() = m_layerparam.get_lastgrouplength();
+		ptr = (ptr + 7U) & ~7U;
+		if (m_dump & dump_rawdata) {
+			unsigned int totgrplen(0);
+			for (unsigned int i(0), ng(m_layerparam.get_ngroups()); i < ng; ++i) {
+				ossr << std::endl << "  Group[" << i << "] ref " << grpref[i] << " width " << grpwidth[i] << " length " << grplength[i];
+				totgrplen += grplength[i];
+			}
+			ossr << std::endl << "  Total Length " << totgrplen << " grid " << usize << 'x' << vsize << " = " << uvsize;
+		}
+		static const int ddataprimiss(std::numeric_limits<int>::min());
+		static const int ddatasecmiss(std::numeric_limits<int>::min() + 1);
+		static const int ddatamiss(std::numeric_limits<int>::min() + 2);
+		{
+			const unsigned int primiss(m_layerparam.get_primarymissingvalue_raw());
+			const unsigned int secmiss(m_layerparam.get_secondarymissingvalue_raw());
+			unsigned int grpidx(0), grpcnt(1U), grpr(0U), grpw(1U), grpprimiss(~0U), grpsecmiss(~0U);
+			if (grpidx < grplength.size()) {
+				grpcnt = grplength[grpidx];
+				grpr = grpref[grpidx];
+				grpw = grpwidth[grpidx];
+				if (grpw > 0 && m_layerparam.is_primarymissingvalue())
+					grpprimiss = (1U << grpw) - 1U;
+				if (grpw > 1 && m_layerparam.is_secondarymissingvalue())
+					grpsecmiss = (1U << grpw) - 2U;
+			}
+			for (unsigned int i = 0; i < uvsize; ++i) {
+				if (!(i & 15) && (m_dump & dump_rawdata))
+					ossr << std::endl << ' ';
+				if (m_bitmap.size() && (i >> 3 < m_bitmap.size()) && !((m_bitmap[i >> 3] << (i & 7)) & 0x80)) {
+					ddata[i] = ddatamiss;
+					if (m_dump & dump_rawdata)
+						ossr << " ?";
+					continue;
+				}
+				unsigned int v(GRIB2::Layer::extract(filedata, ptr, grpw));
+				if (v == grpprimiss) {
+					ddata[i] = ddataprimiss;
+					if (m_dump & dump_rawdata)
+						ossr << " ?";
+					goto cplxdiffnext;
+				}
+				if (v == grpsecmiss) {
+					ddata[i] = ddatasecmiss;
+					if (m_dump & dump_rawdata)
+						ossr << " ??";
+					goto cplxdiffnext;
+				}
+				v += grpr;
+				if (v) {
+					if (v == primiss) {
+						ddata[i] = ddataprimiss;
+						if (m_dump & dump_rawdata)
+							ossr << " ?";
+						goto cplxdiffnext;
+					}
+					if (v == secmiss) {
+						ddata[i] = ddatasecmiss;
+						if (m_dump & dump_rawdata)
+							ossr << " ??";
+						goto cplxdiffnext;
+					}
+				}
+				if (m_dump & dump_rawdata)
+					ossr << ' ' << v;
+				ddata[i] += v;
+			  cplxdiffnext:
+				ptr += grpw;
+				--grpcnt;
+				if (grpcnt)
+					continue;
+				++grpidx;
+				grpcnt = 1U;
+				grpr = 0U;
+				grpw = 1U;
+				grpprimiss = grpsecmiss = ~0U;
+				if (grpidx < grplength.size()) {
+					grpcnt = grplength[grpidx];
+					grpr = grpref[grpidx];
+					grpw = grpwidth[grpidx];
+					if (grpw > 0 && m_layerparam.is_primarymissingvalue())
+						grpprimiss = (1U << grpw) - 1U;
+					if (grpw > 1 && m_layerparam.is_secondarymissingvalue())
+						grpsecmiss = (1U << grpw) - 2U;
+				}
+			}
+		}
+		switch (m_layerparam.get_spatialdifforder()) {
+		case 1:
+			if (ddata[0] > ddatamiss)
+				ddata[0] = diffinit[0];
+			for (unsigned int i = 1; i < uvsize; ++i) {
+				int v(ddata[i]);
+				if (v <= ddatamiss)
+					continue;
+				v += diffinit[0];
+				diffinit[0] = v;
+				ddata[i] = v;
+			}
+			break;
+
+		case 2:
+			if (ddata[0] > ddatamiss)
+				ddata[0] = diffinit[0];
+			if (ddata[1] > ddatamiss)
+				ddata[1] = diffinit[1];
+			for (unsigned int i = 2; i < uvsize; ++i) {
+				int v(ddata[i]);
+				if (v <= ddatamiss)
+					continue;
+				v += 2 * diffinit[1] - diffinit[0];
+				diffinit[0] = diffinit[1];
+				diffinit[1] = v;
+				ddata[i] = v;
+			}
+			break;
+
+		default:
+			break;
+		}
+		if (m_dump & dump_rawdata)
+			std::cerr << "Raw Data (" << usize << 'x' << vsize << ')' << ossr.str() << std::endl;
+		if (m_dump & dump_decodeddata) {
+			std::ostringstream oss;
+			for (unsigned int i = 0; i < uvsize; ++i) {
+				if (!(i & 15) && (m_dump & dump_decodeddata))
+					oss << std::endl << ' ';
+				switch (ddata[i]) {
+				case ddataprimiss:
+					oss << ' ' << m_layerparam.get_primarymissingvalue_float();
+					break;
+
+				case ddatasecmiss:
+					oss << ' ' << m_layerparam.get_secondarymissingvalue_float();
+					break;
+
+				case ddatamiss:
+					oss << " ?";
+					break;
+
+				default:
+					oss << ' ' << m_layerparam.scale(ddata[i]);
+					break;
+		       		}
+			}
+			std::cerr << "Decoded Data (" << usize << 'x' << vsize << ')' << oss.str() << std::endl;
+		}
+		break;
+	}
+
 	case 40:
 	{
 #ifdef HAVE_OPENJPEG
+#ifdef HAVE_OPENJPEG1
 		opj_common_struct_t cinfo;
 		opj_codestream_info_t cstr_info;
 		memset(&cinfo, 0, sizeof(cinfo));
 		memset(&cstr_info, 0, sizeof(cstr_info));
-		opj_cio_t *cio(opj_cio_open(&cinfo, &buf[0], buf.size()));
+		opj_cio_t *cio(opj_cio_open(&cinfo, &filedata[0], filedata.size()));
 		opj_dinfo_t *dinfo(opj_create_decompress(CODEC_J2K));
 		opj_dparameters_t param;
 		opj_set_default_decoder_parameters(&param);
@@ -960,23 +1584,130 @@ int GRIB2File::section7(Glib::RefPtr<Gio::FileInputStream> instream, unsigned in
 				  << "J2K comp[" << i << "] resno_decoded " << img->comps[i].resno_decoded << std::endl
 				  << "J2K comp[" << i << "] factor " << img->comps[i].factor << std::endl
 				  << "J2K comp[" << i << "] data";
-			double scaled(std::pow(10, -m_scaled));
 			for (unsigned int j = 0; j < 4; ++j) {
 				int v(img->comps[i].data[j]);
-				double y(m_scaler + std::ldexp(v, m_scalee));
-				y *= scaled;
-				std::cerr << ' ' << y << '(' << v << ')';
+				std::cerr << ' ' << m_layerparam.scale(v) << '(' << v << ')';
 			}
 			std::cerr << std::endl;
 			if (img->comps[i].w > 16 && img->comps[i].h > 200) {
 				int v(img->comps[i].data[174 * img->comps[i].w + 16]);
-				double y(m_scaler + std::ldexp(v, m_scalee));
-				y *= scaled;
-				std::cerr << "J2K comp[" << i << "] data 16,174: " << y << '(' << v << ')';
+				std::cerr << "J2K comp[" << i << "] data 16,174: " << m_layerparam.scale(v) << '(' << v << ')';
+			}
+		}
+		if (m_dump & dump_decodeddata && img->numcomps == 1 && (m_bitmap.size() || (img->comps[0].w == cstr_info.image_w && img->comps[0].h == cstr_info.image_h)) && m_grid) {
+			unsigned int usize(m_grid->get_usize());
+			unsigned int vsize(m_grid->get_vsize());
+			unsigned int uvsize(usize * vsize);
+			if (uvsize) {
+				std::ostringstream oss;
+				if (m_bitmap.size()) {
+					unsigned int imgsz(cstr_info.image_w * cstr_info.image_h);
+					unsigned int imgptr(0);
+					for (unsigned int i = 0; i < uvsize; ++i) {
+						if (!(i & 15))
+							oss << std::endl << ' ';
+						if ((i >> 3 < m_bitmap.size()) && !((m_bitmap[i >> 3] << (i & 7)) & 0x80)) {
+							oss << " ?";
+							continue;
+						}
+						if (imgptr >= imgsz)
+							break;
+						oss << ' ' << m_layerparam.scale(img->comps[0].data[imgptr++]);
+					}
+				} else {
+					for (unsigned int i = 0; i < uvsize; ++i) {
+						if (!(i & 15))
+							oss << std::endl << ' ';
+						oss << ' ' << m_layerparam.scale(img->comps[0].data[i]);
+					}
+				}
+				std::cerr << "Decoded Data (" << usize << 'x' << vsize << ')' << oss.str() << std::endl;
 			}
 		}
 		opj_image_destroy(img);
 		opj_destroy_cstr_info(&cstr_info);
+#else
+		opj_image_t *img(0);
+		{
+			OpjMemStream streamdata(filedata);
+			opj_codec_t *codec(opj_create_decompress(OPJ_CODEC_J2K));
+			if (codec) {
+				opj_dparameters_t param;
+				opj_set_default_decoder_parameters(&param);
+				if (opj_setup_decoder(codec, &param)) {
+					if (opj_read_header(streamdata.get_stream(), codec, &img)) {
+						if (!opj_decode(codec, streamdata.get_stream(), img)) {
+							opj_image_destroy(img);
+							img = 0;
+						}
+					}
+				}
+				opj_destroy_codec(codec);
+			}
+		}
+		if (img) {
+			std::cerr << "J2K x0 " << img->x0 << std::endl
+				  << "J2K y0 " << img->y0 << std::endl
+				  << "J2K x1 " << img->x1 << std::endl
+				  << "J2K y1 " << img->y1 << std::endl
+				  << "J2K num comps " << img->numcomps << std::endl
+				  << "J2K colspc " << (int)img->color_space << std::endl;
+			for (unsigned int i = 0; i < img->numcomps; ++i) {
+				std::cerr << "J2K comp[" << i << "] x0 " << img->comps[i].x0 << std::endl
+					  << "J2K comp[" << i << "] y0 " << img->comps[i].y0 << std::endl
+					  << "J2K comp[" << i << "] dx " << img->comps[i].dx << std::endl
+					  << "J2K comp[" << i << "] dy " << img->comps[i].dy << std::endl
+					  << "J2K comp[" << i << "] w " << img->comps[i].w << std::endl
+					  << "J2K comp[" << i << "] h " << img->comps[i].h << std::endl
+					  << "J2K comp[" << i << "] prec " << img->comps[i].prec << std::endl
+					  << "J2K comp[" << i << "] bpp " << img->comps[i].bpp << std::endl
+					  << "J2K comp[" << i << "] sgnd " << img->comps[i].sgnd << std::endl
+					  << "J2K comp[" << i << "] resno_decoded " << img->comps[i].resno_decoded << std::endl
+					  << "J2K comp[" << i << "] factor " << img->comps[i].factor << std::endl
+					  << "J2K comp[" << i << "] data";
+				for (unsigned int j = 0; j < 4; ++j) {
+					int v(img->comps[i].data[j]);
+					std::cerr << ' ' << m_layerparam.scale(v) << '(' << v << ')';
+				}
+				std::cerr << std::endl;
+				if (img->comps[i].w > 16 && img->comps[i].h > 200) {
+					int v(img->comps[i].data[174 * img->comps[i].w + 16]);
+					std::cerr << "J2K comp[" << i << "] data 16,174: " << m_layerparam.scale(v) << '(' << v << ')';
+				}
+			}
+			if (m_dump & dump_decodeddata && img->numcomps == 1 && m_grid) {
+				unsigned int usize(m_grid->get_usize());
+				unsigned int vsize(m_grid->get_vsize());
+				unsigned int uvsize(usize * vsize);
+				if (uvsize) {
+					std::ostringstream oss;
+					if (m_bitmap.size()) {
+						unsigned int imgsz(img->comps[0].w * img->comps[0].h);
+	        				unsigned int imgptr(0);
+						for (unsigned int i = 0; i < uvsize; ++i) {
+							if (!(i & 15))
+								oss << std::endl << ' ';
+							if ((i >> 3 < m_bitmap.size()) && !((m_bitmap[i >> 3] << (i & 7)) & 0x80)) {
+								oss << " ?";
+								continue;
+							}
+							if (imgptr >= imgsz)
+								break;
+							oss << ' ' << m_layerparam.scale(img->comps[0].data[imgptr++]);
+						}
+					} else {
+						for (unsigned int i = 0; i < uvsize; ++i) {
+							if (!(i & 15))
+								oss << std::endl << ' ';
+							oss << ' ' << m_layerparam.scale(img->comps[0].data[i]);
+						}
+					}
+					std::cerr << "Decoded Data (" << usize << 'x' << vsize << ')' << oss.str() << std::endl;
+				}
+			}
+			opj_image_destroy(img);
+		}
+#endif
 #endif
 		break;
 	}
@@ -985,11 +1716,22 @@ int GRIB2File::section7(Glib::RefPtr<Gio::FileInputStream> instream, unsigned in
 	return 0;
 }
 
+inline GRIB2File::dump_t operator|(GRIB2File::dump_t x, GRIB2File::dump_t y) { return (GRIB2File::dump_t)((unsigned int)x | (unsigned int)y); }
+inline GRIB2File::dump_t operator&(GRIB2File::dump_t x, GRIB2File::dump_t y) { return (GRIB2File::dump_t)((unsigned int)x & (unsigned int)y); }
+inline GRIB2File::dump_t operator^(GRIB2File::dump_t x, GRIB2File::dump_t y) { return (GRIB2File::dump_t)((unsigned int)x ^ (unsigned int)y); }
+inline GRIB2File::dump_t operator~(GRIB2File::dump_t x) { return (GRIB2File::dump_t)~(unsigned int)x; }
+inline GRIB2File::dump_t& operator|=(GRIB2File::dump_t& x, GRIB2File::dump_t y) { x = x | y; return x; }
+inline GRIB2File::dump_t& operator&=(GRIB2File::dump_t& x, GRIB2File::dump_t y) { x = x & y; return x; }
+inline GRIB2File::dump_t& operator^=(GRIB2File::dump_t& x, GRIB2File::dump_t y) { x = x ^ y; return x; }
+
 int main(int argc, char *argv[])
 {
         static struct option long_options[] = {
 		{ "files", required_argument, 0, 'f' },
 		{ "dirs", required_argument, 0, 'd' },
+		{ "dump-decoded", no_argument, 0, 'D' },
+		{ "dump-rawdata", no_argument, 0, 'R' },
+		{ "dump-filedata", no_argument, 0, 'F' },
 		{ 0, 0, 0, 0 }
         };
         int c, err(0);
@@ -999,20 +1741,33 @@ int main(int argc, char *argv[])
 	Glib::thread_init();
 	Glib::set_application_name("grib2dump");
   	std::vector<std::string> paths;
-        while ((c = getopt_long(argc, argv, "f:d:", long_options, 0)) != EOF) {
+	GRIB2File::dump_t dump(GRIB2File::dump_none);
+        while ((c = getopt_long(argc, argv, "f:d:DRF", long_options, 0)) != EOF) {
                 switch (c) {
 		case 'd':
 		case 'f':
 			paths.push_back(optarg);
 			break;
 
+		case 'D':
+			dump |= GRIB2File::dump_decodeddata;
+			break;
+
+		case 'R':
+			dump |= GRIB2File::dump_rawdata;
+			break;
+
+		case 'F':
+			dump |= GRIB2File::dump_filedata;
+			break;
+
  		default:
-			err++;
+			++err;
 			break;
                 }
         }
         if (err || ((optind + 1 > argc) && paths.empty())) {
-                std::cerr << "usage: grib2dump <input>" << std::endl;
+                std::cerr << "usage: grib2dump [-D] [-R] [-F] <input>" << std::endl;
                 return EX_USAGE;
         }
 	try {
@@ -1023,7 +1778,7 @@ int main(int argc, char *argv[])
 				std::cout << "Expired " << count << " cached GRIB2 Layers" << std::endl;
 		}
 		if (paths.empty()) {
-			GRIB2File gf;
+			GRIB2File gf(dump);
 			if (gf.parse(argv[optind])) {
 				std::cerr << "Error parsing file " << argv[optind] << std::endl;
 				return EX_DATAERR;

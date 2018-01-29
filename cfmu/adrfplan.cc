@@ -3637,13 +3637,13 @@ void FlightPlan::set_aircraft(const Aircraft& acft, double rpm, double mp, doubl
 	set_aircraftid(acft.get_callsign());
 	set_aircrafttype(acft.get_icaotype());
 	set_wakecategory(acft.get_wakecategory());
-	set_equipment(acft.get_equipment());
-	set_transponder(acft.get_transponder());
+	set_equipment(acft.get_equipment_string());
+	set_transponder(acft.get_transponder_string());
 	set_pbn(acft.get_pbn());
-	set_emergencyradio(acft.get_emergencyradio());
-	set_survival(acft.get_survival());
-	set_lifejackets(acft.get_lifejackets());
-	set_dinghies(acft.get_dinghies());
+	set_emergencyradio(acft.get_emergencyradio_string());
+	set_survival(acft.get_survival_string());
+	set_lifejackets(acft.get_lifejackets_string());
+	set_dinghies(acft.get_dinghies_string());
 	set_picname(acft.get_picname());
 	for (Aircraft::otherinfo_const_iterator_t oii(acft.otherinfo_begin()), oie(acft.otherinfo_end()); oii != oie; ++oii)
 		otherinfo_add(*oii);

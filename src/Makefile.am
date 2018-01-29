@@ -8,12 +8,12 @@ palmcc =
 endif
 
 noinst_HEADERS = \
-	RouteEditUi.h fplan.h geom.h geomboost.h geomboostdbl.h \
+	RouteEditUi.h sitename.h fplan.h geom.h geomboost.h geomboostdbl.h \
 	interval.hh palm.h dbobj.h dbser.h engine.h baro.h alignedalloc.h \
 	maps.h mapst.h mapsnt.h bitmapmaps.h airdata.h wmm.h gtopocolor.h \
 	Navigate.h SunriseSunset.h prefs.h icaofpl.h aircraft.h modes.h \
 	wind.h nwxweather.h adds.h wxdb.h grib2.h metartaf.hh metgraph.h \
-	opsperf.h osm.h
+	opsperf.h osm.h driftdown.h
 
 lib_LTLIBRARIES = libvfrnav.la
 noinst_LTLIBRARIES = libwmostns.la libsimd.la
@@ -33,15 +33,15 @@ libsimd_la_SOURCES = $(simdsources)
 libsimd_la_CXXFLAGS = $(AM_CXXFLAGS) $(simdflags)
 EXTRA_libsimd_la_SOURCES = geomavx.cc geomnosimd.cc
 
-libvfrnav_la_SOURCES = fplan.cc geom.cc geomgeos.cc interval.cc dbobj.cc dbobjarpt.cc \
-	dbobjaspc.cc dbobjnav.cc dbobjwpt.cc dbobjmapel.cc dbobjwatel.cc dbobjawy.cc \
-	dbobjtrk.cc dbobjlbl.cc dbobjtopo.cc dbser.cc fascrc.cc engine.cc \
+libvfrnav_la_SOURCES = sitename.cc fplan.cc geom.cc geomgeos.cc interval.cc dbobj.cc \
+	dbobjarpt.cc dbobjaspc.cc dbobjnav.cc dbobjwpt.cc dbobjmapel.cc dbobjwatel.cc \
+	dbobjawy.cc dbobjtrk.cc dbobjlbl.cc dbobjtopo.cc dbser.cc fascrc.cc engine.cc \
 	awygraph.cc engine1.cc engine2.cc aircraft.cc navlog.cc modes.cc modescrc.cc \
 	bitmapmaps.cc mapst.cc mapsnt.cc baro.cc barostd.cc airdata.cc airdataconst.cc \
 	wmm.cc wmm2000.cc wmm2005.cc wmm2010.cc wmm2015.cc SunriseSunset.cc \
 	prefs.cc icaofpl.cc wind.cc nwxweather.cc adds.cc wxdb.cc \
 	grib2.cc grib2tables.cc grib2paramtbl.cc metartaf.cc metgraph.cc metgraphltx.cc \
-	opsperf.cc osm.cc $(palmcc)
+	opsperf.cc osm.cc driftdown.cc icaorgn.cc $(palmcc)
 EXTRA_libvfrnav_la_SOURCES = palm.cc
 libvfrnav_la_LIBADD = libwmostns.la libsimd.la @LIBS@ @GTKMM_LIBS@ @GLIBMM_LIBS@ \
 	@GIOMM_LIBS@ @LOCATION_LIBS@ @SQLITE3X_LIBS@ @GTHREAD_LIBS@ @DBUS_LIBS@ \

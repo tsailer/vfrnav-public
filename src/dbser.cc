@@ -57,7 +57,7 @@ DbBaseCommon::DbSchemaArchiver::Table::Table(const std::vector<std::string>& tok
 	} else if (tok.size() >= idx + 1 && is_label(tok[idx])) {
 		m_name = tok[idx];
 		++idx;
-	} else 
+	} else
 		throw std::runtime_error("invalid table creation SQL statement (3)");
 	if (tok.size() >= idx + 2 && strcompare(tok[idx], "using") && is_label(tok[idx + 1]))
 		idx += 2;
@@ -375,7 +375,7 @@ std::string DbBaseCommon::DbSchemaArchiver::untokenize(const std::vector<std::st
 		if (!(nospace || nospc2))
 			r.push_back(' ');
 		nospace = nospc2;
-		r += *si;		
+		r += *si;
 	}
 	return r;
 }

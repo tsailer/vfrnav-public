@@ -46,7 +46,7 @@ bool CFMUAutoroute45::check_fplan(TrafficFlowRestrictions::Result& res, const FP
                 return false;
         }
 	opendb();
-	res = m_tfr.check_fplan(m_route, 'G', m_aircraft.get_icaotype(), m_aircraft.get_equipment(), m_aircraft.get_pbn(),
+	res = m_tfr.check_fplan(m_route, 'G', m_aircraft.get_icaotype(), m_aircraft.get_equipment_string(), m_aircraft.get_pbn_string(),
 				m_airportdb, m_navaiddb, m_waypointdb, m_airwaydb, m_airspacedb);
 	return true;
 }
@@ -446,14 +446,14 @@ bool CFMUAutoroute45::start_ifr(bool cont, bool optfuel)
 			if (true) {
 				Glib::TimeVal tv;
 				tv.assign_current_time();
-				m_tfr.simplify_rules_equipment(m_aircraft.get_equipment(), m_aircraft.get_pbn());
+				m_tfr.simplify_rules_equipment(m_aircraft.get_equipment_string(), m_aircraft.get_pbn());
 				{
 					Glib::TimeVal tv1;
 					tv1.assign_current_time();
 					tv = tv1 - tv;
 				}
 				std::ostringstream oss;
-				oss << m_tfr.count_rules() << " rules after fixing aircraft equipment " << m_aircraft.get_equipment()
+				oss << m_tfr.count_rules() << " rules after fixing aircraft equipment " << m_aircraft.get_equipment_string()
 				    << " PBN/" << m_aircraft.get_pbn_string() << ", " << std::fixed << std::setprecision(3) << tv.as_double() << 's';
 				m_signal_log(log_normal, oss.str());
 			}

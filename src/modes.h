@@ -4,7 +4,7 @@
 // Description: Mode-S Transponder Message
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2013
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2013, 2016
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -27,7 +27,7 @@ class ModeSMessage {
   public:
 	static const uint32_t crc_poly = ((1 << 24) ^ (1 << 23) ^ (1 << 22) ^ (1 << 21) ^ (1 << 20) ^ (1 << 19) ^
 					  (1 << 18) ^ (1 << 17) ^ (1 << 16) ^ (1 << 15) ^ (1 << 14) ^ (1 << 13) ^
-					  (1 << 12) ^ (1 << 10) ^ (1 << 3) ^ (1 << 0)); 
+					  (1 << 12) ^ (1 << 10) ^ (1 << 3) ^ (1 << 0));
 	static const int NZ = 15;
 
 	ModeSMessage(void);

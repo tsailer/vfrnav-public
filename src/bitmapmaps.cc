@@ -715,7 +715,7 @@ int BitmapMaps::Map::Tile::load_xml(const xmlpp::Element *el, const std::string&
 		try {
 			Glib::RefPtr<Gio::File> f(Gio::File::create_for_path(m_file));
 			Glib::RefPtr<Gio::FileInfo> info(f->query_info("*", Gio::FILE_QUERY_INFO_NONE));
-			Glib::TimeVal tv(info->modification_time()); 
+			Glib::TimeVal tv(info->modification_time());
 			m_time = tv.tv_sec;
 		} catch (...) {
 			if (true)

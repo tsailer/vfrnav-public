@@ -4,7 +4,7 @@
 // Description: Gridded Binary weather files
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2012, 2013, 2014, 2016
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2012, 2013, 2014, 2016, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -29,7 +29,7 @@
 class FPlanRoute;
 
 class GRIB2 {
-  public:
+public:
 	static const uint8_t surface_ground_or_water = 1;
 	static const uint8_t surface_cloud_base = 2;
 	static const uint8_t surface_cloud_top = 3;
@@ -120,35 +120,35 @@ class GRIB2 {
 	static const uint8_t discipline_oceanography = 10;
 
 	/*
-#!/usr/bin/perl
+	  #!/usr/bin/perl
 
-my @paramcat;
+	  my @paramcat;
 
-open FH, "<", "grib2.h" || die "cannot open grib2.h";
-while (<FH>) {
-    if (/^\s*static\s+const\s+uint16_t\s+paramcat_([A-Za-z0-9_]+)\s+=/) {
-	push @paramcat, $1;
-    }
-}
-close FH;
+	  open FH, "<", "grib2.h" || die "cannot open grib2.h";
+	  while (<FH>) {
+	  if (/^\s*static\s+const\s+uint16_t\s+paramcat_([A-Za-z0-9_]+)\s+=/) {
+	  push @paramcat, $1;
+	  }
+	  }
+	  close FH;
 
-open FH, "<", "grib2paramtbl.cc" || die "cannot open grib2paramtbl.cc";
-while (<FH>) {
-    if (/^\s*{\s+&paramcategory\s*\[\s*(\d+)\s*\]\s*,\s*"[^"]*"\s*,\s*[A-Za-z0-9_]+\s*,\s*"([A-Za-z0-9_]+)"\s*,\s*(\d+)\s*,/) {
-	my $catidx = $1;
-	my $abbrev = $2;
-	my $id = $3;
-	if ($catidx >= scalar @paramcat) {
-	    print STDERR "Parameter Category $1 ($2) out of range\n";
-	    next;
-	}
-	my $cat = $paramcat[$catidx];
-	my $lcabbrev = lc $abbrev;
-	print "\tstatic const uint32_t param_${cat}_${lcabbrev} = ${id} | (paramcat_${cat} << 8);\n";
-    }
-}
-close FH;
-	 */
+	  open FH, "<", "grib2paramtbl.cc" || die "cannot open grib2paramtbl.cc";
+	  while (<FH>) {
+	  if (/^\s*{\s+&paramcategory\s*\[\s*(\d+)\s*\]\s*,\s*"[^"]*"\s*,\s*[A-Za-z0-9_]+\s*,\s*"([A-Za-z0-9_]+)"\s*,\s*(\d+)\s*,/) {
+	  my $catidx = $1;
+	  my $abbrev = $2;
+	  my $id = $3;
+	  if ($catidx >= scalar @paramcat) {
+	  print STDERR "Parameter Category $1 ($2) out of range\n";
+	  next;
+	  }
+	  my $cat = $paramcat[$catidx];
+	  my $lcabbrev = lc $abbrev;
+	  print "\tstatic const uint32_t param_${cat}_${lcabbrev} = ${id} | (paramcat_${cat} << 8);\n";
+	  }
+	  }
+	  close FH;
+	*/
 
 	static const uint16_t paramcat_meteorology_temperature = 0 | (discipline_meteorology << 8);
 	static const uint16_t paramcat_meteorology_moisture = 1 | (discipline_meteorology << 8);
@@ -1148,21 +1148,21 @@ close FH;
 	class Parameter;
 
 	class ParamDiscipline {
-	  public:
+	public:
 		const ParamCategory *get_category(void) const { return m_cat; }
 		const char *get_str(const char *dflt = 0) const { return this && m_str ? m_str : dflt; }
 		const char *get_str_nonnull(void) const { return get_str(&charstr_terminator); }
 		uint8_t get_id(void) const { return this ? m_id : 0xff; }
 		int compareid(const ParamDiscipline& x) const;
 
-	  public:
+	public:
 		const ParamCategory *m_cat;
 		const char *m_str;
 		uint8_t m_id;
 	};
 
 	class ParamCategory {
-	  public:
+	public:
 		const ParamDiscipline *get_discipline(void) const { return this ? m_disc : 0; }
 		const Parameter *get_parameter(void) const { return m_par; }
 		const char *get_str(const char *dflt = 0) const { return this && m_str ? m_str : dflt; }
@@ -1172,7 +1172,7 @@ close FH;
 		uint16_t get_fullid(void) const { return this ? m_id | (m_discid << 8) : 0xffff; }
 		int compareid(const ParamCategory& x) const;
 
-	  public:
+	public:
 		const ParamDiscipline *m_disc;
 		const Parameter *m_par;
 		const char *m_str;
@@ -1181,7 +1181,7 @@ close FH;
 	};
 
 	class Parameter {
-	  public:
+	public:
 		const ParamCategory *get_category(void) const { return this ? m_cat : 0; }
 		const char *get_str(const char *dflt = 0) const { return this && m_str ? m_str : dflt; }
 		const char *get_str_nonnull(void) const { return get_str(&charstr_terminator); }
@@ -1195,7 +1195,7 @@ close FH;
 		uint32_t get_fullid(void) const { return this ? m_id | (m_catid << 8) | (m_discid << 16) : 0xffffff; }
 		int compareid(const Parameter& x) const;
 
-	  public:
+	public:
 		const ParamCategory *m_cat;
 		const char *m_str;
 		const char *m_unit;
@@ -1232,7 +1232,7 @@ close FH;
 	static const char *find_surfaceunit_str(uint8_t sfctype, const char *dflt = 0);
 
 	class Grid {
-	  public:
+	public:
 		Grid(void);
 		virtual ~Grid();
                 void reference(void) const;
@@ -1246,12 +1246,12 @@ close FH;
 		virtual bool operator!=(const Grid& x) const { return !operator==(x); }
 		virtual std::pair<float,float> transform_axes(float u, float v) const = 0;
 
-	  protected:
+	protected:
                 mutable gint m_refcount;
 	};
 
 	class GridLatLon : public Grid {
-	  public:
+	public:
 		GridLatLon(const Point& origin, const Point& ptsz, unsigned int usz, unsigned int vsz, int scu, int scv, int offs);
 		virtual unsigned int get_usize(void) const { return m_usize; }
 		virtual unsigned int get_vsize(void) const { return m_vsize; }
@@ -1261,7 +1261,7 @@ close FH;
 		virtual bool operator==(const Grid& x) const;
 		virtual std::pair<float,float> transform_axes(float u, float v) const;
 
-	  protected:
+	protected:
 		Point m_origin;
 		Point m_pointsize;
 		unsigned int m_usize;
@@ -1275,7 +1275,7 @@ close FH;
 	class LayerResult;
 
 	class Layer {
-	  public:
+	public:
 		Layer(const Parameter *param = 0, const Glib::RefPtr<Grid const>& grid = Glib::RefPtr<Grid>(),
 		      gint64 reftime = 0, gint64 efftime = 0, uint16_t centerid = 0xffff, uint16_t subcenterid = 0xffff,
 		      uint8_t productionstatus = 0xff, uint8_t datatype = 0xff,
@@ -1307,7 +1307,9 @@ close FH;
 		virtual bool check_load(void) = 0;
 		std::ostream& print_param(std::ostream& os);
 
-	  protected:
+		static unsigned int extract(const std::vector<uint8_t>& filedata, unsigned int offs, unsigned int width);
+
+	protected:
                 mutable gint m_refcount;
 		Glib::Mutex m_mutex;
 		sigc::connection m_expire;
@@ -1323,19 +1325,17 @@ close FH;
 		uint16_t m_centerid;
 		uint16_t m_subcenterid;
 		uint8_t m_productionstatus;
-		uint8_t m_datatype;	
+		uint8_t m_datatype;
 		uint8_t m_genprocess;
 		uint8_t m_genprocesstype;
 		uint8_t m_surface1type;
 		uint8_t m_surface2type;
 
 		virtual void load(void) = 0;
-		static unsigned int extract(const std::vector<uint8_t>& filedata, unsigned int offs, unsigned int width);
 	};
 
-  protected:
 	class LayerJ2KParam {
-	  public:
+	public:
 		LayerJ2KParam(void);
 		double get_datascale(void) const { return m_datascale; }
 		void set_datascale(double d) { m_datascale = d; }
@@ -1343,24 +1343,28 @@ close FH;
 		void set_dataoffset(double d) { m_dataoffset = d; }
 		double scale(int v) const { return m_dataoffset + m_datascale * v; }
 
-	  protected:
+	protected:
 		double m_datascale;
 		double m_dataoffset;
 	};
 
 	class LayerSimplePackingParam : public LayerJ2KParam {
-	  public:
+	public:
 		LayerSimplePackingParam(void);
 
 		unsigned int get_nbitsgroupref(void) const { return m_nbitsgroupref; }
 		void set_nbitsgroupref(unsigned int nbgr) { m_nbitsgroupref = nbgr; }
+		uint8_t get_fieldvaluetype(void) const { return m_fieldvaluetype; }
+		void set_fieldvaluetype(uint8_t vt) { m_fieldvaluetype = vt; }
+		bool is_fieldvalue_float(void) const { return !get_fieldvaluetype(); }
 
-	  protected:
+	protected:
 		unsigned int m_nbitsgroupref;
+		uint8_t m_fieldvaluetype;
 	};
 
 	class LayerComplexPackingParam : public LayerSimplePackingParam {
-	  public:
+	public:
 		LayerComplexPackingParam(void);
 
 		unsigned int get_ngroups(void) const { return m_ngroups; }
@@ -1378,10 +1382,24 @@ close FH;
 		unsigned int get_nbitsgrouplength(void) const { return m_nbitsgrouplength; }
 		void set_nbitsgrouplength(unsigned int nbgl) { m_nbitsgrouplength = nbgl; }
 
-		bool is_gengroupsplit(void) const { return m_gengroupsplit; }
-		void set_gengroupsplit(bool gs) { m_gengroupsplit = gs; }
+		uint8_t get_groupsplitmethod(void) const { return m_groupsplitmethod; }
+		void set_groupsplitmethod(uint8_t gsm) { m_groupsplitmethod = gsm; }
+		bool is_gengroupsplit(void) const { return get_groupsplitmethod() == 1; }
 
-	  protected:
+		uint8_t get_missingvaluemgmt(void) const { return m_missingvaluemgmt; }
+		void set_missingvaluemgmt(uint8_t mvm) { m_missingvaluemgmt = mvm; }
+		bool is_primarymissingvalue(void) const;
+		bool is_secondarymissingvalue(void) const;
+		int32_t get_primarymissingvalue(void) const { return m_primarymissingvalue; }
+		void set_primarymissingvalue(int32_t v) { m_primarymissingvalue = v; }
+		int32_t get_secondarymissingvalue(void) const { return m_secondarymissingvalue; }
+		void set_secondarymissingvalue(int32_t v) { m_secondarymissingvalue = v; }
+		unsigned int get_primarymissingvalue_raw(void) const;
+		unsigned int get_secondarymissingvalue_raw(void) const;
+		double get_primarymissingvalue_float(void) const;
+		double get_secondarymissingvalue_float(void) const;
+
+	protected:
 		unsigned int m_ngroups;
 		unsigned int m_refgroupwidth;
 		unsigned int m_nbitsgroupwidth;
@@ -1389,26 +1407,28 @@ close FH;
 		unsigned int m_incrgrouplength;
 		unsigned int m_lastgrouplength;
 		unsigned int m_nbitsgrouplength;
-		bool m_gengroupsplit;
+		int32_t m_primarymissingvalue;
+		int32_t m_secondarymissingvalue;
+		uint8_t m_groupsplitmethod;
+		uint8_t m_missingvaluemgmt;
 	};
 
 	class LayerComplexPackingSpatialDiffParam : public LayerComplexPackingParam {
-	  public:
+	public:
 		LayerComplexPackingSpatialDiffParam(void);
-		
+
 		unsigned int get_spatialdifforder(void) const { return m_spatialdifforder; }
 		void set_spatialdifforder(unsigned int o) { m_spatialdifforder = o; }
 		unsigned int get_extradescroctets(void) const { return m_extradescroctets; }
 		void set_extradescroctets(unsigned int e) { m_extradescroctets = e; }
 
-	  protected:
+	protected:
 		unsigned int m_spatialdifforder;
 		unsigned int m_extradescroctets;
 	};
 
-  public:
 	class LayerJ2K : public Layer {
-	  public:
+	public:
 		LayerJ2K(const Parameter *param = 0, const Glib::RefPtr<Grid const>& grid = Glib::RefPtr<Grid>(),
 			 gint64 reftime = 0, gint64 efftime = 0, uint16_t centerid = 0xffff, uint16_t subcenterid = 0xffff,
 			 uint8_t productionstatus = 0xff, uint8_t datatype = 0xff,
@@ -1421,7 +1441,7 @@ close FH;
 			 const std::string& cachedir = "");
 		virtual bool check_load(void);
 
-	  protected:
+	protected:
 		std::string m_filename;
 		std::string m_cachedir;
 		LayerJ2KParam m_param;
@@ -1434,7 +1454,7 @@ close FH;
 	};
 
 	class LayerSimplePacking : public Layer {
-	  public:
+	public:
 		LayerSimplePacking(const Parameter *param = 0, const Glib::RefPtr<Grid const>& grid = Glib::RefPtr<Grid>(),
 				   gint64 reftime = 0, gint64 efftime = 0, uint16_t centerid = 0xffff, uint16_t subcenterid = 0xffff,
 				   uint8_t productionstatus = 0xff, uint8_t datatype = 0xff,
@@ -1446,7 +1466,7 @@ close FH;
 				   goffset fileoffset = 0, gsize filesize = 0, const std::string& filename = "");
 		virtual bool check_load(void);
 
-	  protected:
+	protected:
 		std::string m_filename;
 	        LayerSimplePackingParam m_param;
 		goffset m_bitmapoffset;
@@ -1458,7 +1478,7 @@ close FH;
 	};
 
 	class LayerComplexPacking : public Layer {
-	  public:
+	public:
 		LayerComplexPacking(const Parameter *param = 0, const Glib::RefPtr<Grid const>& grid = Glib::RefPtr<Grid>(),
 				    gint64 reftime = 0, gint64 efftime = 0, uint16_t centerid = 0xffff, uint16_t subcenterid = 0xffff,
 				    uint8_t productionstatus = 0xff, uint8_t datatype = 0xff,
@@ -1470,7 +1490,7 @@ close FH;
 				    goffset fileoffset = 0, gsize filesize = 0, const std::string& filename = "");
 		virtual bool check_load(void);
 
-	  protected:
+	protected:
 		std::string m_filename;
 		LayerComplexPackingParam m_param;
 		goffset m_bitmapoffset;
@@ -1482,7 +1502,7 @@ close FH;
 	};
 
 	class LayerComplexPackingSpatialDiff : public Layer {
-	  public:
+	public:
 		LayerComplexPackingSpatialDiff(const Parameter *param = 0, const Glib::RefPtr<Grid const>& grid = Glib::RefPtr<Grid>(),
 					       gint64 reftime = 0, gint64 efftime = 0, uint16_t centerid = 0xffff, uint16_t subcenterid = 0xffff,
 					       uint8_t productionstatus = 0xff, uint8_t datatype = 0xff,
@@ -1494,7 +1514,7 @@ close FH;
 					       goffset fileoffset = 0, gsize filesize = 0, const std::string& filename = "");
 		virtual bool check_load(void);
 
-	  protected:
+	protected:
 		std::string m_filename;
 		LayerComplexPackingSpatialDiffParam m_param;
 		goffset m_bitmapoffset;
@@ -1549,18 +1569,18 @@ close FH;
 	class LayerInterpolateResult {
 	public:
 		class InterpIndex {
-		  public:
+		public:
 			InterpIndex(float idxtime, float idxsfc1value) : m_idxtime(idxtime), m_idxsfc1value(idxsfc1value) {}
 			float get_idxtime(void) const { return m_idxtime; }
 			float get_idxsfc1value(void) const { return m_idxsfc1value; }
 
-		  protected:
+		protected:
 			float m_idxtime;
 			float m_idxsfc1value;
 		};
 
 		class LinInterp {
-		  public:
+		public:
 			LinInterp(float p0 = 0, float p1 = 0, float p2 = 0, float p3 = 0);
 			float operator()(const InterpIndex& idx) const;
 			float operator[](unsigned int idx) const;
@@ -1570,7 +1590,7 @@ close FH;
 			LinInterp operator*(float m) const;
 			bool is_nan(void) const;
 
-		  protected:
+		protected:
 			float m_p[4];
 		};
 
@@ -1629,13 +1649,13 @@ close FH;
 	};
 
 	class Parser {
-	  public:
+	public:
 		Parser(GRIB2& gr2);
 		int parse_file(const std::string& filename);
 		int parse_directory(const std::string& dir);
 		int parse(const std::string& p);
 
-	  protected:
+	protected:
 		GRIB2& m_grib2;
 		Glib::RefPtr<Grid> m_lastgrid;
 		Glib::RefPtr<Grid> m_grid;
@@ -1686,7 +1706,7 @@ close FH;
 		static const uint16_t flags_snow         = 0x20;
 
 		class SoundingSurfaceTemp {
-		  public:
+		public:
 			SoundingSurfaceTemp(float press = std::numeric_limits<float>::quiet_NaN(),    /* hpa */
 					    float temp = std::numeric_limits<float>::quiet_NaN(),     /* kelvin */
 					    float dewpt = std::numeric_limits<float>::quiet_NaN());   /* kelvin */
@@ -1708,14 +1728,14 @@ close FH;
 			bool operator>(const SoundingSurfaceTemp& x) const { return compare(x) > 0; }
 			bool operator>=(const SoundingSurfaceTemp& x) const { return compare(x) >= 0; }
 
-		  protected:
+		protected:
 			float m_press;
 			float m_temp;
 			float m_dewpt;
 		};
 
 		class SoundingSurface : public SoundingSurfaceTemp {
-		  public:
+		public:
 			SoundingSurface(float press = std::numeric_limits<float>::quiet_NaN(),    /* hpa */
 					float temp = std::numeric_limits<float>::quiet_NaN(),     /* kelvin */
 					float dewpt = std::numeric_limits<float>::quiet_NaN(),    /* kelvin */
@@ -1730,7 +1750,7 @@ close FH;
 				return !std::isnan(get_winddir()) && !std::isnan(get_windspeed());
 			}
 
-		  protected:
+		protected:
 			float m_winddir;
 			float m_windspeed;
 		};
@@ -1782,7 +1802,7 @@ close FH;
 		};
 
 		class Stability {
-		  public:
+		public:
 			Stability(const soundingsurfaces_t& surf = soundingsurfaces_t());
 			float get_lcl_press(void) const { return m_lcl_press; }
 			float get_lcl_temp(void) const { return m_lcl_temp; }
@@ -1799,7 +1819,7 @@ close FH;
 			typedef std::set<SoundingSurfaceTemp> tempcurve_t;
 			const tempcurve_t& get_tempcurve(void) const { return m_tempcurve; }
 
-		  protected:
+		protected:
 			tempcurve_t m_tempcurve;
 			float m_lcl_press;
 			float m_lcl_temp;
@@ -1820,7 +1840,7 @@ close FH;
 				    float cldmidcover = invalidcover, int32_t cldmidbase = invalidalt, int32_t cldmidtop = invalidalt,
 				    float cldhighcover = invalidcover, int32_t cldhighbase = invalidalt, int32_t cldhightop = invalidalt,
 				    float cldconvcover = invalidcover, int32_t cldconvbase = invalidalt, int32_t cldconvtop = invalidalt,
-				    float precip = 0, float preciprate = 0, float convprecip = 0, float convpreciprate = 0, 
+				    float precip = 0, float preciprate = 0, float convprecip = 0, float convpreciprate = 0,
 				    float liftedindex = 0, float cape = 0, float cin = 0, uint16_t flags = 0);
 
 		const Point& get_pt(void) const { return m_pt; }
@@ -1857,8 +1877,9 @@ close FH;
 		Surface& operator[](unsigned int i);
 		const Surface& operator[](unsigned int i) const;
 		operator soundingsurfaces_t(void) const;
+		static bool is_pressure_valid(float press_pa);
 
-	  protected:
+	protected:
 		static const Surface invalid_surface;
 		Surface m_surfaces[sizeof(isobaric_levels)/sizeof(isobaric_levels[0])];
 		Point m_pt;
@@ -1937,7 +1958,7 @@ close FH;
 	class LayerAllocator;
 	static const LayerAllocator LayerAlloc;
 
-  protected:
+protected:
 	class LayerPtr {
 	public:
 		LayerPtr(const Glib::RefPtr<Layer>& layer) : m_layer(layer) {}
@@ -1963,33 +1984,33 @@ close FH;
 	class Interpolate;
 
 	class ID8String {
-	  public:
+	public:
 		ID8String(uint8_t id, const char *str) : m_str(str), m_id(id) {}
 		const char *get_str(const char *dflt = 0) const { return this && m_str ? m_str : dflt; }
 		const char *get_str_nonnull(void) const { return get_str(&charstr_terminator); }
 		uint8_t get_id(void) const { return this ? m_id : 0xff; }
 		int compareid(const ID8String& x) const;
 
-	  protected:
+	protected:
 		const char *m_str;
 		uint8_t m_id;
 	};
 
 	class ID16String {
-	  public:
+	public:
 		ID16String(uint16_t id, const char *str) : m_str(str), m_id(id) {}
 		const char *get_str(const char *dflt = 0) const { return this && m_str ? m_str : dflt; }
 		const char *get_str_nonnull(void) const { return get_str(&charstr_terminator); }
 		uint16_t get_id(void) const { return this ? m_id : 0xff; }
 		int compareid(const ID16String& x) const;
 
-	  protected:
+	protected:
 		const char *m_str;
 		uint16_t m_id;
 	};
 
 	class CenterTable {
-	  public:
+	public:
 		CenterTable(uint16_t id, const char *str, const ID16String *subcenter = 0, uint16_t subcentersz = 0, const ID8String *model = 0, uint16_t modelsz = 0)
 			: m_str(str), m_subcenter(subcenter), m_model(model), m_id(id), m_subcentersz(subcentersz), m_modelsz(modelsz) {}
 		const char *get_str(const char *dflt = 0) const { return this && m_str ? m_str : dflt; }
@@ -2001,7 +2022,7 @@ close FH;
 		const ID8String *model_begin(void) const { return m_model; }
 		const ID8String *model_end(void) const { return m_model + m_modelsz; }
 
-	  protected:
+	protected:
 		const char *m_str;
 		const ID16String *m_subcenter;
 		const ID8String *m_model;
@@ -2011,7 +2032,7 @@ close FH;
 	};
 
 	class SurfaceTable {
-	  public:
+	public:
 		SurfaceTable(uint8_t id, const char *str, const char *unit) : m_str(str), m_unit(unit), m_id(id) {}
 		const char *get_str(const char *dflt = 0) const { return this && m_str ? m_str : dflt; }
 		const char *get_str_nonnull(void) const { return get_str(&charstr_terminator); }
@@ -2020,7 +2041,7 @@ close FH;
 		uint8_t get_id(void) const { return this ? m_id : 0xff; }
 		int compareid(const SurfaceTable& x) const;
 
-	  protected:
+	protected:
 		const char *m_str;
 		const char *m_unit;
 		uint8_t m_id;

@@ -1,7 +1,7 @@
 //
 // C++ Implementation: wmmconv
 //
-// Description: 
+// Description:
 //
 //
 // Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007

@@ -756,7 +756,7 @@ static void place_arpt_nav_wpt_labels(void)
 					}
 				}
 				break;
-				
+
 			default:
 				abort();
 			}

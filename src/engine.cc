@@ -207,11 +207,16 @@ PalmDbBase::PalmStringCompare::comp_t Engine::to_palm_compare(DbQueryInterfaceCo
 Engine::DbThread::DbThread(const std::string & dir_main, const std::string & dir_aux, bool pg)
 	: m_terminate(false), m_thread(0)
 {
+#ifdef HAVE_PQXX
+	m_pgconn.reset();
+	if (pg)
+		m_pgconn = pgconn_t(new pqxx::lazyconnection(dir_main));
+#endif
 	std::cerr << "Database directories: main " << dir_main << " aux " << dir_aux << std::endl;
 	try {
 #ifdef HAVE_PQXX
 		if (pg) {
-			m_airportdb.reset(new AirportsPGDb(dir_main, AirportsPGDb::read_only));
+			m_airportdb.reset(new AirportsPGDb(*m_pgconn, AirportsPGDb::read_only));
 		} else
 #endif
 		{
@@ -229,7 +234,7 @@ Engine::DbThread::DbThread(const std::string & dir_main, const std::string & dir
 	try {
 #ifdef HAVE_PQXX
 		if (pg) {
-			m_navaiddb.reset(new NavaidsPGDb(dir_main, NavaidsPGDb::read_only));
+			m_navaiddb.reset(new NavaidsPGDb(*m_pgconn, NavaidsPGDb::read_only));
 		} else
 #endif
 		{
@@ -247,7 +252,7 @@ Engine::DbThread::DbThread(const std::string & dir_main, const std::string & dir
 	try {
 #ifdef HAVE_PQXX
 		if (pg) {
-			m_waypointdb.reset(new WaypointsPGDb(dir_main, WaypointsPGDb::read_only));
+			m_waypointdb.reset(new WaypointsPGDb(*m_pgconn, WaypointsPGDb::read_only));
 		} else
 #endif
 		{
@@ -265,7 +270,7 @@ Engine::DbThread::DbThread(const std::string & dir_main, const std::string & dir
 	try {
 #ifdef HAVE_PQXX
 		if (pg) {
-			m_airspacedb.reset(new AirspacesPGDb(dir_main, AirspacesPGDb::read_only));
+			m_airspacedb.reset(new AirspacesPGDb(*m_pgconn, AirspacesPGDb::read_only));
 		} else
 #endif
 		{
@@ -283,7 +288,7 @@ Engine::DbThread::DbThread(const std::string & dir_main, const std::string & dir
 	try {
 #ifdef HAVE_PQXX
 		if (pg) {
-			m_airwaydb.reset(new AirwaysPGDb(dir_main, AirwaysPGDb::read_only));
+			m_airwaydb.reset(new AirwaysPGDb(*m_pgconn, AirwaysPGDb::read_only));
 		} else
 #endif
 		{
@@ -301,7 +306,7 @@ Engine::DbThread::DbThread(const std::string & dir_main, const std::string & dir
 	try {
 #ifdef HAVE_PQXX
 		if (pg) {
-			m_mapelementdb.reset(new MapelementsPGDb(dir_main, MapelementsPGDb::read_only));
+			m_mapelementdb.reset(new MapelementsPGDb(*m_pgconn, MapelementsPGDb::read_only));
 		} else
 #endif
 		{

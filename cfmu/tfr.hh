@@ -424,7 +424,9 @@ public:
 			   const std::string& acft_type, const std::string& equipment, const std::string& pbn,
 			   AirportsDb& airportdb, NavaidsDb& navaiddb, WaypointsDb& waypointdb,
 			   AirwaysDb& airwaydb, AirspacesDb& airspacedb) {
-		return check_fplan(route, type_of_flight, acft_type, equipment, Aircraft::parse_pbn(pbn),
+		Aircraft::pbn_t pbnp;
+		Aircraft::parse_pbn(pbnp, pbn);
+		return check_fplan(route, type_of_flight, acft_type, equipment, pbnp,
 				   airportdb, navaiddb, waypointdb, airwaydb, airspacedb);
 	}
 

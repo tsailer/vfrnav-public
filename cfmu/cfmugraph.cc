@@ -4442,7 +4442,7 @@ bool CFMUAutoroute45::lgraphlocaltfrcheck(TrafficFlowRestrictions::Result& res)
 	{
 		Glib::TimeVal tv;
 		tv.assign_current_time();
-		res = m_tfr.check_fplan(m_route, 'G', m_aircraft.get_icaotype(), m_aircraft.get_equipment(), m_aircraft.get_pbn(),
+		res = m_tfr.check_fplan(m_route, 'G', m_aircraft.get_icaotype(), m_aircraft.get_equipment_string(), m_aircraft.get_pbn_string(),
 					m_airportdb, m_navaiddb, m_waypointdb, m_airwaydb, m_airspacedb);
 		{
 			Glib::TimeVal tv1;

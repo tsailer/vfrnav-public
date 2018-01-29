@@ -4,7 +4,7 @@
 // Description: Database Objects: Labels Database
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2016
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2016, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -175,7 +175,7 @@ void DbBaseElements::Label::load(const pqxx::tuple& cursor, pqxx::basic_transact
 	m_subtable = (table_t)cursor[8].as<int>(0);
 }
 
-void DbBaseElements::Label::save(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Label::save(pqxx::connection_base& conn, bool rtree)
 {
 	pqxx::work w(conn);
 	if (!m_id) {
@@ -187,7 +187,7 @@ void DbBaseElements::Label::save(pqxx::connection& conn, bool rtree)
 	}
 	w.exec("UPDATE aviationdb.labels SET MUTABLE=" + w.quote((int)m_mutable) +
 	       ",LAT=" + w.quote(m_coord.get_lat()) + ",LON=" + w.quote(m_coord.get_lon()) +
-	       ",LABELPLACEMENT=" + w.quote((int)m_label_placement) + 
+	       ",LABELPLACEMENT=" + w.quote((int)m_label_placement) +
 	       ",METRIC=" + w.quote(m_metric) + ",SUBID=" + w.quote(m_subid) + ",SUBTABLE=" + w.quote((int)m_subtable) +
 	       ",TILE=" + w.quote(TileNumber::to_tilenumber(m_coord)) + " WHERE ID=" + w.quote(m_id) + ";");
 	if (rtree)
@@ -196,7 +196,7 @@ void DbBaseElements::Label::save(pqxx::connection& conn, bool rtree)
 	w.commit();
 }
 
-void DbBaseElements::Label::erase(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Label::erase(pqxx::connection_base& conn, bool rtree)
 {
 	if (!is_valid())
 		return;
@@ -208,7 +208,7 @@ void DbBaseElements::Label::erase(pqxx::connection& conn, bool rtree)
 	m_id = 0;
 }
 
-void DbBaseElements::Label::update_index(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Label::update_index(pqxx::connection_base& conn, bool rtree)
 {
 	if (!m_id)
 		return;

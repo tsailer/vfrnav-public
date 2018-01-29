@@ -342,7 +342,7 @@ static void process_line(const Glib::ustring& line)
 		icaofpl.set_route(fpl);
 		type_of_flight = icaofpl.get_flighttype();
 		acft_type = icaofpl.get_aircrafttype();
-		equipment = icaofpl.get_equipment();
+		equipment = icaofpl.get_equipment_string();
 		pbn = icaofpl.get_pbn();
 		if (false) {
 			std::ostringstream oss;

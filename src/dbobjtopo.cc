@@ -4,7 +4,7 @@
 // Description: Database Objects: Topography
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2013, 2014
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2013, 2014, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -1078,21 +1078,21 @@ void TopoDbN<resolution,tilesize>::open_bin(const Glib::ustring& dbname, const G
 	struct stat dbstat;
 	if (stat(dbname.c_str(), &dbstat)) {
 		if (true)
-			std::cerr << "Cannot stat db file " << dbname << ": " 
+			std::cerr << "Cannot stat db file " << dbname << ": "
 				  << strerror(errno) << " (" << errno << ')' << std::endl;
 		return;
 	}
 	int fd(::open(binname.c_str(), O_RDONLY /* | O_NOATIME*/, 0));
 	if (fd == -1) {
 		if (true)
-			std::cerr << "Cannot open bin file " << binname << ": " 
+			std::cerr << "Cannot open bin file " << binname << ": "
 				  << strerror(errno) << " (" << errno << ')' << std::endl;
 		return;
 	}
 	struct stat binstat;
 	if (fstat(fd, &binstat)) {
 		if (true)
-			std::cerr << "Cannot stat bin file " << binname << ": " 
+			std::cerr << "Cannot stat bin file " << binname << ": "
 				  << strerror(errno) << " (" << errno << ')' << std::endl;
 		return;
 	}
@@ -1112,7 +1112,7 @@ void TopoDbN<resolution,tilesize>::open_bin(const Glib::ustring& dbname, const G
 		m_binhdr = 0;
 		m_binsz = 0;
 		if (true)
-			std::cerr << "Cannot mmap bin file " << binname << ": " 
+			std::cerr << "Cannot mmap bin file " << binname << ": "
 				  << strerror(errno) << " (" << errno << ')' << std::endl;
 		return;
 	}
@@ -1286,18 +1286,32 @@ typename TopoDbN<resolution,tilesize>::minmax_elev_t TopoDbN<resolution,tilesize
 #if 1
 				Point pt2(pdim2 + (Point)(TopoCoordinate)tc);
 				PolygonSimple::ScanLine sl(p.scanline(pt2.get_lat()));
-				PolygonSimple::ScanLine::const_iterator sli(sl.begin()), sle(sl.end());
-				int wn(0);
+				PolygonSimple::ScanLine::const_iterator slb(sl.begin()), sle(sl.end());
+				if (slb == sle)
+					continue;
+				if (false) {
+					std::cerr << "get_minmax_elev: scanline " << pt2.get_lat_str2() << ':';
+					for (PolygonSimple::ScanLine::const_iterator sli(slb); sli != sle; ++sli)
+						std::cerr << ' ' << Point(sli->first, pt2.get_lat()).get_lon_str2() << '@' << sli->second;
+					std::cerr << std::endl;
+				}
+				PolygonSimple::ScanLine::const_iterator sli(slb);
                                 for (pixel_index_t x(xmin); x <= xmax; x++) {
                                         tc.set_lon_offs(x);
-                                        Point pt2 = pdim2 + (Point)(TopoCoordinate)tc;
+                                        Point pt2(pdim2 + (Point)(TopoCoordinate)tc);
 					if (!r.is_inside(pt2))
 						continue;
-					while (sli != sle && sli->first <= pt2.get_lat()) {
-						wn = sli->second;
+					while (sli != slb && sli->first > pt2.get_lon())
+						--sli;
+					if (sli->first > pt2.get_lon())
+						continue;
+					PolygonSimple::ScanLine::const_iterator sli1(sli);
+					++sli1;
+					while (sli1 != sle && sli1->first <= pt2.get_lon()) {
 						++sli;
+						++sli1;
 					}
-					if (!wn)
+					if (!sli->second)
 						continue;
 					elev_t e(get_elev(tc));
 					if (false)
@@ -1576,21 +1590,34 @@ typename TopoDbN<resolution,tilesize>::RouteProfile TopoDbN<resolution,tilesize>
 		return RouteProfile();
 	RouteProfile rp;
 	double cumdist(0);
-	for (unsigned int nr = 1;;) {
-		const FPlanWaypoint& wpt0(fpl[nr - 1]), wpt1(fpl[nr]);
+	for (unsigned int i(0); i < nrwpt; ) {
+		if (fpl[i].get_coord().is_invalid()) {
+			++i;
+			continue;
+		}
+	        unsigned int j(i);
+		while (i + 1U < nrwpt) {
+			++i;
+			if (!fpl[i].get_coord().is_invalid())
+				break;
+		}
+		if (i == j || fpl[i].get_coord().is_invalid())
+			break;
+		const FPlanWaypoint& wpt0(fpl[j]), wpt1(fpl[i]);
 		if (wpt0.get_coord().is_invalid() || wpt1.get_coord().is_invalid())
 			return RouteProfile();
 		Profile p(get_profile(wpt0.get_coord(), wpt1.get_coord(), corridor_nmi));
 		typename Profile::const_iterator pi(p.begin()), pe(p.end());
 		double legdist(wpt0.get_coord().spheric_distance_nmi_dbl(wpt1.get_coord()));
 		for (; pi != pe && pi->get_dist() < legdist; ++pi)
-			rp.push_back(RouteProfilePoint(*pi, nr - 1, cumdist));
+			rp.push_back(RouteProfilePoint(*pi, j, cumdist));
 		cumdist += legdist;
-		++nr;
-		if (nr < nrwpt)
+		if (i + 1U < nrwpt)
 			continue;
 		for (; pi != pe && pi->get_dist() >= legdist; ++pi)
-			rp.push_back(RouteProfilePoint(ProfilePoint(pi->get_dist() - legdist, pi->get_elev(), pi->get_minelev(), pi->get_maxelev()), nr - 1, cumdist));
+			rp.push_back(RouteProfilePoint(ProfilePoint(pi->get_dist() - legdist, pi->get_elev(), pi->get_minelev(), pi->get_maxelev()), i, cumdist));
+		if (!p.empty() && !rp.empty())
+			rp.back().set_routeindex(i);
 		break;
 	}
 	return rp;

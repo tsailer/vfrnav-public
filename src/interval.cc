@@ -85,7 +85,10 @@ template <typename T>
 std::string Interval<T>::to_str(void) const
 {
 	std::ostringstream oss;
-	oss << '[' << m_lower << ',' << m_upper << ')';
+	oss << '[';
+	if (!is_empty())
+		oss << get_lower() << ',' << get_upper();
+	oss << ')';
 	return oss.str();
 }
 
@@ -101,6 +104,13 @@ int Interval<T>::compare(const Interval& x) const
 	if (x.m_upper < m_upper)
 		return 1;
 	return 0;
+}
+
+template <typename T>
+Interval<T> Interval<T>::operator&(const Interval& x) const
+{
+	return Interval(std::max(get_lower(), x.get_lower()),
+			std::min(get_upper(), x.get_upper()));
 }
 
 template <typename T, typename ST>
@@ -427,9 +437,15 @@ template class IntervalSet<uint16_t, std::vector<Interval<uint16_t> > >;
 template class Interval<int32_t>;
 template class IntervalSet<int32_t, std::set<Interval<int32_t> > >;
 template class IntervalSet<int32_t, std::vector<Interval<int32_t> > >;
+template class Interval<uint32_t>;
+template class IntervalSet<uint32_t, std::set<Interval<uint32_t> > >;
+template class IntervalSet<uint32_t, std::vector<Interval<uint32_t> > >;
 template class Interval<uint64_t>;
 template class IntervalSet<uint64_t, std::set<Interval<uint64_t> > >;
 template class IntervalSet<uint64_t, std::vector<Interval<uint64_t> > >;
 template class Interval<int64_t>;
 template class IntervalSet<int64_t, std::set<Interval<int64_t> > >;
 template class IntervalSet<int64_t, std::vector<Interval<int64_t> > >;
+template class Interval<double>;
+template class IntervalSet<double, std::set<Interval<double> > >;
+template class IntervalSet<double, std::vector<Interval<double> > >;

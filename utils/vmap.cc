@@ -851,9 +851,13 @@ int main(int argc, char *argv[])
 	try {
 		std::unique_ptr<MapelementsDbQueryInterface> db;
 #ifdef HAVE_PQXX
-		if (pgsql)
-			db.reset(new MapelementsPGDb(output_dir));
-		else
+		std::unique_ptr<pqxx::connection> pgconn;
+		if (pgsql) {
+			pgconn = std::unique_ptr<pqxx::connection>(new pqxx::connection(output_dir));
+			if (pgconn->get_variable("application_name").empty())
+				pgconn->set_variable("application_name", "vmap");
+			db.reset(new MapelementsPGDb(*pgconn));
+		} else
 #endif
 			db.reset(new MapelementsDb(output_dir));
 		if (purge)

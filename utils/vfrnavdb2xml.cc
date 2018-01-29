@@ -811,42 +811,60 @@ int main(int argc, char *argv[])
 			switch (di->first) {
 			case dbtype_airports:
 			{
-				AirportsPGDb db(di->second, AirportsPGDb::read_only);
+				pqxx::connection conn(di->second);
+				if (conn.get_variable("application_name").empty())
+					conn.set_variable("application_name", "vfrnavdb2xml");
+				AirportsPGDb db(conn, AirportsPGDb::read_only);
 				xw.write(db);
 				break;
 			}
 
 			case dbtype_airspaces:
 			{
-				AirspacesPGDb db(di->second, AirspacesPGDb::read_only);
+				pqxx::connection conn(di->second);
+				if (conn.get_variable("application_name").empty())
+					conn.set_variable("application_name", "vfrnavdb2xml");
+				AirspacesPGDb db(conn, AirspacesPGDb::read_only);
 				xw.write(db);
 				break;
 			}
 
 			case dbtype_navaids:
 			{
-				NavaidsPGDb db(di->second, NavaidsPGDb::read_only);
+				pqxx::connection conn(di->second);
+				if (conn.get_variable("application_name").empty())
+					conn.set_variable("application_name", "vfrnavdb2xml");
+				NavaidsPGDb db(conn, NavaidsPGDb::read_only);
 				xw.write(db);
 				break;
 			}
 
 			case dbtype_waypoints:
 			{
-				WaypointsPGDb db(di->second, WaypointsPGDb::read_only);
+				pqxx::connection conn(di->second);
+				if (conn.get_variable("application_name").empty())
+					conn.set_variable("application_name", "vfrnavdb2xml");
+				WaypointsPGDb db(conn, WaypointsPGDb::read_only);
 				xw.write(db);
 				break;
 			}
 
 			case dbtype_airways:
 			{
-				AirwaysPGDb db(di->second, AirwaysPGDb::read_only);
+				pqxx::connection conn(di->second);
+				if (conn.get_variable("application_name").empty())
+					conn.set_variable("application_name", "vfrnavdb2xml");
+				AirwaysPGDb db(conn, AirwaysPGDb::read_only);
 				xw.write(db);
 				break;
 			}
 
 			case dbtype_tracks:
 			{
-				TracksPGDb db(di->second, TracksPGDb::read_only);
+				pqxx::connection conn(di->second);
+				if (conn.get_variable("application_name").empty())
+					conn.set_variable("application_name", "vfrnavdb2xml");
+				TracksPGDb db(conn, TracksPGDb::read_only);
 				xw.write(db);
 				break;
 			}

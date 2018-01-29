@@ -4,7 +4,7 @@
 // Description: Flight Deck Windows
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2011, 2012, 2013, 2014, 2015
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2011, 2012, 2013, 2014, 2015, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -52,13 +52,13 @@
 #endif
 
 class FullscreenableWindow : public TOPLEVELWINDOW {
-  public:
+public:
 	explicit FullscreenableWindow(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml);
 	virtual ~FullscreenableWindow();
 
 	void toggle_fullscreen(void);
 
-  protected:
+protected:
 	bool m_fullscreen;
 
 	virtual bool on_window_state_event(GdkEventWindowState *);
@@ -66,12 +66,13 @@ class FullscreenableWindow : public TOPLEVELWINDOW {
 };
 
 class FlightDeckWindow : public FullscreenableWindow {
-  public:
+public:
 	explicit FlightDeckWindow(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml);
 	virtual ~FlightDeckWindow();
 	void set_engine(Engine& eng);
 	void set_sensors(Sensors& sensors);
 	void directto_activated(void) { set_menu_id(0); }
+	void fpldirpage_set_default_fpl(FPlanRoute::id_t id);
 
 	class SplashWindow : public FullscreenableWindow {
 	public:
@@ -104,7 +105,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		std::string m_result;
 	};
 
-  protected:
+protected:
 	static const char cfggroup_mainwindow[];
 	static const char cfgkey_mainwindow_fullscreen[];
 	static const char cfgkey_mainwindow_onscreenkeyboard[];
@@ -399,20 +400,20 @@ class FlightDeckWindow : public FullscreenableWindow {
 	void routeprofile_savefileresponse(int response);
 
 	class MenuToggleButton : public Gtk::ToggleButton {
-	  public:
+	public:
 		explicit MenuToggleButton(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml) : Gtk::ToggleButton(castitem) {}
 		explicit MenuToggleButton(void) {}
 	};
 
 	class SVGImage : public Gtk::DrawingArea {
-	  public:
+	public:
                 explicit SVGImage(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml);
                 explicit SVGImage(void);
                 virtual ~SVGImage();
 
 		void set(const std::string& data, const std::string& mimetype = "");
 
-	  protected:
+	protected:
 #ifdef HAVE_GTKMM2
                 virtual bool on_expose_event(GdkEventExpose *event);
 		virtual void on_size_request(Gtk::Requisition* requisition);
@@ -435,7 +436,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class MapDrawingArea : public Gtk::DrawingArea {
-	  public:
+	public:
                 explicit MapDrawingArea(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml);
                 explicit MapDrawingArea(void);
                 virtual ~MapDrawingArea();
@@ -475,7 +476,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 			renderer_obstacle_switzerland,
 			renderer_icao_germany,
 			renderer_vfr_germany,
-                    renderer_none
+			renderer_none
                 } renderer_t;
 
                 void set_engine(Engine& eng);
@@ -494,10 +495,8 @@ class FlightDeckWindow : public FullscreenableWindow {
 		virtual int64_t get_time(void) const;
                 void set_map_scale(float nmi_per_pixel);
                 float get_map_scale(void) const;
-		void set_glideslope(float gs = std::numeric_limits<float>::quiet_NaN());
-		float get_glideslope(void) const;
-		void set_tas(float tas = std::numeric_limits<float>::quiet_NaN());
-		float get_tas(void) const;
+		void set_glidemodel(const MapRenderer::GlideModel& gm = MapRenderer::GlideModel());
+		const MapRenderer::GlideModel& get_glidemodel(void) const;
 		void set_wind(float dir = 0, float speed = 0);
 		float get_winddir(void) const;
 		float get_windspeed(void) const;
@@ -535,7 +534,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		void set_aircraft(const Sensors::MapAircraft& acft);
 		void clear_aircraft(void);
 
-	  private:
+	private:
 #ifdef HAVE_GTKMM2
                 virtual bool on_expose_event(GdkEventExpose *event);
 #endif
@@ -548,7 +547,7 @@ class FlightDeckWindow : public FullscreenableWindow {
                 virtual bool on_button_release_event(GdkEventButton* event);
                 virtual bool on_motion_notify_event(GdkEventMotion* event);
 
-	  protected:
+	protected:
                 void redraw(void) { if (get_is_drawable()) queue_draw(); }
                 void renderer_update(void);
                 void renderer_alloc(void);
@@ -556,7 +555,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		bool expire_aircraft(void);
 		void schedule_aircraft_redraw(void);
 
-	  protected:
+	protected:
                 Engine *m_engine;
                 MapRenderer *m_renderer;
                 renderer_t m_rendertype;
@@ -574,12 +573,12 @@ class FlightDeckWindow : public FullscreenableWindow {
 		Glib::Dispatcher m_dispatch;
 		sigc::connection m_connupdate;
                 // Caching
-                Point m_center;
+		MapRenderer::GlideModel m_glidemodel;
+		Point m_center;
 		int64_t m_time;
                 int m_altitude;
 		uint16_t m_upangle;
                 float m_mapscale;
-		float m_glideslope;
 		float m_tas;
 		float m_winddir;
 		float m_windspeed;
@@ -597,7 +596,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class NavAIDrawingArea : public Gtk::DrawingArea {
-	  public:
+	public:
 		explicit NavAIDrawingArea(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml);
 		explicit NavAIDrawingArea(void);
 		virtual ~NavAIDrawingArea();
@@ -607,7 +606,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		double get_slip(void) const { return m_slip; }
 		void set_pitch_bank_slip(double p, double b, double s);
 
-	  protected:
+	protected:
 		double m_bank;
 		double m_pitch;
 		double m_slip;
@@ -643,7 +642,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class NavHSIDrawingArea : public Gtk::DrawingArea {
-	  public:
+	public:
 		explicit NavHSIDrawingArea(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml);
 		explicit NavHSIDrawingArea(void);
 		virtual ~NavHSIDrawingArea();
@@ -714,10 +713,8 @@ class FlightDeckWindow : public FullscreenableWindow {
                 int get_altitude(void) const;
                 void set_map_scale(float nmi_per_pixel);
                 float get_map_scale(void) const;
-                void set_glideslope(float gs = std::numeric_limits<float>::quiet_NaN());
-                float get_glideslope(void) const;
-		void set_glidetas(float tas = std::numeric_limits<float>::quiet_NaN());
-		float get_glidetas(void) const;
+                void set_glidemodel(const MapRenderer::GlideModel& gm = MapRenderer::GlideModel());
+                const MapRenderer::GlideModel& get_glidemodel(void) const;
 		void set_glidewind(float dir = 0, float speed = 0);
 		float get_glidewinddir(void) const;
 		float get_glidewindspeed(void) const;
@@ -734,7 +731,7 @@ class FlightDeckWindow : public FullscreenableWindow {
                 void waypoints_changed(void);
                 void airways_changed(void);
 
-	  protected:
+	protected:
                 Engine *m_engine;
                 const FPlanRoute *m_route;
                 const TracksDb::Track *m_track;
@@ -742,10 +739,9 @@ class FlightDeckWindow : public FullscreenableWindow {
  		Glib::Dispatcher m_dispatch;
 		sigc::connection m_connupdate;
                 // Caching
+		MapRenderer::GlideModel m_glidemodel;
                 Point m_center;
                 float m_mapscale;
-		float m_glideslope;
-		float m_glidetas;
 		float m_glidewinddir;
 		float m_glidewindspeed;
                 int m_altitude;
@@ -827,7 +823,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class NavAltDrawingArea : public Gtk::DrawingArea {
-	  public:
+	public:
 		explicit NavAltDrawingArea(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml);
 		explicit NavAltDrawingArea(void);
 		virtual ~NavAltDrawingArea();
@@ -867,7 +863,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		static constexpr double inhg_to_hpa = 33.86389;
 		static constexpr double hpa_to_inhg = 1.0 / 33.86389;
 
-	  protected:
+	protected:
 		altmarkers_t m_altmarkers;
 		double m_alt;
 		double m_altrate;
@@ -940,7 +936,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class NavInfoDrawingArea : public Gtk::DrawingArea {
-	  public:
+	public:
 		explicit NavInfoDrawingArea(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml);
 		explicit NavInfoDrawingArea(void);
 		virtual ~NavInfoDrawingArea();
@@ -954,7 +950,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		void stop_timer(void);
 		void clear_timer(void);
 
-	  protected:
+	protected:
 		Sensors *m_sensors;
 		time_t m_timeroffs;
 		time_t m_timersttime;
@@ -980,7 +976,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class NavArea : public Gtk::Container {
-	  public:
+	public:
 		explicit NavArea(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml);
 		explicit NavArea(void);
 		virtual ~NavArea();
@@ -1018,7 +1014,6 @@ class FlightDeckWindow : public FullscreenableWindow {
 		bool hsi_get_glide(void) const { return m_hsiglide; }
 		void hsi_set_glide(bool v);
 		void hsi_set_glidewind(double dir, double speed);
-		void hsi_set_glidetas(double tas);
 
 		// Map Window
 		typedef std::pair<MapDrawingArea::renderer_t,unsigned int> maprenderer_t;
@@ -1090,7 +1085,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		static const char cfgkey_mainwindow_altbug[];
 		static const char cfgkey_mainwindow_altminimum[];
 
-	  protected:
+	protected:
 		static const MapRenderer::DrawFlags declutter_mask[dcltr_number];
 		static const char * const declutter_names[dcltr_number + 1];
 #ifdef HAVE_GTKMM2
@@ -1131,7 +1126,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class GPSAzimuthElevation : public Gtk::DrawingArea {
-	  public:
+	public:
 		explicit GPSAzimuthElevation(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml);
 		explicit GPSAzimuthElevation(void);
 		virtual ~GPSAzimuthElevation();
@@ -1141,7 +1136,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 
 		static void svcolor(const Cairo::RefPtr<Cairo::Context>& cr, const Sensors::Sensor::Satellite& sv);
 
-	  protected:
+	protected:
 		virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
 #ifdef HAVE_GTKMM2
 		virtual bool on_expose_event(GdkEventExpose *event);
@@ -1160,7 +1155,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class GPSSignalStrength : public Gtk::DrawingArea {
-	  public:
+	public:
 		explicit GPSSignalStrength(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml);
 		explicit GPSSignalStrength(void);
 		virtual ~GPSSignalStrength();
@@ -1168,7 +1163,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		void update(const Sensors::Sensor::satellites_t& svs);
 		void set_paramfail(Sensors::Sensor::paramfail_t pf);
 
-	  protected:
+	protected:
 		virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
 #ifdef HAVE_GTKMM2
 		virtual bool on_expose_event(GdkEventExpose *event);
@@ -1187,12 +1182,12 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class GPSContainer : public Gtk::Container {
-	  public:
+	public:
 		explicit GPSContainer(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml);
 		explicit GPSContainer(void);
 		virtual ~GPSContainer();
 
-	  protected:
+	protected:
 #ifdef HAVE_GTKMM2
 		virtual void on_size_request(Gtk::Requisition* requisition);
 #endif
@@ -1258,7 +1253,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class ConfigItem : public sigc::trackable {
-	  public:
+	public:
 		ConfigItem(Sensors::Sensor& sens, const Sensors::Sensor::ParamDesc& pd);
 		virtual ~ConfigItem();
 		void reference(void) const;
@@ -1271,7 +1266,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		virtual bool is_fastupdate(void) const { return false; }
 		virtual Gtk::Widget *get_screenkbd_widget(bool& numeric) { numeric = false; return 0; }
 
-	  protected:
+	protected:
 		Sensors::Sensor::ParamDesc::editable_t get_editable(void) const { return m_editable; }
 		bool is_admin(void) const { return m_admin; }
 		bool is_writable(void) const { return (get_editable() == Sensors::Sensor::ParamDesc::editable_user ||
@@ -1321,7 +1316,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	class AllConfigItems;
 
 	class Softkeys : public Gtk::Container {
-	  public:
+	public:
 		explicit Softkeys(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml);
 		explicit Softkeys(void);
 		virtual ~Softkeys();
@@ -1334,7 +1329,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		bool block(unsigned int nr, bool should_block = true);
 		bool unblock(unsigned int nr);
 
-	  protected:
+	protected:
 #ifdef HAVE_GTKMM2
 		virtual void on_size_request(Gtk::Requisition* requisition);
 #endif
@@ -1362,7 +1357,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class RouteProfileDrawingArea : public Gtk::DrawingArea {
-	  public:
+	public:
 		explicit RouteProfileDrawingArea(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml);
 		explicit RouteProfileDrawingArea(void);
 		virtual ~RouteProfileDrawingArea();
@@ -1391,7 +1386,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		void toggle_ymode(void);
 		void save(const std::string& fn);
 
-	  protected:
+	protected:
 		static const unsigned int nrcharts = (sizeof(GRIB2::WeatherProfilePoint::isobaric_levels) /
 						      sizeof(GRIB2::WeatherProfilePoint::isobaric_levels[0]));
                 Engine *m_engine;
@@ -1699,13 +1694,13 @@ class FlightDeckWindow : public FullscreenableWindow {
 		} checkbuttons[nrcheckbuttons];
 
 		class MapupModelColumns : public Gtk::TreeModelColumnRecord {
-		  public:
+		public:
 			MapupModelColumns(void);
 			Gtk::TreeModelColumn<Glib::ustring> m_text;
 		};
 
 		class RendererModelColumns : public Gtk::TreeModelColumnRecord {
-		  public:
+		public:
 			RendererModelColumns(void);
 			Gtk::TreeModelColumn<Glib::ustring> m_short;
 			Gtk::TreeModelColumn<Glib::ustring> m_text;
@@ -1713,15 +1708,15 @@ class FlightDeckWindow : public FullscreenableWindow {
 		};
 
 		class BitmapMapsModelColumns : public Gtk::TreeModelColumnRecord {
-		  public:
+		public:
 			class MapPtr {
-			  public:
+			public:
 				typedef BitmapMaps::Map::ptr_t ptr_t;
 
 				MapPtr(const ptr_t& p = ptr_t()) : m_ptr(p) {}
 				ptr_t& get(void) { return m_ptr; }
 				const ptr_t& get(void) const { return m_ptr; }
-			  protected:
+			protected:
 				ptr_t m_ptr;
 			};
 
@@ -1780,7 +1775,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 
 	protected:
 		class RendererModelColumns : public Gtk::TreeModelColumnRecord {
-		  public:
+		public:
 			RendererModelColumns(void);
 			Gtk::TreeModelColumn<Glib::ustring> m_short;
 			Gtk::TreeModelColumn<Glib::ustring> m_text;
@@ -1942,21 +1937,21 @@ class FlightDeckWindow : public FullscreenableWindow {
 		} keybuttons[nrkeybuttons];
 
 		class DistUnitModelColumns : public Gtk::TreeModelColumnRecord {
-		  public:
+		public:
 			DistUnitModelColumns(void);
 			Gtk::TreeModelColumn<Glib::ustring> m_name;
 			Gtk::TreeModelColumn<double> m_factor;
 		};
 
 		class AltUnitModelColumns : public Gtk::TreeModelColumnRecord {
-		  public:
+		public:
 			AltUnitModelColumns(void);
 			Gtk::TreeModelColumn<Glib::ustring> m_name;
 			Gtk::TreeModelColumn<unsigned int> m_id;
 		};
 
 		class MapModelColumns : public Gtk::TreeModelColumnRecord {
-		  public:
+		public:
 			MapModelColumns(void);
 			Gtk::TreeModelColumn<Glib::ustring> m_name;
 			Gtk::TreeModelColumn<VectorMapArea::renderer_t> m_renderer;
@@ -2101,7 +2096,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		} keybuttons[nrkeybuttons];
 
 		class MapModelColumns : public Gtk::TreeModelColumnRecord {
-		  public:
+		public:
 			MapModelColumns(void);
 			Gtk::TreeModelColumn<Glib::ustring> m_name;
 			Gtk::TreeModelColumn<VectorMapArea::renderer_t> m_renderer;
@@ -2231,7 +2226,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		void open(Sensors *sensors);
 		void sensors_change(Sensors::change_t changemask);
 
-	  protected:
+	protected:
 		Gtk::Button *m_buttondone;
 		Gtk::Button *m_buttonvalidate;
 		Gtk::Button *m_buttonvalidateeurofpl;
@@ -2299,13 +2294,13 @@ class FlightDeckWindow : public FullscreenableWindow {
 		};
 
                 class RulesModelColumns : public Gtk::TreeModelColumnRecord {
-                  public:
+		public:
                         RulesModelColumns(void);
                         Gtk::TreeModelColumn<Glib::ustring> m_rule;
 		};
 
                 class CrossingModelColumns : public Gtk::TreeModelColumnRecord {
-                  public:
+		public:
                         CrossingModelColumns(void);
 			Gtk::TreeModelColumn<Point> m_coord;
                         Gtk::TreeModelColumn<Glib::ustring> m_ident;
@@ -2316,7 +2311,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		};
 
                 class AirspaceModelColumns : public Gtk::TreeModelColumnRecord {
-                  public:
+		public:
                         AirspaceModelColumns(void);
                         Gtk::TreeModelColumn<Glib::ustring> m_ident;
 			Gtk::TreeModelColumn<Glib::ustring> m_type;
@@ -2331,7 +2326,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		};
 
                 class RoutesModelColumns : public Gtk::TreeModelColumnRecord {
-                  public:
+		public:
 			class FPLRoute : public FPlanRoute {
 			public:
 				FPLRoute(void) : FPlanRoute(*(FPlan *)0) {}
@@ -2633,13 +2628,13 @@ class FlightDeckWindow : public FullscreenableWindow {
 		};
 
 		class LevelChartType {
-		  public:
+		public:
 			LevelChartType(unsigned int level = unsellevel, charttype_t ct = charttype_expert);
 			bool operator<(const LevelChartType& lc) const;
 			unsigned int get_level(void) const { return m_level; }
 			charttype_t get_charttype(void) const { return m_charttype; }
 
-		  protected:
+		protected:
 			unsigned int m_level;
 			charttype_t m_charttype;
 		};
@@ -2714,7 +2709,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class WaypointAirportModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		typedef AirportsDb::Airport element_t;
 		typedef Cairo::RefPtr<element_t> element_ptr_t;
 		static const unsigned int noid = ~0U;
@@ -2737,7 +2732,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class WaypointAirportRunwayModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		WaypointAirportRunwayModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_ident;
 		Gtk::TreeModelColumn<Glib::ustring> m_hdg;
@@ -2752,7 +2747,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class WaypointAirportHeliportModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		WaypointAirportHeliportModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_ident;
 		Gtk::TreeModelColumn<Glib::ustring> m_hdg;
@@ -2762,7 +2757,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class WaypointAirportCommModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		WaypointAirportCommModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_name;
 		Gtk::TreeModelColumn<Glib::ustring> m_freq0;
@@ -2775,7 +2770,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class WaypointAirportFASModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		WaypointAirportFASModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_ident;
 		Gtk::TreeModelColumn<Glib::ustring> m_runway;
@@ -2786,7 +2781,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class WaypointNavaidModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		typedef NavaidsDb::Navaid element_t;
 		WaypointNavaidModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_icao;
@@ -2800,7 +2795,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class WaypointIntersectionModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		typedef WaypointsDb::Waypoint element_t;
 		WaypointIntersectionModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_name;
@@ -2810,7 +2805,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class WaypointAirwayModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		typedef AirwaysDb::Airway element_t;
 		WaypointAirwayModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_name;
@@ -2826,7 +2821,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class WaypointAirspaceModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		typedef AirspacesDb::Airspace element_t;
 		WaypointAirspaceModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_icao;
@@ -2842,7 +2837,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class WaypointMapelementModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		typedef MapelementsDb::Mapelement element_t;
 		WaypointMapelementModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_name;
@@ -2852,7 +2847,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class WaypointFPlanModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		typedef FPlanWaypoint element_t;
 		WaypointFPlanModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_icao;
@@ -2865,7 +2860,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class RouteListModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		static const unsigned int nowptnr = ~0U;
 		RouteListModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_fromicao;
@@ -2881,7 +2876,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class WaypointListModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		WaypointListModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_icao;
 		Gtk::TreeModelColumn<Glib::ustring> m_name;
@@ -2913,21 +2908,21 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class WaypointListPathCodeModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		WaypointListPathCodeModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_name;
 		Gtk::TreeModelColumn<FPlanWaypoint::pathcode_t> m_id;
 	};
 
 	class WaypointListAltUnitModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		WaypointListAltUnitModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_name;
 		Gtk::TreeModelColumn<unsigned int> m_id;
 	};
 
 	class WaypointListTypeodelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		WaypointListTypeodelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_name;
 		Gtk::TreeModelColumn<FPlanWaypoint::type_t> m_type;
@@ -2935,7 +2930,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class GPSImportWaypointListModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		GPSImportWaypointListModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_icao;
 		Gtk::TreeModelColumn<Glib::ustring> m_name;
@@ -2952,7 +2947,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class MetarTafModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		MetarTafModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_icao;
 		Gtk::TreeModelColumn<Glib::ustring> m_type;
@@ -2965,7 +2960,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class WxChartListModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		WxChartListModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_departure;
 		Gtk::TreeModelColumn<Glib::ustring> m_destination;
@@ -2981,7 +2976,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 
 #ifdef HAVE_EVINCE
 	class Document {
-	  public:
+	public:
 		typedef std::set<Glib::ustring> token_t;
 		typedef std::vector<Glib::ustring> tokenvec_t;
 
@@ -3033,7 +3028,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		void save_view(EvDocumentModel *model);
 		void restore_view(EvDocumentModel *model) const;
 
-	  protected:
+	protected:
 		Glib::ustring m_filename;
 		token_t m_token;
 		Glib::ustring m_title;
@@ -3057,7 +3052,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class DocumentsDirectoryModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		DocumentsDirectoryModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_text;
 		Gtk::TreeModelColumn<int> m_weight;
@@ -3067,7 +3062,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 #endif
 
 	class PerfUnitsModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		PerfUnitsModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_text;
 		Gtk::TreeModelColumn<double> m_gain;
@@ -3075,7 +3070,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class PerfWBModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		PerfWBModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_text;
 		Gtk::TreeModelColumn<double> m_value;
@@ -3093,7 +3088,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class PerfResultModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		PerfResultModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_text;
 		Gtk::TreeModelColumn<Glib::ustring> m_value1;
@@ -3101,7 +3096,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class PerfWBDrawingArea : public Gtk::DrawingArea {
-	  public:
+	public:
 		explicit PerfWBDrawingArea(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml);
 		explicit PerfWBDrawingArea(void);
 		virtual ~PerfWBDrawingArea();
@@ -3115,7 +3110,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		void add_curve(const Glib::ustring& name, double arm0, double mass0, double arm1, double mass1);
 		
 
-	  protected:
+	protected:
 		const Aircraft::WeightBalance *m_wb;
 		typedef std::vector<Aircraft::WeightBalance::Envelope::Point> path_t;
 		typedef std::pair<Glib::ustring,path_t> curve_t;
@@ -3145,7 +3140,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class SunriseSunsetWaypointListModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		SunriseSunsetWaypointListModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_icao;
 		Gtk::TreeModelColumn<Glib::ustring> m_name;
@@ -3161,14 +3156,14 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class EUOPS1TDZListModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		EUOPS1TDZListModelColumns(void);
 		Gtk::TreeModelColumn<Glib::ustring> m_text;
 		Gtk::TreeModelColumn<int> m_elev;
 	};
 
 	class LogModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		LogModelColumns(void);
 		Gtk::TreeModelColumn<Glib::TimeVal> m_time;
 		Gtk::TreeModelColumn<Sensors::loglevel_t> m_loglevel;
@@ -3177,14 +3172,14 @@ class FlightDeckWindow : public FullscreenableWindow {
 	};
 
 	class GRIB2LayerModelColumns : public Gtk::TreeModelColumnRecord {
-	  public:
+	public:
 		class LayerPtr {
-		  public:
+		public:
 			typedef Glib::RefPtr<GRIB2::Layer> ptr_t;
 		        LayerPtr(const ptr_t& p = ptr_t()) : m_ptr(p) {}
 			ptr_t& get(void) { return m_ptr; }
 			const ptr_t& get(void) const { return m_ptr; }
-		  protected:
+		protected:
 			ptr_t m_ptr;
 		};
 
@@ -3193,7 +3188,7 @@ class FlightDeckWindow : public FullscreenableWindow {
 		Gtk::TreeModelColumn<LayerPtr> m_layer;
 	};
 
-  protected:
+protected:
 	Engine *m_engine;
 	Sensors *m_sensors;
 	WXDatabase m_wxdb;

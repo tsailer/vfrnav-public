@@ -786,6 +786,10 @@ private:
 		std::unique_ptr<AirspacesDbQueryInterface> m_airspacedb;
 		std::unique_ptr<MapelementsDbQueryInterface> m_mapelementdb;
 		TopoDb30 m_topodb;
+#ifdef HAVE_PQXX
+		typedef std::unique_ptr<pqxx::lazyconnection> pgconn_t;
+		pgconn_t m_pgconn;
+#endif
 #ifdef HAVE_PILOTLINK
 		PalmAirports m_palmairportdb;
 		PalmNavaids m_palmnavaiddb;

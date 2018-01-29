@@ -1,10 +1,10 @@
 //
 // C++ Interface: icaofpl
 //
-// Description: 
+// Description:
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2012, 2013, 2014
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2012, 2013, 2014, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -40,6 +40,8 @@ class IcaoFlightPlan {
 	errors_t parse(const std::string& txt, bool expand_airways = true) { return parse(txt.begin(), txt.end(), expand_airways).second; }
 	parseresult_t parse_route(std::vector<FPlanWaypoint>& wpts, std::string::const_iterator txti, std::string::const_iterator txte, bool expand_airways = true);
 	errors_t parse_route(std::vector<FPlanWaypoint>& wpts, const std::string& txt, bool expand_airways = true) { return parse_route(wpts, txt.begin(), txt.end(), expand_airways).second; }
+	parseresult_t parse_garminpilot(std::string::const_iterator txti, std::string::const_iterator txte, bool expand_airways = true);
+	errors_t parse_garminpilot(const std::string& txt, bool expand_airways = true) { return parse_garminpilot(txt.begin(), txt.end(), expand_airways).second; }
 	void populate(const FPlanRoute& route, awymode_t awymode = awymode_collapse, double dct_limit = 50.0);
 	std::string get_fpl(bool line_breaks = false);
 	std::string get_item15(void);
@@ -52,8 +54,11 @@ class IcaoFlightPlan {
 	unsigned int get_number(void) const { return m_number; }
 	const std::string& get_aircrafttype(void) const { return m_aircrafttype; }
 	char get_wakecategory(void) const { return m_wakecategory; }
-	const std::string& get_equipment(void) const { return m_equipment; }
-	const std::string& get_transponder(void) const { return m_transponder; }
+	Aircraft::nav_t get_nav(void) const { return m_nav; }
+	Aircraft::com_t get_com(void) const { return m_com; }
+	std::string get_equipment_string(void) const { return Aircraft::get_equipment_string(m_nav, m_com); }
+	Aircraft::transponder_t get_transponder(void) const { return m_transponder; }
+	std::string get_transponder_string(void) const { return Aircraft::get_transponder_string(m_transponder); }
 	Aircraft::pbn_t get_pbn(void) const { return m_pbn; }
 	std::string get_pbn_string(void) const { return Aircraft::get_pbn_string(m_pbn); }
 	const std::string& get_cruisespeed(void) const { return m_cruisespeed; }
@@ -70,10 +75,20 @@ class IcaoFlightPlan {
 	const std::string& get_colourmarkings(void) const { return m_colourmarkings; }
 	const std::string& get_remarks(void) const { return m_remarks; }
 	const std::string& get_picname(void) const { return m_picname; }
-	const std::string& get_emergencyradio(void) const { return m_emergencyradio; }
-	const std::string& get_survival(void) const { return m_survival; }
-	const std::string& get_lifejackets(void) const { return m_lifejackets; }
-	const std::string& get_dinghies(void) const { return m_dinghies; }
+	Aircraft::emergency_t get_emergency(void) const { return m_emergency; }
+	Aircraft::emergency_t get_emergencyradio(void) const { return m_emergency & Aircraft::emergency_radio_all; }
+	std::string get_emergencyradio_string(void) const { return Aircraft::get_emergencyradio_string(m_emergency); }
+	Aircraft::emergency_t get_survival(void) const { return m_emergency & Aircraft::emergency_survival_all; }
+	std::string get_survival_options(void) const { return Aircraft::get_survival_options(m_emergency); }
+	std::string get_survival_string(void) const { return Aircraft::get_survival_string(m_emergency); }
+	Aircraft::emergency_t get_lifejackets(void) const { return m_emergency & Aircraft::emergency_jackets_all; }
+	std::string get_lifejackets_options(void) const { return Aircraft::get_lifejackets_options(m_emergency); }
+	std::string get_lifejackets_string(void) const { return Aircraft::get_lifejackets_string(m_emergency); }
+	Aircraft::emergency_t get_dinghies(void) const { return m_emergency & Aircraft::emergency_dinghies_all; }
+	uint16_t get_dinghiesnumber(void) const { return m_dinghiesnumber; }
+	uint16_t get_dinghiescapacity(void) const { return m_dinghiescapacity; }
+	const std::string& get_dinghiescolor(void) const { return m_dinghiescolor; }
+	std::string get_dinghies_string(void) const { return Aircraft::get_dinghies_string(m_emergency, m_dinghiesnumber, m_dinghiescapacity, m_dinghiescolor); }
 
 	void set_aircraft(const Aircraft& acft, const Aircraft::Cruise::EngineParams& ep = Aircraft::Cruise::EngineParams());
 
@@ -82,10 +97,13 @@ class IcaoFlightPlan {
 	void set_number(unsigned int x) { m_number = x; }
 	void set_aircrafttype(const std::string& x) { m_aircrafttype = x; }
 	void set_wakecategory(char x) { m_wakecategory = x; }
-	void set_equipment(const std::string& x) { m_equipment = x; }
-	void set_transponder(const std::string& x) { m_transponder = x; }
+	void set_nav(Aircraft::nav_t n) { m_nav = n; }
+	void set_com(Aircraft::com_t c) { m_com = c; }
+	bool set_equipment(const std::string& x) { return Aircraft::parse_navcom(m_nav, m_com, x); }
+	void set_transponder(Aircraft::transponder_t t) { m_transponder = t; }
+	bool set_transponder(const std::string& x) { return Aircraft::parse_transponder(m_transponder, x); }
 	void set_pbn(Aircraft::pbn_t x) { m_pbn = x; }
-	void set_pbn(const std::string& x) { m_pbn = Aircraft::parse_pbn(x); }
+	bool set_pbn(const std::string& x) { return Aircraft::parse_pbn(m_pbn, x); }
 	void set_cruisespeed(const std::string& x) { m_cruisespeed = x; }
 	void set_departure(const std::string& x) { m_departure = x; }
 	void set_destination(const std::string& x) { m_destination = x; }
@@ -99,10 +117,17 @@ class IcaoFlightPlan {
 	void set_colourmarkings(const std::string& x) { m_colourmarkings = x; }
 	void set_remarks(const std::string& x) { m_remarks = x; }
 	void set_picname(const std::string& x) { m_picname = x; }
-	void set_emergencyradio(const std::string& x) { m_emergencyradio = x; }
-	void set_survival(const std::string& x) { m_survival = x; }
-	void set_lifejackets(const std::string& x) { m_lifejackets = x; }
-	void set_dinghies(const std::string& x) { m_dinghies = x; }
+	void set_emergencyradio(Aircraft::emergency_t x) { m_emergency ^= (m_emergency ^ x) & Aircraft::emergency_radio_all; }
+	bool set_emergencyradio(const std::string& x) { return Aircraft::parse_emergencyradio(m_emergency, x); }
+	void set_survival(Aircraft::emergency_t x) { m_emergency ^= (m_emergency ^ x) & Aircraft::emergency_survival_all; }
+	bool set_survival(const std::string& x) { return Aircraft::parse_survival(m_emergency, x); }
+	void set_lifejackets(Aircraft::emergency_t x) { m_emergency ^= (m_emergency ^ x) & Aircraft::emergency_jackets_all; }
+	bool set_lifejackets(const std::string& x) { return Aircraft::parse_lifejackets(m_emergency, x); }
+	void set_dinghies(Aircraft::emergency_t x) { m_emergency ^= (m_emergency ^ x) & Aircraft::emergency_dinghies_all; }
+	void set_dinghiesnumber(uint16_t x) { m_dinghiesnumber = x; }
+	void set_dinghiescapacity(uint16_t x) { m_dinghiescapacity = x; }
+	void set_dinghiescolor(const std::string& x) { m_dinghiescolor = x; }
+	bool set_dinghies(const std::string& x) { return Aircraft::parse_dinghies(m_emergency, m_dinghiesnumber, m_dinghiescapacity, m_dinghiescolor, x); }
 
 	void otherinfo_clear(void) { m_otherinfo.clear(); }
 	void otherinfo_clear(const std::string& category);
@@ -115,7 +140,8 @@ class IcaoFlightPlan {
 
 	bool replace_profile(const FPlanRoute::Profile& p = FPlanRoute::Profile());
 
-	void pbn_fix_equipment(void) { Aircraft::pbn_fix_equipment(m_equipment, m_pbn); }
+	void pbn_fix_equipment(void) { Aircraft::pbn_fix_equipment(m_nav, m_pbn); }
+	void equipment_canonicalize(void);
 
 	bool mark_vfrroute_begin(FPlanRoute& route);
 	bool mark_vfrroute_end(FPlanRoute& route);
@@ -125,6 +151,8 @@ class IcaoFlightPlan {
 	static bool is_aiport_lfob(const std::string& icao);
 	static bool is_route_pogo(const std::string& dep, const std::string& dest); // POGO airport group
 	bool is_route_pogo(void) const { return is_route_pogo(get_departure(), get_destination()); }
+	static int32_t get_route_pogo_alt(const std::string& dep, const std::string& dest);
+	int32_t get_route_pogo_alt(void) const { return get_route_pogo_alt(get_departure(), get_destination()); }
 
 	class FindCoord {
 	  public:
@@ -375,6 +403,10 @@ class IcaoFlightPlan {
 		wpts_t::size_type size(void) const { return m_wpts.size(); }
 		const ParseWaypoint& operator[](wpts_t::size_type i) const { return m_wpts[i]; }
 		ParseWaypoint& operator[](wpts_t::size_type i) { return m_wpts[i]; }
+		const ParseWaypoint& front(void) const { return m_wpts.front(); }
+		ParseWaypoint& front(void) { return m_wpts.front(); }
+		const ParseWaypoint& back(void) const { return m_wpts.back(); }
+		ParseWaypoint& back(void) { return m_wpts.back(); }
 		void add(const ParseWaypoint& w) { m_wpts.push_back(w); }
 
 		typedef std::vector<std::string> errors_t;
@@ -409,8 +441,6 @@ class IcaoFlightPlan {
 	otherinfo_t m_otherinfo;
 	std::string m_aircraftid;
 	std::string m_aircrafttype;
-	std::string m_equipment;
-	std::string m_transponder;
 	std::string m_cruisespeed;
 	std::string m_departure;
 	std::string m_destination;
@@ -418,13 +448,10 @@ class IcaoFlightPlan {
 	std::string m_alternate2;
 	std::string m_sid;
 	std::string m_star;
+	std::string m_dinghiescolor;
 	std::string m_colourmarkings;
 	std::string m_remarks;
 	std::string m_picname;
-	std::string m_emergencyradio;
-	std::string m_survival;
-	std::string m_lifejackets;
-	std::string m_dinghies;
 	typedef std::map<int,float> cruisespeeds_t;
 	cruisespeeds_t m_cruisespeeds;
 	Point m_departurecoord;
@@ -432,11 +459,17 @@ class IcaoFlightPlan {
 	time_t m_departuretime;
 	time_t m_totaleet;
 	time_t m_endurance;
+	Aircraft::nav_t m_nav;
+	Aircraft::com_t m_com;
+	Aircraft::transponder_t m_transponder;
+	Aircraft::emergency_t m_emergency;
 	Aircraft::pbn_t m_pbn;
 	unsigned int m_number;
 	unsigned int m_personsonboard;
 	uint16_t m_departureflags;
 	uint16_t m_destinationflags;
+	uint16_t m_dinghiesnumber;
+	uint16_t m_dinghiescapacity;
 	unsigned int m_defaultalt;
 	char m_flighttype;
 	char m_wakecategory;

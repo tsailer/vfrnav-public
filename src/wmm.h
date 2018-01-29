@@ -1,7 +1,7 @@
 //
 // C++ Interface: wmm
 //
-// Description: 
+// Description:
 //
 //
 // Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2010
@@ -162,7 +162,7 @@ class WMM {
                 bool ok;
 
                 /** \brief return model coefficients
-                 * 
+                 *
                  * Return the model coefficients closes to the selected time
                  * @param time current (fractional) year (i.e. 2006.0 means 1.1.2006 00:00z)
                  * @return model coefficient reference

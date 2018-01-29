@@ -585,6 +585,9 @@ private:
 	void select(const NavaidsDb::Navaid& e);
 
 	std::unique_ptr<NavaidsDbQueryInterface> m_db;
+#ifdef HAVE_PQXX
+	std::unique_ptr<pqxx::connection> m_pgconn;
+#endif
 	bool m_dbchanged;
 	Engine m_engine;
 	UndoRedoStack<NavaidsDb::Navaid> m_undoredo;
@@ -673,6 +676,9 @@ private:
 	void select(const WaypointsDb::Waypoint& e);
 
 	std::unique_ptr<WaypointsDbQueryInterface> m_db;
+#ifdef HAVE_PQXX
+	std::unique_ptr<pqxx::connection> m_pgconn;
+#endif
 	bool m_dbchanged;
 	Engine m_engine;
 	UndoRedoStack<WaypointsDb::Waypoint> m_undoredo;
@@ -796,6 +802,9 @@ private:
 	void select(const AirwaysDb::Airway& e);
 
 	std::unique_ptr<AirwaysDbQueryInterface> m_db;
+#ifdef HAVE_PQXX
+	std::unique_ptr<pqxx::connection> m_pgconn;
+#endif
 	bool m_dbchanged;
 	Engine m_engine;
 	UndoRedoStack<AirwaysDb::Airway> m_undoredo;
@@ -1031,6 +1040,9 @@ private:
 	void renumber_components(void);
 
 	std::unique_ptr<AirspacesDbQueryInterface> m_db;
+#ifdef HAVE_PQXX
+	std::unique_ptr<pqxx::connection> m_pgconn;
+#endif
 	bool m_dbchanged;
 	Engine m_engine;
 	UndoRedoStack<AirspacesDb::Airspace> m_undoredo;
@@ -1387,6 +1399,9 @@ private:
 	void new_vfrroute(int index);
 
 	std::unique_ptr<AirportsDbQueryInterface> m_db;
+#ifdef HAVE_PQXX
+	std::unique_ptr<pqxx::connection> m_pgconn;
+#endif
 	bool m_dbchanged;
 	Engine m_engine;
 	UndoRedoStack<AirportsDb::Airport> m_undoredo;
@@ -1657,6 +1672,9 @@ private:
 	void compute_save(TracksDb::Track& e);
 
 	std::unique_ptr<TracksDbQueryInterface> m_db;
+#ifdef HAVE_PQXX
+	std::unique_ptr<pqxx::connection> m_pgconn;
+#endif
 	TracksDb::Track m_track;
 	bool m_dbchanged;
 	Engine m_engine;

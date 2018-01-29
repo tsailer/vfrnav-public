@@ -186,8 +186,8 @@ PolygonSimple::InsideHelper::tpoint_t PolygonSimple::InsideHelper::transform(con
 void PolygonSimple::InsideHelper::compute_winding(winding_t& wind, const PolygonSimple& poly, int dir) const
 {
 	DEFINE_INT128
-        /* loop through all edges of the polygon */
-        const unsigned int sz(poly.size());
+	/* loop through all edges of the polygon */
+	const unsigned int sz(poly.size());
 	if (debug)
 		std::cerr << "InsideHelper::compute_winding: dir " << dir << " sz " << sz << std::endl;
 	if (!sz)
@@ -471,4 +471,27 @@ void PolygonSimple::InsideHelper::compute_winding(winding_t& wind, const Polygon
 			}
 		}
 	}
+}
+
+void PolygonSimple::InsideHelper::limit(int32_t fsmin, int32_t fsmax, int32_t min, int32_t max, bool allowswap)
+{
+	DEFINE_INT128
+	int32_t fsdiff(fsmax - fsmin);
+	if (!fsdiff)
+		return;
+	int128_t x(min - fsmin);
+	int128_t y(max - fsmin);
+	if (fsdiff < 0) {
+		x = -x;
+		y = -y;
+		fsdiff = -fsdiff;
+	}
+	x *= m_end;
+	y *= m_end;
+	if (allowswap && x > y)
+		std::swap(x, y);
+	y += fsdiff - 1;
+	x /= fsdiff;
+	y /= fsdiff;
+	limit(x, y);
 }

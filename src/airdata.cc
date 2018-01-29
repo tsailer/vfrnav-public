@@ -182,7 +182,7 @@ typename AirData<T>::float_t AirData<T>::get_rat(void) const
 	float_t x(get_tat_sat_ratio());
 	if (std::isnan(x))
 		return std::numeric_limits<float_t>::quiet_NaN();
-	return m_temp * x - IcaoAtmosphere<float_t>::degc_to_kelvin;	
+	return m_temp * x - IcaoAtmosphere<float_t>::degc_to_kelvin;
 }
 
 template<typename T>
@@ -256,10 +256,17 @@ void AirData<T>::set_tas(float_t tas)
 }
 
 template<typename T>
-typename AirData<T>::float_t AirData<T>::get_lss(float_t temp)
+typename AirData<T>::float_t AirData<T>::get_lss_degc(float_t temp)
 {
 	static constexpr float_t c0(1.0 / IcaoAtmosphere<float_t>::degc_to_kelvin);
 	return speed_of_sound_0degc * std::sqrt(1 + temp * c0);
+}
+
+template<typename T>
+typename AirData<T>::float_t AirData<T>::get_lss_kelvin(float_t temp)
+{
+	static constexpr float_t c0(speed_of_sound_0degc / std::sqrt(IcaoAtmosphere<float_t>::degc_to_kelvin));
+	return std::sqrt(temp) * c0;
 }
 
 template<typename T>
@@ -276,7 +283,7 @@ void AirData<T>::compute_mach_eas_tas(void)
 	if (std::isnan(m_temp) || m_temp <= 0) {
 		m_tas = std::numeric_limits<float_t>::quiet_NaN();
 	} else {
-		m_tas = m_mach * std::sqrt(m_temp) * (speed_of_sound_0degc / std::sqrt(IcaoAtmosphere<float_t>::degc_to_kelvin));
+		m_tas = m_mach * get_lss_kelvin(m_temp);
 	}
 }
 

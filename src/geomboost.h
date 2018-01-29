@@ -1,7 +1,7 @@
 //
 // C++ Interface: geomboost
 //
-// Description: 
+// Description:
 //
 //
 // Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012

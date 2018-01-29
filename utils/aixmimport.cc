@@ -945,7 +945,7 @@ void DbXmlImporter::RecalcComposites::recalc(recalc_t mode)
 				if (stat1.is_dirty() || stat1.get_modtime() > stat.get_modtime()) {
 					stat.set_dirty(true);
 					break;
-				}		
+				}
 			}
 			if (!stat.is_dirty())
 				continue;
@@ -966,7 +966,7 @@ void DbXmlImporter::RecalcComposites::recalc(const AirspaceId& aspcid)
 void DbXmlImporter::RecalcComposites::recalc(const AirspacesDb::Address& addr)
 {
 	AirspacesDb::Airspace el(m_airspacesdb(addr));
-	recalc(el);	
+	recalc(el);
 }
 
 void DbXmlImporter::RecalcComposites::recalc(AirspacesDb::Airspace& el)
@@ -2072,7 +2072,7 @@ void DbXmlImporter::ParseVertices::set_widthscale(const Glib::ustring& t)
 	}
 	set_widthscale();
 	throw std::runtime_error("Unknown width unit: " + t);
-	
+
 }
 
 void DbXmlImporter::ParseVertices::set_bdryclass(const Glib::ustring& t)
@@ -2205,7 +2205,7 @@ void DbXmlImporter::ParseVertices::resolve_borders(const Borders& borders)
 					}
 				}
 				m_segments.insert(m_segments.begin() + (i + 1), Segment());
-				{		
+				{
 					Segment& seg1(operator[](i + 1));
 					// look up again after insert, may be remapped
 					Segment& seg(operator[](i));
@@ -2312,7 +2312,7 @@ void DbXmlImporter::ParseVertices::resolve_borders(const Borders& borders)
 			}
 		}
 		m_segments.insert(m_segments.begin() + (i + 1), Segment());
-		{		
+		{
 			Segment& seg1(operator[](i + 1));
 			// look up again after insert, may be remapped
 			Segment& seg(operator[](i));
@@ -2361,7 +2361,7 @@ void DbXmlImporter::ParseVertices::resolve_borders(const Borders& borders)
 				seg.set_bordername("");
 				seg.set_bordermid();
 			}
-		}		
+		}
 	}
 }
 
@@ -5464,7 +5464,7 @@ void DbXmlImporter::recalc_composite_airspace(AirspacesDb::Airspace& el)
 "LSAZF", AirspacesDb::Airspace::bdryclass_ead_tma, "not loaded"
 "LSES", AirspacesDb::Airspace::bdryclass_ead_cta, "not loaded"
 "LSZL", AirspacesDb::Airspace::bdryclass_ead_tma, "not loaded"
-"ULMMN", AirspacesDb::Airspace::bdryclass_ead_cta, "not loaded" 
+"ULMMN", AirspacesDb::Airspace::bdryclass_ead_cta, "not loaded"
 "ULMMS", AirspacesDb::Airspace::bdryclass_ead_cta, "not loaded"
 
 "EHAM",  AirspacesDb::Airspace::bdryclass_ead_ctr, "loaded"
@@ -5923,10 +5923,10 @@ void DbXmlImporter::update_authority(void)
 {
         if (m_airportsdbopen)
                 m_airportsdb.close();
-        m_airportsdbopen = false;	
+        m_airportsdbopen = false;
         if (m_navaidsdbopen)
                 m_navaidsdb.close();
-        m_navaidsdbopen = false;	
+        m_navaidsdbopen = false;
         if (m_waypointsdbopen)
                 m_waypointsdb.close();
         m_waypointsdbopen = false;
@@ -5937,7 +5937,7 @@ void DbXmlImporter::update_authority(void)
 	}
         if (m_airspacesdbopen)
                 m_airspacesdb.close();
-        m_airspacesdbopen = false;	
+        m_airspacesdbopen = false;
 }
 
 void DbXmlImporter::purge_ead_airspaces(void)

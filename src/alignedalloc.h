@@ -1,7 +1,7 @@
 //
 // C++ Interface: alignedalloc
 //
-// Description: 
+// Description:
 //
 //
 // Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2016
@@ -59,7 +59,7 @@ public:
 	pointer allocate(size_type num, const void *hint = 0) {
 #ifdef __WIN32__
 		return static_cast<pointer>(_aligned_malloc(num * sizeof(T), 32));
-#else			
+#else
 		void *memptr = (void *)hint;
 		if (posix_memalign(&memptr, 32, num * sizeof(T)))
 			return 0;

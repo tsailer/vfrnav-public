@@ -278,8 +278,7 @@ void FlightDeckWindow::NavAIDrawingArea::set_pitch_bank_slip(double p, double b,
 }
 
 FlightDeckWindow::NavHSIDrawingArea::NavHSIDrawingArea(BaseObjectType *castitem, const Glib::RefPtr<Builder>& refxml)
-	: Gtk::DrawingArea(castitem), m_engine(0), m_route(0), m_track(0), m_renderer(0), m_mapscale(0.1),
-	  m_glideslope(std::numeric_limits<float>::quiet_NaN()), m_altitude(0),
+	: Gtk::DrawingArea(castitem), m_engine(0), m_route(0), m_track(0), m_renderer(0), m_mapscale(0.1), m_altitude(0),
 	  m_drawflags(MapRenderer::drawflags_route), m_centervalid(false), m_altvalid(false), m_hasterrain(false),
 	  m_heading(std::numeric_limits<double>::quiet_NaN()), m_headingflags(Sensors::mapangle_manualheading),
 	  m_course(std::numeric_limits<double>::quiet_NaN()), m_groundspeed(std::numeric_limits<double>::quiet_NaN()),
@@ -1472,8 +1471,7 @@ void FlightDeckWindow::NavHSIDrawingArea::set_engine(Engine& eng)
                 m_renderer->set_track(m_track);
                 m_renderer->set_center(m_center, m_altitude, 0, tv.tv_sec);
                 m_renderer->set_map_scale(m_mapscale);
-		m_renderer->set_glideslope(m_glideslope);
-		m_renderer->set_tas(m_glidetas);
+		m_renderer->set_glidemodel(m_glidemodel);
 		m_renderer->set_wind(m_glidewinddir, m_glidewindspeed);
                 *m_renderer = m_drawflags;
                 m_renderer->set_screensize(MapRenderer::ScreenCoord(get_width(), get_height()));
@@ -1521,44 +1519,22 @@ float FlightDeckWindow::NavHSIDrawingArea::get_map_scale(void) const
         return m_renderer->get_map_scale();
 }
 
-void FlightDeckWindow::NavHSIDrawingArea::set_glideslope(float gs)
+void FlightDeckWindow::NavHSIDrawingArea::set_glidemodel(const MapRenderer::GlideModel& gm)
 {
-	if (gs <= 0)
-		gs = std::numeric_limits<float>::quiet_NaN();
-	m_glideslope = gs;
+	m_glidemodel = gm;
 	if (!m_renderer)
                 return;
-        m_renderer->set_glideslope(m_glideslope);
-        m_glideslope = m_renderer->get_glideslope();
+        m_renderer->set_glidemodel(m_glidemodel);
+        m_glidemodel = m_renderer->get_glidemodel();
  	if (get_is_drawable())
 		queue_draw();
 }
 
-float FlightDeckWindow::NavHSIDrawingArea::get_glideslope(void) const
+const MapRenderer::GlideModel& FlightDeckWindow::NavHSIDrawingArea::get_glidemodel(void) const
 {
         if (!m_renderer)
-                return m_glideslope;
-        return m_renderer->get_glideslope();	
-}
-
-void FlightDeckWindow::NavHSIDrawingArea::set_glidetas(float tas)
-{
-	if (tas <= 0)
-		tas = std::numeric_limits<float>::quiet_NaN();
-	m_glidetas = tas;
-	if (!m_renderer)
-		return;
-	m_renderer->set_tas(m_glidetas);
-	m_glidetas = m_renderer->get_tas();
- 	if (get_is_drawable())
-		queue_draw();
-}
-
-float FlightDeckWindow::NavHSIDrawingArea::get_glidetas(void) const
-{
-	if (!m_renderer)
-		return m_glidetas;
-	return m_renderer->get_tas();
+                return m_glidemodel;
+        return m_renderer->get_glidemodel();	
 }
 
 void FlightDeckWindow::NavHSIDrawingArea::set_glidewind(float dir, float speed)

@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
 				Aircraft a(conv_aircraft(acft, argv[optind]));
 				std::cout << a.save_string();
 			}
-		}	
+		}
 	} catch (const Glib::Exception& ex) {
 		std::cerr << "Glib exception: " << ex.what() << std::endl;
 		return EX_DATAERR;

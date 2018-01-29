@@ -3,7 +3,7 @@
 /*
  *      modes.cc  --  Mode-S Transponder Messages.
  *
- *      Copyright (C) 2013  Thomas Sailer (t.sailer@alumni.ethz.ch)
+ *      Copyright (C) 2013, 2016  Thomas Sailer (t.sailer@alumni.ethz.ch)
  *
  *      This program is free software; you can redistribute it and/or modify
  *      it under the terms of the GNU General Public License as published by
@@ -845,7 +845,7 @@ const ModeSMessage::RegistrationEntry ModeSMessage::regtable[] = {
 	{ 0x70d000, 0, 0, 0 },
 	{ 0x70e000, "Cambodia", "XU", 0 }, // 70E000 - 70EFFF Cambodia
 	{ 0x70f000, 0, 0, 0 },
-	{ 0x710000, "Saudi Arabia", "HZ", 0 }, // 710000 - 717FFF 
+	{ 0x710000, "Saudi Arabia", "HZ", 0 }, // 710000 - 717FFF
 	{ 0x718000, "Republic of Korea", "DS", 0 }, // 718000 - 71FFFF Republic of Korea
 	{ 0x720000, "Democratic People's Republic of Korea", "P", 0 }, // 720000 - 727FFF Democratic People's Republic of Korea
 	{ 0x728000, "Iraq", "YI", 0 }, // 728000 - 72FFFF Iraq
@@ -1005,37 +1005,6 @@ std::string ModeSMessage::regdecode_n(uint32_t icaoaddr)
 	if (icaoaddr < 1)
 		return oss.str();
 	--icaoaddr;
-#if 0
-	for (unsigned int d1 = 1; d1 <= 9; ++d1) {
-		if (icaoaddr < 601) {
-			oss << (char)('0' + d1) << regdecode_n_2letter(icaoaddr);
-			return oss.str();
-		}
-		icaoaddr -= 601;
-		for (unsigned int d2 = 0; d2 <= 9; ++d2) {
-			if (icaoaddr < 601) {
-				oss << (char)('0' + d1) << (char)('0' + d2) << regdecode_n_2letter(icaoaddr);
-				return oss.str();
-			}
-			icaoaddr -= 601;
-			for (unsigned int d3 = 0; d3 <= 9; ++d3) {
-				if (icaoaddr < 601) {
-					oss << (char)('0' + d1) << (char)('0' + d2) << (char)('0' + d3) << regdecode_n_2letter(icaoaddr);
-					return oss.str();
-				}
-				icaoaddr -= 601;
-				for (unsigned int d4 = 0; d4 <= 9; ++d4) {
-					if (icaoaddr < 35) {
-						oss << (char)('0' + d1) << (char)('0' + d2) << (char)('0' + d3) << (char)('0' + d4) << regdecode_n_1letter(icaoaddr);
-						return oss.str();
-					}
-					icaoaddr -= 35;
-				}
-			}
-		}
-	}
-	return oss.str();
-#endif
 	// first digit
 	{
 		unsigned int d(icaoaddr / 101711U);

@@ -115,7 +115,7 @@ void NavDbImporter::parse_file(const Glib::ustring& dbfile)
 		parse_sidstar(db);
 	if (tables.find("SIDSTARS") != tables.end())
 		parse_sidstars(db);
-	
+
 }
 
 void NavDbImporter::parse_sidstar(sqlite3x::sqlite3_connection& db)

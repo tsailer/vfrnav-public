@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2007, 2009, 2012, 2013 by Thomas Sailer                 *
+ *   Copyright (C) 2007, 2009, 2012, 2013, 2017 by Thomas Sailer           *
  *   t.sailer@alumni.ethz.ch                                               *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -28,6 +28,7 @@
 
 #include "RouteEditUi.h"
 #include "Navigate.h"
+#include "icaofpl.h"
 
 int main(int argc, char *argv[])
 {
@@ -78,7 +79,31 @@ int main(int argc, char *argv[])
                 Glib::set_application_name("VFR Navigation");
                 Glib::thread_init();
                 Engine engine(dir_main, auxdbmode, dir_aux, false, false);
-                {
+		for (int ind = 1; ind < argc; ++ind) {
+			if (strncmp(argv[ind], "garminpilot://", 14))
+				continue;
+			// handle garminpilot
+			IcaoFlightPlan fpl(engine);
+			{
+				IcaoFlightPlan::errors_t err(fpl.parse_garminpilot(argv[ind], true));
+				if (!err.empty()) {
+					std::cerr << "Error parsing garminpilot flightplan: " << argv[ind] << std::endl;
+						for (IcaoFlightPlan::errors_t::const_iterator ei(err.begin()), ee(err.end()); ei != ee; ++ei)
+							std::cerr << *ei << std::endl;
+						continue;
+				}
+			}
+			if (false)
+				std::cerr << "Successfully parsed garminpilot flightplan: " << argv[ind] << std::endl;
+			FPlanRoute route(engine.get_fplan_db());
+			route.new_fp();
+			fpl.set_route(route);
+			route.save_fp();
+			if (false)
+				std::cerr << "Successfully saved garminpilot flightplan: " << route.get_id() << std::endl;
+			engine.get_prefs().curplan = route.get_id();
+		}
+		{
                         Glib::RefPtr<PrefsWindow> prefswindow(PrefsWindow::create(engine.get_prefs()));
                         RouteEditUi routeeditui(engine, prefswindow);
                         Navigate navui(engine, prefswindow);

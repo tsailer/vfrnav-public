@@ -876,8 +876,8 @@ static void cmd_aircraft(const Command& cmdin, Command& cmdout)
 	cmdout.set_option("year", autoroute->get_aircraft().get_year());
 	cmdout.set_option("description", autoroute->get_aircraft().get_description());
 	cmdout.set_option("type", autoroute->get_aircraft().get_icaotype());
-	cmdout.set_option("equipment", autoroute->get_aircraft().get_equipment());
-	cmdout.set_option("transponder", autoroute->get_aircraft().get_transponder());
+	cmdout.set_option("equipment", autoroute->get_aircraft().get_equipment_string());
+	cmdout.set_option("transponder", autoroute->get_aircraft().get_transponder_string());
 	cmdout.set_option("pbn", autoroute->get_aircraft().get_pbn_string());
 	cmdout.set_option("data", autoroute->get_aircraft().save_string());
 	cmdout.set_option("dirty", (int)dirty);

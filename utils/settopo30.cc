@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
                         case 0x503:
                                 doanalyze = c & 1;
                                 break;
- 
+
                         case 'h':
                         default:
                                 err++;

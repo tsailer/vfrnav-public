@@ -80,6 +80,8 @@ BuildRequires:  mingw32-libsoup
 BuildRequires:  mingw64-libsoup
 BuildRequires:  mingw32-ftdi
 BuildRequires:  mingw64-ftdi
+BuildRequires:  mingw32-archive
+BuildRequires:  mingw64-archive
 BuildRequires:  ImageMagick
 BuildRequires:  transfig
 BuildRequires:  texlive
@@ -204,6 +206,7 @@ rm -rf $RPM_BUILD_ROOT
 %{mingw32_bindir}/cfmuvalidate.exe
 %{mingw32_bindir}/cfmuautoroute.exe
 %{mingw32_bindir}/checkfplan.exe
+%{mingw32_bindir}/vfrnavacftconv.exe
 %dir %{mingw32_libexecdir}/%{name1}
 %{mingw32_libexecdir}/%{name1}/cfmuvalidateserver.exe
 %{mingw32_datadir}/%{name1}/flightdeck.ui
@@ -246,6 +249,8 @@ rm -rf $RPM_BUILD_ROOT
 %{mingw32_bindir}/vfrdbopenair.exe
 %{mingw32_bindir}/vfrdbfasimport.exe
 %{mingw32_bindir}/vfrradconvert.exe
+%{mingw32_bindir}/vfrnavgrib2dump
+%{mingw32_bindir}/vfrnavgrib2fcst
 %endif
 
 %if 0%{mingw_build_win64} != 0
@@ -276,6 +281,7 @@ rm -rf $RPM_BUILD_ROOT
 %{mingw64_bindir}/cfmuvalidate.exe
 %{mingw64_bindir}/cfmuautoroute.exe
 %{mingw64_bindir}/checkfplan.exe
+%{mingw64_bindir}/vfrnavacftconv.exe
 %dir %{mingw64_libexecdir}/%{name1}
 %{mingw64_libexecdir}/%{name1}/cfmuvalidateserver.exe
 %{mingw64_datadir}/%{name1}/flightdeck.ui
@@ -318,6 +324,8 @@ rm -rf $RPM_BUILD_ROOT
 %{mingw64_bindir}/vfrdbopenair.exe
 %{mingw64_bindir}/vfrdbfasimport.exe
 %{mingw64_bindir}/vfrradconvert.exe
+%{mingw64_bindir}/vfrnavgrib2dump
+%{mingw64_bindir}/vfrnavgrib2fcst
 %endif
 
 %changelog

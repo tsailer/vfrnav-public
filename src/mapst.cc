@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2007, 2008, 2009, 2011, 2012, 2013, 2015, 2016          *
+ *   Copyright (C) 2007, 2008, 2009, 2011, 2012, 2013, 2015, 2016, 2017    *
  *     by Thomas Sailer                                                    *
  *   t.sailer@alumni.ethz.ch                                               *
  *                                                                         *
@@ -29,6 +29,12 @@
 #include <gdk/gdkkeysyms.h>
 #include <set>
 
+#ifdef HAVE_EIGEN3
+#include <Eigen/Dense>
+#include <Eigen/Cholesky>
+#include <unsupported/Eigen/Polynomials>
+#endif
+
 #include "mapst.h"
 #include "wind.h"
 #include "grib2.h"
@@ -46,12 +52,12 @@ template <typename T> MapRenderer::ImageBuffer<T>::ImageBuffer(void)
 }
 
 template <typename T> MapRenderer::ImageBuffer<T>::ImageBuffer(const ScreenCoord& imgsize, const Point& center, float_t nmi_per_pixel, uint16_t upangle,
-							       int alt, int maxalt, int64_t time, float_t glideslope, float_t tas, float_t winddir, float_t windspeed,
+							       int alt, int maxalt, int64_t time, const GlideModel& glidemodel, float_t winddir, float_t windspeed,
 							       DrawFlags flags, const ScreenCoord& offset)
-	: m_surface(), m_imgsize(imgsize), m_center(center), m_imgcenter(center), m_scale(nmi_per_pixel), m_glideslope(glideslope), m_tas(tas),
+	: m_surface(), m_imgsize(imgsize), m_center(center), m_imgcenter(center), m_glidemodel(glidemodel), m_scale(nmi_per_pixel),
 	  m_winddir(winddir), m_windspeed(windspeed), m_alt(alt), m_maxalt(maxalt), m_time(time), m_upangle(upangle), m_drawflags(flags)
 {
-	reset(imgsize, center, nmi_per_pixel, upangle, alt, maxalt, time, glideslope, tas, winddir, windspeed, flags, offset);
+	reset(imgsize, center, nmi_per_pixel, upangle, alt, maxalt, time, glidemodel, winddir, windspeed, flags, offset);
 }
 
 template <typename T> void MapRenderer::ImageBuffer<T>::reset(void)
@@ -62,7 +68,7 @@ template <typename T> void MapRenderer::ImageBuffer<T>::reset(void)
 }
 
 template <typename T> void MapRenderer::ImageBuffer<T>::reset(const ScreenCoord& imgsize, const Point& center, float_t nmi_per_pixel, uint16_t upangle,
-							      int alt, int maxalt, int64_t time, float_t glideslope, float_t tas, float_t winddir, float_t windspeed,
+							      int alt, int maxalt, int64_t time, const GlideModel& glidemodel, float_t winddir, float_t windspeed,
 							      DrawFlags flags, const ScreenCoord& offset)
 {
 	m_imgsize = imgsize;
@@ -72,8 +78,7 @@ template <typename T> void MapRenderer::ImageBuffer<T>::reset(const ScreenCoord&
 	m_alt = alt;
 	m_maxalt = maxalt;
 	m_time = time;
-	m_glideslope = glideslope;
-	m_tas = tas;
+	m_glidemodel = glidemodel;
 	m_winddir = winddir;
 	m_windspeed = windspeed;
 	m_drawflags = flags;
@@ -239,9 +244,9 @@ template <typename T> Point MapRenderer::ImageBuffer<T>::transform_distance(floa
 }
 
 MapRenderer::ThreadImageBuffer::ThreadImageBuffer(const ScreenCoord& scrsize, const Point& center, int alt, uint16_t upangle, int64_t time, DrawFlags df)
-	: m_center(center), m_screensize(scrsize), m_offset(0, 0), m_drawoffset(0, 0), m_scale(0.1), m_glideslope(std::numeric_limits<float>::quiet_NaN()),
-	  m_tas(std::numeric_limits<float>::quiet_NaN()), m_winddir(0), m_windspeed(0), m_altitude(alt), m_maxalt(std::numeric_limits<int>::max()),
-	  m_time(time), m_drawflags(df), m_upangle(upangle), m_threadstate(thread_restart), m_hidden(false), m_need_altitude(true), m_need_glideslope(true)
+	: m_center(center), m_screensize(scrsize), m_offset(0, 0), m_drawoffset(0, 0), m_scale(0.1), m_glidemodel(GlideModel()),
+	  m_winddir(0), m_windspeed(0), m_altitude(alt), m_maxalt(std::numeric_limits<int>::max()),
+	  m_time(time), m_drawflags(df), m_upangle(upangle), m_threadstate(thread_restart), m_hidden(false), m_need_altitude(true), m_need_glidemodel(true)
 {
 }
 
@@ -319,21 +324,10 @@ void MapRenderer::ThreadImageBuffer::set_altitude(int alt)
 	update_drawoffset();
 }
 
-void MapRenderer::ThreadImageBuffer::set_glideslope(float gs)
+void MapRenderer::ThreadImageBuffer::set_glidemodel(const GlideModel& gm)
 {
-	if (gs <= 0)
-		gs = std::numeric_limits<float>::quiet_NaN();
-        Glib::Mutex::Lock lock(m_mutex);
-	m_glideslope = gs;
-	check_restart();
-}
-
-void MapRenderer::ThreadImageBuffer::set_tas(float tas)
-{
-	if (tas <= 0)
-		tas = std::numeric_limits<float>::quiet_NaN();
 	Glib::Mutex::Lock lock(m_mutex);
-	m_tas = tas;
+	m_glidemodel = gm;
 	check_restart();
 }
 
@@ -417,8 +411,7 @@ bool MapRenderer::ThreadImageBuffer::draw_wait(void)
 	int64_t time;
 	int alt;
 	int maxalt;
-	float glideslope;
-	float tas;
+	GlideModel glidemodel;
 	float winddir;
 	float windspeed;
 	DrawFlags df;
@@ -447,13 +440,12 @@ bool MapRenderer::ThreadImageBuffer::draw_wait(void)
 		time = m_time;
 		alt = m_altitude;
 		maxalt = m_maxalt;
-		glideslope = m_glideslope;
-		tas = m_tas;
+		glidemodel = m_glidemodel;
 		winddir = m_winddir;
 		windspeed = m_windspeed;
 		df = m_drawflags;
 	}
-	m_drawbuf.reset(imgsize, center, scale, upangle, alt, maxalt, time, glideslope, tas, winddir, windspeed, df, offset);
+	m_drawbuf.reset(imgsize, center, scale, upangle, alt, maxalt, time, glidemodel, winddir, windspeed, df, offset);
 	return false;
 }
 
@@ -540,14 +532,13 @@ void MapRenderer::ThreadImageBuffer::restart_nolock(void)
 
 void MapRenderer::ThreadImageBuffer::check_restart(void)
 {
-	static const int alt_tolerance = 10;
-	static const int upangle_tolerance = 5 * from_deg_16bit_dbl;
-	static const float map_tolerance = 0.001;
-	static const float glideslope_tolerance = 0.01;
-	static const float tas_tolerance = 0.01;
-	static const float winddir_tolerance = 5;
-	static const float windspeed_tolerance = 0.01;
-	static const float windspeed_abstolerance = 0.1;
+	static constexpr int alt_tolerance = 10;
+	static constexpr int upangle_tolerance = 5 * from_deg_16bit_dbl;
+	static constexpr float map_tolerance = 0.001;
+	static constexpr float tas_tolerance = 0.01;
+	static constexpr float winddir_tolerance = 5;
+	static constexpr float windspeed_tolerance = 0.01;
+	static constexpr float windspeed_abstolerance = 0.1;
 	static const DrawFlags drawflags_mask = (DrawFlags)(~0) & ~(drawflags_route | drawflags_track | drawflags_track_points);
 
 	if (update_nolock())
@@ -567,13 +558,13 @@ void MapRenderer::ThreadImageBuffer::check_restart(void)
 			  << " screensize " << get_screensize() << " center " << get_center()
 			  << " offset " << get_offset() << " scale " << get_scale()
 			  << " north " << get_upangle() << " alt " << get_altitude() << " maxalt " << get_maxalt()
-			  << " time " << get_time() << " gs " << get_glideslope() << " tas " << get_tas()
-			  << " wind " << get_winddir() << '/' << get_windspeed() << " flags " << get_drawflags() << " gsrect " << gsrect << std::endl
+			  << " time " << get_time() << " wind " << get_winddir() << '/' << get_windspeed()
+			  << " flags " << get_drawflags() << " gsrect " << gsrect << std::endl
 			  << "  screenbuf: imagesize " << m_screenbuf.get_imagesize()
 			  << " center " << m_screenbuf.get_imagecenter() << " scale " << m_screenbuf.get_scale()
 			  << " north " << m_screenbuf.get_upangle() << " alt " << m_screenbuf.get_altitude() << " maxalt " << m_screenbuf.get_maxalt()
-			  << " time " << m_screenbuf.get_time() << " gs " << m_screenbuf.get_glideslope() << " tas " << m_screenbuf.get_tas()
-			  << " wind " << m_screenbuf.get_winddir() << '/' << m_screenbuf.get_windspeed() << " flags " << m_screenbuf.get_drawflags()
+			  << " time " << m_screenbuf.get_time() << " wind " << m_screenbuf.get_winddir() << '/' << m_screenbuf.get_windspeed()
+			  << " flags " << m_screenbuf.get_drawflags()
 			  << " window " << scscr << ' ' << (scscr + get_screensize()) << std::endl
 			  << "    flags " << (!((get_drawflags() ^ m_screenbuf.get_drawflags()) & drawflags_mask))
 			  << " alt " << (abs(get_altitude() - m_screenbuf.get_altitude()) <= alt_tolerance)
@@ -583,8 +574,8 @@ void MapRenderer::ThreadImageBuffer::check_restart(void)
 			  << "  drawbuf: imagesize " << m_drawbuf.get_imagesize()
 			  << " center " << m_drawbuf.get_imagecenter() << " scale " << m_drawbuf.get_scale()
 			  << " north " << m_drawbuf.get_upangle() << " alt " << m_drawbuf.get_altitude() << " maxalt " << m_drawbuf.get_maxalt()
-			  << " time " << m_drawbuf.get_time() << " gs " << m_drawbuf.get_glideslope() << " tas " << m_drawbuf.get_tas()
-			  << " wind " << m_drawbuf.get_winddir() << '/' << m_drawbuf.get_windspeed() << " flags " << m_drawbuf.get_drawflags()
+			  << " time " << m_drawbuf.get_time() << " wind " << m_drawbuf.get_winddir() << '/' << m_drawbuf.get_windspeed()
+			  << " flags " << m_drawbuf.get_drawflags()
 			  << " window " << scdraw << ' ' << (scdraw + get_screensize()) << std::endl
 			  << "    flags " << (!((get_drawflags() ^ m_drawbuf.get_drawflags()) & drawflags_mask))
 			  << " alt " << (abs(get_altitude() - m_drawbuf.get_altitude()) <= alt_tolerance)
@@ -606,15 +597,12 @@ void MapRenderer::ThreadImageBuffer::check_restart(void)
 	    abs((int16_t)(get_upangle() - m_screenbuf.get_upangle())) <= upangle_tolerance &&
 	    check_window_relative((float)(get_scale() / m_screenbuf.get_scale()), map_tolerance) &&
 	    check_inside_nolock(m_screenbuf) &&
-	    (!need_glideslope() || (std::isnan(m_glideslope) == std::isnan(m_screenbuf.get_glideslope()) &&
-				    check_window_relative_or_nan((float)(m_glideslope / m_screenbuf.get_glideslope()), glideslope_tolerance))) &&
-	    (!need_glideslope() || std::isnan(get_glideslope()) ||
-	     (gsrect.is_inside(m_screenbuf.get_center()) && std::isnan(get_tas()) == std::isnan(m_screenbuf.get_tas()) &&
-	      (std::isnan(get_tas()) ||
-	       (check_window_relative(get_tas() / m_screenbuf.get_tas(), tas_tolerance) &&
-		fabsf(get_winddir() - m_screenbuf.get_winddir()) <= winddir_tolerance &&
+	    (!need_glidemodel() || m_glidemodel.is_approxequal(m_screenbuf.get_glidemodel())) &&
+	    (!need_glidemodel() || get_glidemodel().is_invalid() ||
+	     (gsrect.is_inside(m_screenbuf.get_center()) &&
+	      (fabsf(get_winddir() - m_screenbuf.get_winddir()) <= winddir_tolerance &&
 		(fabsf(get_windspeed() - m_screenbuf.get_windspeed()) <= windspeed_abstolerance ||
-		 check_window_relative(get_windspeed() / m_screenbuf.get_windspeed(), windspeed_tolerance)))))))
+		 check_window_relative(get_windspeed() / m_screenbuf.get_windspeed(), windspeed_tolerance))))))
 		return;
 	if ((m_threadstate == thread_busy || m_threadstate == thread_ready) &&
 	    !((get_drawflags() ^ m_drawbuf.get_drawflags()) & drawflags_mask) &&
@@ -622,15 +610,12 @@ void MapRenderer::ThreadImageBuffer::check_restart(void)
 	    abs((int16_t)(get_upangle() - m_drawbuf.get_upangle())) <= upangle_tolerance &&
 	    check_window_relative((float)(get_scale() / m_drawbuf.get_scale()), map_tolerance) &&
 	    check_inside_nolock(m_drawbuf) &&
-	    (!need_glideslope() || (std::isnan(m_glideslope) == std::isnan(m_drawbuf.get_glideslope()) &&
-				    check_window_relative_or_nan((float)(m_glideslope / m_drawbuf.get_glideslope()), glideslope_tolerance))) &&
-	    (!need_glideslope() || std::isnan(get_glideslope()) ||
-	     (gsrect.is_inside(m_drawbuf.get_center()) && std::isnan(get_tas()) == std::isnan(m_drawbuf.get_tas()) &&
-	      (std::isnan(get_tas()) ||
-	       (check_window_relative(get_tas() / m_drawbuf.get_tas(), tas_tolerance) &&
-		fabsf(get_winddir() - m_drawbuf.get_winddir()) <= winddir_tolerance &&
+	    (!need_glidemodel() || m_glidemodel.is_approxequal(m_drawbuf.get_glidemodel())) &&
+	    (!need_glidemodel() || get_glidemodel().is_invalid() ||
+	     (gsrect.is_inside(m_drawbuf.get_center()) &&
+	      (fabsf(get_winddir() - m_drawbuf.get_winddir()) <= winddir_tolerance &&
 		(fabsf(get_windspeed() - m_drawbuf.get_windspeed()) <= windspeed_abstolerance ||
-		 check_window_relative(get_windspeed() / m_drawbuf.get_windspeed(), windspeed_tolerance)))))))
+		 check_window_relative(get_windspeed() / m_drawbuf.get_windspeed(), windspeed_tolerance))))))
 		return;
 	if (true)
 		std::cerr << "ThreadImageBuffer::check_restart: do restart" << std::endl;
@@ -683,7 +668,7 @@ void MapRenderer::ThreadImageBuffer::draw(const Cairo::RefPtr<Cairo::Context>& c
 		std::cerr << "ThreadImageBuffer::draw: imagesize " << m_screenbuf.get_imagesize()
 			  << " center " << m_screenbuf.get_imagecenter() << " scale " << m_screenbuf.get_scale()
 			  << " north " << m_screenbuf.get_upangle() << " alt " << m_screenbuf.get_altitude()
-			  << " maxalt " << m_screenbuf.get_maxalt() << " flags " << m_screenbuf.get_drawflags() << std::endl;	
+			  << " maxalt " << m_screenbuf.get_maxalt() << " flags " << m_screenbuf.get_drawflags() << std::endl;
 	{
 		Cairo::RefPtr<Cairo::SurfacePattern> pattern(m_screenbuf.create_pattern());
 		if (pattern) {
@@ -731,6 +716,102 @@ constexpr double MapRenderer::to_deg_16bit_dbl;
 constexpr double MapRenderer::to_rad_16bit_dbl;
 constexpr double MapRenderer::from_deg_16bit_dbl;
 constexpr double MapRenderer::from_rad_16bit_dbl;
+
+MapRenderer::GlideModel::GlideModel(void)
+	: m_ceiling(std::numeric_limits<double>::quiet_NaN()),
+	  m_climbtime(std::numeric_limits<double>::quiet_NaN())
+{
+}
+
+MapRenderer::GlideModel::GlideModel(const Aircraft::ClimbDescent& cd)
+	: m_climbaltpoly(cd.get_climbaltpoly()), m_climbdistpoly(cd.get_climbdistpoly()),
+	  m_ceiling(cd.get_ceiling()), m_climbtime(cd.get_climbtime())
+{
+}
+
+bool MapRenderer::GlideModel::is_invalid(void) const
+{
+	return std::isnan(get_ceiling()) || std::isnan(get_climbtime()) ||
+		get_ceiling() <= 0 || get_climbtime() <= 0 ||
+		get_climbaltpoly().empty() || get_climbdistpoly().empty() ||
+		std::isnan(time_to_altitude(0)) || std::isnan(time_to_distance(0));
+}
+
+bool MapRenderer::GlideModel::is_approxequal(const GlideModel& x) const
+{
+	{
+		bool vx(x.is_invalid()), v(is_invalid());
+		if (vx != v)
+			return false;
+		if (v)
+			return true;
+	}
+	constexpr double tolerance = 0.05;
+	if (fabs(x.get_ceiling() - get_ceiling()) > tolerance * get_ceiling())
+		return false;
+	if (fabs(x.get_climbtime() - get_climbtime()) > tolerance * get_climbtime())
+		return false;
+	{
+		double vx(x.time_to_altitude(get_climbtime())), v(time_to_altitude(get_climbtime()));
+		if (fabs(vx - v) > tolerance * v)
+			return false;
+	}
+	{
+		double vx(x.time_to_distance(get_climbtime())), v(time_to_distance(get_climbtime()));
+		if (fabs(vx - v) > tolerance * v)
+			return false;
+	}
+	return true;
+}
+
+double MapRenderer::GlideModel::compute_newalt(Wind<double>& wind, const Point& p0, const Point& p1, double alt0) const
+{
+	constexpr double nmi_to_ft = 1.0 / Point::km_to_nmi_dbl * 1e3 * Point::m_to_ft_dbl;
+	constexpr double maxglide = 0;
+	std::pair<Point,double> gcnav(p0.get_gcnav(p1, 0.5));
+	if (std::isnan(alt0) || alt0 >= get_ceiling())
+		return std::numeric_limits<double>::quiet_NaN();
+	double t0(altitude_to_time(alt0));
+	wind.set_crs_tas(gcnav.second, time_to_tas(t0));
+	double d0(time_to_distance(t0));
+	double dist(p0.spheric_distance_nmi_dbl(p1));
+	double d1(d0 - dist * wind.get_tas() / wind.get_gs());
+	double t1(distance_to_time(d1));
+	double alt1(time_to_altitude(t1));
+	if (maxglide > 0)
+		alt1 = std::min(alt1, alt0 - dist * (nmi_to_ft / maxglide));
+	if (std::isnan(alt1) || alt1 >= get_ceiling())
+		return std::numeric_limits<double>::quiet_NaN();
+	alt1 = std::min(alt1, alt0);
+	return alt1;
+}
+
+double MapRenderer::GlideModel::time_to_altitude(double t) const
+{
+	return m_climbaltpoly.eval(t);
+}
+
+double MapRenderer::GlideModel::time_to_distance(double t) const
+{
+	return m_climbdistpoly.eval(t);
+}
+
+double MapRenderer::GlideModel::time_to_tas(double t) const
+{
+	return m_climbdistpoly.evalderiv(t) * 3600.0;
+}
+
+double MapRenderer::GlideModel::altitude_to_time(double a) const
+{
+	return m_climbaltpoly.boundedinveval(a, 0, get_climbtime());
+}
+
+double MapRenderer::GlideModel::distance_to_time(double d) const
+{
+	return m_climbdistpoly.boundedinveval(d, 0, get_climbtime());
+}
+
+const MapRenderer::GlideModel MapRenderer::invalid_glidemodel;
 
 MapRenderer::MapRenderer(Engine& eng, const ScreenCoord& scrsize, const Point& center, int alt, uint16_t upangle, int64_t time)
         : m_center(center), m_time(time), m_altitude(alt), m_upangle(upangle), m_engine(eng), m_route(0), m_track(0), m_screensize(scrsize)
@@ -1669,9 +1750,8 @@ VectorMapArea::VectorMapArea(BaseObjectType *castitem, const Glib::RefPtr<Builde
         : Gtk::DrawingArea(castitem), m_engine(0), m_renderer(0), m_rendertype(renderer_none),
           m_dragbutton(2), m_dragstart(0, 0), m_dragoffset(0, 0), m_draginprogress(false),
           m_cursorvalid(false), m_cursoranglevalid(false), m_cursorangle(0),
-          m_mapscale(0.1), m_glideslope(std::numeric_limits<float>::quiet_NaN()),
-	  m_tas(std::numeric_limits<float>::quiet_NaN()), m_winddir(0), m_windspeed(0),
-	  m_time(0), m_altitude(0), m_upangle(0), m_route(0), m_track(0), m_drawflags(MapRenderer::drawflags_none)
+          m_mapscale(0.1), m_winddir(0), m_windspeed(0), m_time(0), m_altitude(0), m_upangle(0),
+	  m_route(0), m_track(0), m_drawflags(MapRenderer::drawflags_none)
 {
         set_map_scale(0.1);
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
@@ -1819,8 +1899,7 @@ void VectorMapArea::renderer_alloc(void)
                 m_renderer->set_track(m_track);
                 m_renderer->set_center(m_center, m_altitude, m_upangle, m_time);
                 m_renderer->set_map_scale(m_mapscale);
-		m_renderer->set_glideslope((m_rendertype == renderer_terrain) ? m_glideslope : std::numeric_limits<float>::quiet_NaN());
-		m_renderer->set_tas(m_tas);
+		m_renderer->set_glidemodel((m_rendertype == renderer_terrain) ? m_glidemodel : MapRenderer::GlideModel());
 		m_renderer->set_wind(m_winddir, m_windspeed);
                 *m_renderer = m_drawflags;
                 m_renderer->set_screensize(MapRenderer::ScreenCoord(get_width(), get_height()));
@@ -2198,38 +2277,19 @@ float VectorMapArea::get_map_scale(void) const
         return m_renderer->get_map_scale();
 }
 
-void VectorMapArea::set_glideslope(float gs)
+void VectorMapArea::set_glidemodel(const MapRenderer::GlideModel& gm)
 {
-	if (gs <= 0)
-		gs = std::numeric_limits<float>::quiet_NaN();
-	m_glideslope = gs;
+	m_glidemodel = gm;
 	if (m_renderer && m_rendertype == renderer_terrain)
-		m_renderer->set_glideslope(m_glideslope);
+		m_renderer->set_glidemodel(m_glidemodel);
         redraw();
 }
 
-float VectorMapArea::get_glideslope(void) const
+const MapRenderer::GlideModel& VectorMapArea::get_glidemodel(void) const
 {
 	if (m_renderer && m_rendertype == renderer_terrain)
-		return m_renderer->get_glideslope();
-	return m_glideslope;
-}
-
-void VectorMapArea::set_tas(float tas)
-{
-	if (tas <= 0)
-		tas = std::numeric_limits<float>::quiet_NaN();
-	m_tas = tas;
-	if (m_renderer)
-		m_renderer->set_tas(m_tas);
-        redraw();
-}
-
-float VectorMapArea::get_tas(void) const
-{
-	if (m_renderer)
-		return m_renderer->get_tas();
-	return m_tas;
+		return m_renderer->get_glidemodel();
+	return m_glidemodel;
 }
 
 void VectorMapArea::set_wind(float dir, float speed)
@@ -2489,9 +2549,9 @@ VectorMapRenderer::DrawThread::DrawThread(Engine& eng, Glib::Dispatcher& dispatc
 {
         m_thread = Glib::Thread::create(sigc::mem_fun(*this, &VectorMapRenderer::DrawThread::thread), 0, true, true, Glib::THREAD_PRIORITY_NORMAL);
 	m_buffer.set_need_altitude(false);
-	m_buffer.set_need_glideslope(false);
+	m_buffer.set_need_glidemodel(false);
 }
-  
+
 VectorMapRenderer::DrawThread::~DrawThread()
 {
         stop();
@@ -2770,9 +2830,9 @@ void VectorMapRenderer::DrawThread::draw_pixbuf(const Cairo::RefPtr<Cairo::Conte
 			return;
 		// wxmaxima:
 		// A: matrix(
-		//  [0,0,1], 
-		//  [x,0,1], 
-		//  [0,y,1], 
+		//  [0,0,1],
+		//  [x,0,1],
+		//  [0,y,1],
 		//  [x,y,1]
 		// );
 		// invert(transpose(A).A).transpose(A);
@@ -2967,7 +3027,7 @@ void VectorMapRenderer::DrawThread::draw_route(Cairo::Context *cr, const FPlanRo
 				scf -= ScreenCoordFloat(ext.width * 0.5, ext.height * 0.5);
 			cr->move_to(scf.getx(), scf.gety());
 			cr->show_text(txt);
-		}	
+		}
 	}
         cr->restore();
 }
@@ -3958,7 +4018,7 @@ void VectorMapRenderer::DrawThreadOverlay::draw(Cairo::Context *cr, const std::v
                                         cr->line_to(pxc.getx(), pxc.gety());
                                         cr->stroke();
                                 }
-			} 
+			}
 		}
                 if (ismil)
                         cr->set_source_rgb(167.0 / 255, 101.0 / 255, 160.0 / 255);
@@ -4821,7 +4881,7 @@ VectorMapRenderer::DrawThreadTerrain::DrawThreadTerrain(Engine& eng, Glib::Dispa
         : DrawThread(eng, dispatch, scrsize, center, alt, upangle, time)
 {
 	m_buffer.set_need_altitude(true);
-	m_buffer.set_need_glideslope(true);
+	m_buffer.set_need_glidemodel(true);
 }
 
 VectorMapRenderer::DrawThreadTerrain::~DrawThreadTerrain()
@@ -5124,6 +5184,114 @@ void VectorMapRenderer::DrawThreadTerrain::draw(Cairo::Context *cr, const std::v
         cr->restore();
 }
 
+
+namespace {
+
+#ifdef HAVE_EIGEN3
+
+#ifdef __WIN32__
+__attribute__((force_align_arg_pointer))
+#endif
+Eigen::VectorXd least_squares_solution(const Eigen::MatrixXd& A, const Eigen::VectorXd& b)
+{
+	if (false) {
+		// traditional
+		return (A.transpose() * A).inverse() * A.transpose() * b;
+	} else if (true) {
+		// cholesky
+		return (A.transpose() * A).ldlt().solve(A.transpose() * b);
+	} else if (false) {
+		// householder QR
+		return A.colPivHouseholderQr().solve(b);
+	} else if (false) {
+		// jacobi SVD
+		return A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+	} else {
+		typedef Eigen::JacobiSVD<Eigen::MatrixXd, Eigen::FullPivHouseholderQRPreconditioner> jacobi_t;
+		jacobi_t jacobi(A, Eigen::ComputeFullU | Eigen::ComputeFullV);
+		return jacobi.solve(b);
+	}
+}
+
+#ifdef __WIN32__
+__attribute__((force_align_arg_pointer))
+#endif
+MapRenderer::GlideModel::poly_t calculate_altloss(const MapRenderer::GlideModel& gm, const Point& pt0, const Point& pt1, Wind<double>& wind, double& maxalt)
+{
+	static constexpr int32_t maxpalt = 60000;
+	static constexpr int32_t altinc = 500;
+	static constexpr unsigned int polyorder = 5;
+
+	unsigned int mp(maxalt / altinc + 1);
+	Eigen::MatrixXd m(mp, polyorder);
+	Eigen::VectorXd v(mp);
+	int32_t ma(std::numeric_limits<int32_t>::min());
+	mp = 0;
+	for (int32_t alt = 0; alt <= maxpalt; alt += altinc, ++mp) {
+		double alt1(gm.compute_newalt(wind, pt0, pt1, alt));
+		if (std::isnan(alt1))
+			break;
+		double a1(1);
+		for (unsigned int i = 0; i < polyorder; ++i, a1 *= alt)
+			m(mp, i) = a1 * Point::ft_to_m_dbl;
+		v(mp) = alt1 * Point::ft_to_m_dbl;
+		ma = alt;
+	}
+	maxalt = std::min(maxalt, (double)ma);
+	if (!mp)
+		return MapRenderer::GlideModel::poly_t();
+	m.conservativeResize(mp, polyorder);
+	v.conservativeResize(mp);
+	Eigen::VectorXd x(least_squares_solution(m, v));
+        return MapRenderer::GlideModel::poly_t(x.data(), x.data() + x.size());
+}
+
+#else
+
+MapRenderer::GlideModel::poly_t calculate_altloss(const GlideModel& gm, const Point& pt0, const Point& pt1, Wind<double>& wind, double& maxalt) const
+{
+	maxalt = std::min(maxalt, 0.0);
+	return MapRenderer::GlideModel::poly_t();
+}
+
+#endif
+
+class WQElement {
+public:
+	WQElement(int x, int y, float alt) : m_x(x), m_y(y), m_alt(alt) {}
+	int get_x(void) const { return m_x; }
+	int get_y(void) const { return m_y; }
+	float get_alt(void) const { return m_alt; }
+	int compare(const WQElement& x) const {
+		if (get_alt() < x.get_alt())
+			return 1;
+		if (x.get_alt() < get_alt())
+			return -1;
+		if (get_x() < x.get_x())
+			return -1;
+		if (x.get_x() < get_x())
+			return 1;
+		if (get_y() < x.get_y())
+			return -1;
+		if (x.get_y() < get_y())
+			return 1;
+		return 0;
+	}
+	bool operator==(const WQElement& x) const { return compare(x) == 0; }
+	bool operator!=(const WQElement& x) const { return compare(x) != 0; }
+	bool operator<(const WQElement& x) const { return compare(x) < 0; }
+	bool operator<=(const WQElement& x) const { return compare(x) <= 0; }
+	bool operator>(const WQElement& x) const { return compare(x) > 0; }
+	bool operator>=(const WQElement& x) const { return compare(x) >= 0; }
+
+protected:
+	int m_x;
+	int m_y;
+	float m_alt;
+};
+
+};
+
 void VectorMapRenderer::DrawThreadTerrain::draw_glidearea(const Cairo::RefPtr<Cairo::ImageSurface> surface)
 {
 	static const Point dirs[8] = {
@@ -5136,19 +5304,18 @@ void VectorMapRenderer::DrawThreadTerrain::draw_glidearea(const Cairo::RefPtr<Ca
 		Point(-1, 0),
 		Point(-1, -1)
 	};
-	float altloss[8]; // in meter!
+	GlideModel::poly_t altloss[8]; // in meter!
+	double maxalt(std::numeric_limits<double>::max());
 
-	// FIXME: Consider wind!
-	float glideslope(m_buffer.draw_get_glideslope());
-	if (std::isnan(glideslope) || !surface || !m_topoquery)
+	const GlideModel& glidemodel(m_buffer.draw_get_glidemodel());
+	if (glidemodel.is_invalid() || !surface || !m_topoquery)
 		return;
 	int width(surface->get_width()), height(surface->get_height());
 	if (width <= 0 || height <= 0)
 		return;
-	typedef std::pair<int, int> coord_t;
-	typedef std::pair<coord_t,float> coordalt_t;
-	typedef std::list<coordalt_t> workqueue_t;
+	typedef std::set<WQElement> workqueue_t;
 	workqueue_t workqueue;
+	std::vector<float> alts(width * height, std::numeric_limits<float>::min());
 	{
 		const Rect& bbox(m_topoquery->get_bbox());
 		Point ptdiff(bbox.get_southeast() - bbox.get_northwest());
@@ -5158,71 +5325,72 @@ void VectorMapRenderer::DrawThreadTerrain::draw_glidearea(const Cairo::RefPtr<Ca
 			Point pt(bbox.get_northwest().halfway(bbox.get_southeast()));
 			if (false)
 				std::cerr << "draw_glidearea: bbox " << bbox << " pt " << pt << " ptdiff " << ptdiff << std::endl;
-			float tas(m_buffer.draw_get_tas());
-			Wind<float> wind;
+			Wind<double> wind;
 			wind.set_wind(m_buffer.draw_get_winddir(), m_buffer.draw_get_windspeed());
 			for (unsigned int i = 0; i < sizeof(dirs)/sizeof(dirs[0]); ++i) {
 				Point pt1(ptdiff.get_lon() * dirs[i].get_lon(), ptdiff.get_lat() * dirs[i].get_lat());
 				pt1 += pt;
-				// this needs to be dbl, otherwise it will return 0 due to inadequate numeric precision
-				float dist(pt.spheric_distance_km_dbl(pt1));
-				if (!std::isnan(tas)) {
-					wind.set_crs_tas(pt.spheric_true_course_dbl(pt1), tas);
-					if (std::isnan(wind.get_gs()) || wind.get_gs() <= 0.f)
-						dist = std::numeric_limits<float>::max();
-					else
-						dist *= tas / wind.get_gs();
-					if (false)
-						std::cerr << "Wind " << wind.get_winddir() << '/' << wind.get_windspeed()
-							  << " TH " << wind.get_hdg() << " TAS " << wind.get_tas()
-							  << " TT " << wind.get_crs() << " GS " << wind.get_gs() << std::endl;
-				}
-				altloss[i] = dist * 1000.f / glideslope;
+				altloss[i] = calculate_altloss(glidemodel, pt, pt1, wind, maxalt);
 				if (false)
-					std::cerr << "draw_glidearea: dir " << i << " (" << dirs[i].get_lon() << ',' << dirs[i].get_lat()
-						  << ") dist " << dist << "km altloss " << altloss[i] << "m gs " << glideslope
-						  << ' ' << pt << "->" << pt1 << std::endl;
+					altloss[i].print(std::cerr << "draw_glidearea: dir " << i << " (" << dirs[i].get_lon() << ','
+							 << dirs[i].get_lat() << ") altloss ") << ' ' << pt << "->" << pt1 << std::endl;
 			}
 		}
 		{
 			Point pt(m_buffer.draw_get_center() - bbox.get_northwest());
 			pt.set_lon(pt.get_lon() / ptdiff.get_lon());
 			pt.set_lat(pt.get_lat() / ptdiff.get_lat());
-			workqueue.push_back(coordalt_t(coord_t(pt.get_lon(), pt.get_lat()), m_buffer.draw_get_altitude() * Point::ft_to_m));
+			WQElement wqe(pt.get_lon(), pt.get_lat(), m_buffer.draw_get_altitude() * Point::ft_to_m);
+			unsigned int altidx = wqe.get_x() * height + wqe.get_y();
+			alts[altidx] = wqe.get_alt();
+			workqueue.insert(wqe);
 			if (false)
-				std::cerr << "draw_glidearea: start x " << workqueue.front().first.first << " y " << workqueue.front().first.second
-					  << " alt " << workqueue.front().second << " w " << width << " h " << height << std::endl;
+				std::cerr << "draw_glidearea: start x " << wqe.get_x() << " y " << wqe.get_y()
+					  << " alt " << wqe.get_alt() << " w " << width << " h " << height << std::endl;
 		}
 	}
 	unsigned int stride(surface->get_stride());
 	unsigned char *data(surface->get_data());
-	std::vector<float> alts(width * height, std::numeric_limits<float>::min());
+	constexpr TopoDb30::elev_t elevnil(std::numeric_limits<TopoDb30::elev_t>::min() + 2);
+	std::vector<TopoDb30::elev_t> gndelev(width * height, elevnil);
+	std::vector<bool> visited(width * height, false);
 	while (!workqueue.empty()) {
-		int x(workqueue.front().first.first);
-		int y(workqueue.front().first.second);
-		float alt(workqueue.front().second);
+		WQElement wqe(*workqueue.begin());
 		workqueue.erase(workqueue.begin());
-		if (x < 0 || y < 0 || x >= width || y >= height || std::isnan(alt))
+		if (wqe.get_x() < 0 || wqe.get_y() < 0 || wqe.get_x() >= width || wqe.get_y() >= height || std::isnan(wqe.get_alt()))
 			continue;
-		unsigned int altidx = x * height + y;
-		if (alt <= alts[altidx])
+		unsigned int altidx = wqe.get_x() * height + wqe.get_y();
+		TopoDb30::elev_t& gndelevc(gndelev[altidx]);
+		if (gndelevc == elevnil) {
+		        gndelevc = m_topoquery.operator->()->operator()(wqe.get_x(), wqe.get_y());
+			if (gndelevc == TopoDb30::ocean)
+				gndelevc = 0;
+		}
+		if (gndelevc == TopoDb30::nodata)
 			continue;
-		TopoDb30::elev_t gndelev(m_topoquery.operator->()->operator()(x, y));
-		if (gndelev == TopoDb30::nodata)
+		if (wqe.get_alt() <= gndelevc)
 			continue;
-		if (gndelev == TopoDb30::ocean)
-			gndelev = 0;
-		if (alt <= gndelev)
-			continue;
-		if (alts[altidx] == std::numeric_limits<float>::min()) {
-			unsigned char *d = data + 4 * x + stride * y;
+		if (!visited[altidx]) {
+			unsigned char *d = data + 4 * wqe.get_x() + stride * wqe.get_y();
 			d[2] = d[2] - (d[2] >> 1) + 127;
 			d[1] = d[1] - (d[1] >> 1) + 127;
 			d[0] = d[0] - (d[0] >> 1) + 127;
+			visited[altidx] = true;
 		}
-		alts[altidx] = alt;
-		for (unsigned int i = 0; i < sizeof(dirs)/sizeof(dirs[0]); ++i)
-			workqueue.push_back(coordalt_t(coord_t(x + dirs[i].get_lon(), y + dirs[i].get_lat()), alt - altloss[i]));
+		for (unsigned int i = 0; i < sizeof(dirs)/sizeof(dirs[0]); ++i) {
+			WQElement wqen(wqe.get_x() + dirs[i].get_lon(), wqe.get_y() + dirs[i].get_lat(), altloss[i].eval(wqe.get_alt()));
+			if (std::isnan(wqen.get_alt()))
+				continue;
+			unsigned int altidxn = wqen.get_x() * height + wqen.get_y();
+			float& altsn(alts[altidxn]);
+			if (wqen.get_alt() <= altsn)
+				continue;
+			workqueue_t::iterator it(workqueue.find(WQElement(wqen.get_x(), wqen.get_y(), altsn)));
+			if (it != workqueue.end())
+				workqueue.erase(it);
+			altsn = wqen.get_alt();
+			workqueue.insert(wqen);
+		}
 	}
 }
 
@@ -6354,7 +6522,7 @@ void VectorMapRenderer::DrawThreadTMS::TileIndex::set_rounddown(const Point& pt)
 		m_x = (pt.get_lon() ^ 0x80000000) >> xsh;
 		m_x &= mask;
 		double lat(pt.get_lat_rad_dbl());
-		int y(ceil(ldexp(1.0 - log(tan(lat) + 1.0 / cos(lat)) * (1.0 / M_PI), get_zoom() - 1))); 
+		int y(ceil(ldexp(1.0 - log(tan(lat) + 1.0 / cos(lat)) * (1.0 / M_PI), get_zoom() - 1)));
 		if (y < 0)
 			y = 0;
 		else if (y > mask)
@@ -6485,7 +6653,7 @@ void VectorMapRenderer::DrawThreadTMS::TileIndex::set_roundup(const Point& pt)
 		m_x = ((pt.get_lon() ^ 0x80000000) + (1U << xsh) - 1U) >> xsh;
 		m_x &= mask;
 		double lat(pt.get_lat_rad_dbl());
-		int y(floor(ldexp(1.0 - log(tan(lat) + 1.0 / cos(lat)) * (1.0 / M_PI), get_zoom() - 1))); 
+		int y(floor(ldexp(1.0 - log(tan(lat) + 1.0 / cos(lat)) * (1.0 / M_PI), get_zoom() - 1)));
 		if (y < 0)
 			y = 0;
 		else if (y > mask)
@@ -6500,7 +6668,7 @@ unsigned int VectorMapRenderer::DrawThreadTMS::TileIndex::get_mask(void) const
 {
 	return (1U << get_zoom()) - 1U;
 }
- 
+
 unsigned int VectorMapRenderer::DrawThreadTMS::TileIndex::get_invy(void) const
 {
 	return get_mask() - get_y();

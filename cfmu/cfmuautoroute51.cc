@@ -269,14 +269,14 @@ bool CFMUAutoroute51::start_ifr(bool cont, bool optfuel)
 			if (true) {
 				Glib::TimeVal tv;
 				tv.assign_current_time();
-				m_eval.simplify_rules_equipment(m_aircraft.get_equipment(), m_aircraft.get_pbn());
+				m_eval.simplify_rules_equipment(m_aircraft.get_equipment_string(), m_aircraft.get_pbn());
 				{
 					Glib::TimeVal tv1;
 					tv1.assign_current_time();
 					tv = tv1 - tv;
 				}
 				std::ostringstream oss;
-				oss << m_eval.count_srules() << " rules after fixing aircraft equipment " << m_aircraft.get_equipment()
+				oss << m_eval.count_srules() << " rules after fixing aircraft equipment " << m_aircraft.get_equipment_string()
 				    << " PBN/" << m_aircraft.get_pbn_string() << ", " << std::fixed << std::setprecision(3) << tv.as_double() << 's';
 				m_signal_log(log_normal, oss.str());
 			}

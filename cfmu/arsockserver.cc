@@ -3052,8 +3052,8 @@ void SocketServer::cmd_aircraft(const Json::Value& cmdin, Json::Value& cmdout)
 	cmdout["year"] = (std::string)m_autoroute->get_aircraft().get_year();
 	cmdout["description"] = (std::string)m_autoroute->get_aircraft().get_description();
 	cmdout["type"] = (std::string)m_autoroute->get_aircraft().get_icaotype();
-	cmdout["equipment"] = (std::string)m_autoroute->get_aircraft().get_equipment();
-	cmdout["transponder"] = (std::string)m_autoroute->get_aircraft().get_transponder();
+	cmdout["equipment"] = (std::string)m_autoroute->get_aircraft().get_equipment_string();
+	cmdout["transponder"] = (std::string)m_autoroute->get_aircraft().get_transponder_string();
 	cmdout["pbn"] = (std::string)m_autoroute->get_aircraft().get_pbn_string();
 	cmdout["data"] = (std::string)m_autoroute->get_aircraft().save_string();
 	cmdout["dirty"] = dirty;
@@ -3141,8 +3141,8 @@ void SocketServer::cmd_fplparse(const Json::Value& cmdin, Json::Value& cmdout)
 		cmdout["number"] = f.get_number();
 		cmdout["aircrafttype"] = f.get_aircrafttype();
 		cmdout["wakecategory"] = std::string(1, f.get_wakecategory());
-		cmdout["equipment"] = f.get_equipment();
-		cmdout["transponder"] = f.get_transponder();
+		cmdout["equipment"] = f.get_equipment_string();
+		cmdout["transponder"] = f.get_transponder_string();
 		cmdout["pbn"] = f.get_pbn_string();
 		cmdout["cruisespeed"] = f.get_cruisespeed();
 		cmdout["departure"] = f.get_departure();

@@ -1,10 +1,10 @@
 //
 // C++ Interface: fplan
 //
-// Description: 
+// Description:
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2012, 2013, 2014, 2015, 2016
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2012, 2013, 2014, 2015, 2016, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -20,6 +20,12 @@
 #include "aircraft.h"
 #include "geom.h"
 
+#ifdef HAVE_JSONCPP
+namespace Json {
+class Value;
+};
+#endif
+
 #define USERDBPATH ".vfrnav"
 
 namespace DbBaseElements {
@@ -32,6 +38,7 @@ namespace DbBaseElements {
 template <class T> class DbQueryInterface;
 class TopoDb30;
 class Engine;
+class Aircraft;
 template<typename T> class IcaoAtmosphere;
 class NWXWeather;
 class GRIB2;
@@ -49,7 +56,7 @@ public:
 	static const uint16_t altflag_standard = 1 << 0;
 	static const uint16_t altflag_climb = 1 << 1;
 	static const uint16_t altflag_descent = 1 << 2;
-	static const uint16_t altflag_generated = 1 << 3;
+	static const uint16_t altflag_oat = 1 << 10;
 	static const uint16_t altflag_altvfr = 1 << 11;
 	static const uint16_t altflag_partialstandardroute = 1 << 12;
 	static const uint16_t altflag_standardroute = 1 << 13;
@@ -96,8 +103,27 @@ public:
 		type_undefined = 4,
 		type_fplwaypoint = 5,
 		type_vfrreportingpt = 6,
-		type_user = 7
+		type_user = 7,
+		type_generated_start = 0x70,
+		type_boc = type_generated_start,
+		type_toc,
+		type_bod,
+		type_tod,
+		type_center,
+		type_generated_end = type_center
 	} type_t;
+
+	typedef enum {
+		roundalt_none      = 0,
+		roundalt_modemask  = 3,
+		roundalt_round     = 0,
+		roundalt_floor     = 1,
+		roundalt_ceil      = 2,
+		roundalt_rulesmask = 12,
+		roundalt_forceifr  = 4,
+		roundalt_forcevfr  = 8,
+		roundalt_rvsm      = 16
+	} roundalt_t;
 
 	FPlanWaypoint(void);
 	FPlanWaypoint(sqlite3x::sqlite3_cursor& cursor);
@@ -120,6 +146,8 @@ public:
 	static bool is_stay(const Glib::ustring& pn);
 	bool is_stay(unsigned int& nr, unsigned int& tm) const;
 	bool is_stay(void) const;
+	static void set_stay(Glib::ustring& pn, unsigned int nr, unsigned int tm);
+	void set_stay(unsigned int nr, unsigned int tm);
 	const Glib::ustring& get_note(void) const { return m_note; }
 	void set_note(const Glib::ustring& t) { m_note = t; m_dirty = true; }
 	uint32_t get_time(void) const { return m_time; }
@@ -150,14 +178,19 @@ public:
 	bool is_altitude_valid(void) const { return get_altitude() != invalid_altitude; }
 	static std::string get_fpl_altstr(int32_t a, uint16_t f);
 	std::string get_fpl_altstr(void) const { return get_fpl_altstr(get_altitude(), get_flags()); }
+	static int32_t round_altitude(int32_t alt, roundalt_t flags);
+	int32_t wpt_round_altitude(int32_t alt, roundalt_t flags) const;
+	int tune_profile(const IntervalSet<int32_t>& alt);
 	uint16_t get_flags(void) const { return m_flags; }
 	void set_flags(uint16_t f) { m_flags = f; m_dirty = true; }
 	void frob_flags(uint16_t f, uint16_t m) { m_flags = (m_flags & ~m) ^ f; m_dirty = true; }
 	bool is_standard(void) const { return !!(get_flags() & altflag_standard); }
 	bool is_climb(void) const { return !!(get_flags() & altflag_climb); }
 	bool is_descent(void) const { return !!(get_flags() & altflag_descent); }
+	bool is_oat(void) const { return !!(get_flags() & altflag_oat); }
 	bool is_altvfr(void) const { return !!(get_flags() & altflag_altvfr); }
-	bool is_altvfr_not_ifr(void) const { return !((get_flags() ^ altflag_altvfr) & (altflag_altvfr|altflag_ifr)); }
+	static bool is_altvfr_not_ifr(uint16_t flags) { return !((flags ^ altflag_altvfr) & (altflag_altvfr|altflag_ifr)); }
+	bool is_altvfr_not_ifr(void) const { return is_altvfr_not_ifr(get_flags()); }
 	bool is_partialstandardroute(void) const { return !!(get_flags() & altflag_partialstandardroute); }
 	bool is_standardroute(void) const { return !!(get_flags() & altflag_standardroute); }
 	bool is_turnpoint(void) const { return !!(get_flags() & altflag_turnpoint); }
@@ -184,6 +217,10 @@ public:
 	void set_sltemp_kelvin(float temp);
 	float get_oat_kelvin(void) const;
 	void set_oat_kelvin(float temp);
+	int32_t get_tropopause(void) const { return m_tropopause; }
+	void set_tropopause(int32_t t) { m_tropopause = t; m_dirty = true; }
+	void unset_tropopause(void) { set_tropopause(invalid_altitude); }
+	bool is_tropopause_valid(void) const { return get_tropopause() != invalid_altitude; }
 	// these are computed from the desired altitude
 	float get_pressure_altitude(void) const;
 	float get_true_altitude(void) const;
@@ -278,6 +315,14 @@ public:
 	void set(const FPlanWaypoint& el) { set_wpt(el); }
 
 	std::string to_str(void) const;
+	std::string to_detailed_str(void) const;
+
+#ifdef HAVE_JSONCPP
+	Json::Value to_json(void) const;
+	void from_json(const Json::Value& root);
+	static Json::Value& altflags_to_json(Json::Value& root, uint16_t flg);
+	static uint16_t altflags_from_json(const Json::Value& root);
+#endif
 
 	DbBaseElements::Airport find_airport(DbQueryInterface<DbBaseElements::Airport>& db) const;
 	DbBaseElements::Mapelement find_mapelement(DbQueryInterface<DbBaseElements::Mapelement>& db, double maxdist = 100, uint64_t minarea = 0,
@@ -306,6 +351,7 @@ public:
 		ar.io(m_fuel);
 		ar.io(m_truealt);
 		ar.io(m_terrain);
+		ar.io(m_tropopause);
 		ar.io(m_tt);
 		ar.io(m_th);
 		ar.io(m_decl);
@@ -331,6 +377,7 @@ protected:
 	int32_t m_alt;
 	int32_t m_truealt;
 	int32_t m_terrain;
+	int32_t m_tropopause;
 	uint32_t m_dist;
 	uint32_t m_mass;
 	uint32_t m_fuel;
@@ -379,6 +426,14 @@ public:
 	uint32_t get_totaltime(void) const { return get_flighttime() + get_holdtime(); }
 	uint32_t get_totalfuel(void) const { return get_fuel() + get_holdfuel(); }
 	float get_totalfuel_usg(void) const { return get_totalfuel() * (1.0 / 256.0); }
+
+	std::string to_str(void) const;
+	std::string to_detailed_str(void) const;
+
+#ifdef HAVE_JSONCPP
+	Json::Value to_json(void) const;
+	void from_json(const Json::Value& root);
+#endif
 
 	template<class Archive> void hibernate_binary(Archive& ar) {
 		FPlanWaypoint::hibernate_binary(ar);
@@ -531,6 +586,66 @@ public:
 		bool m_partial;
 	};
 
+	class ClimbDescentProfilePoint {
+	public:
+		ClimbDescentProfilePoint(void);
+		uint32_t get_flighttime(void) const { return m_flighttime; }
+		void set_flighttime(uint32_t t) { m_flighttime = t; }
+		int32_t get_altitude(void) const { return m_alt; }
+		void set_altitude(int32_t a) { m_alt = a; }
+		void unset_altitude(void) { set_altitude(FPlanWaypoint::invalid_altitude); }
+		bool is_altitude_valid(void) const { return get_altitude() != FPlanWaypoint::invalid_altitude; }
+		std::string get_fpl_altstr(void) const { return FPlanWaypoint::get_fpl_altstr(get_altitude(), FPlanWaypoint::altflag_standard); }
+		uint32_t get_dist(void) const { return m_dist; }
+		float get_dist_nmi(void) const { return get_dist() * (1.0 / 256.0); }
+		void set_dist(uint32_t d) { m_dist = d; }
+		void set_dist_nmi(float d) { set_dist(Point::round<uint32_t,float>(d * 256.0)); }
+		uint32_t get_fuel(void) const { return m_fuel; }
+		float get_fuel_usg(void) const { return get_fuel() * (1.0 / 256.0); }
+		void set_fuel(uint32_t f) { m_fuel = f; }
+		void set_fuel_usg(float f) { set_fuel(Point::round<uint32_t,float>(f * 256.0)); }
+
+#ifdef HAVE_JSONCPP
+		Json::Value to_json(void) const;
+		void from_json(const Json::Value& root);
+#endif
+
+		template<class Archive> void hibernate_binary(Archive& ar) {
+			ar.io(m_flighttime);
+			ar.io(m_alt);
+			ar.io(m_dist);
+			ar.io(m_fuel);
+		}
+
+	protected:
+		uint32_t m_flighttime;
+		int32_t m_alt;
+		uint32_t m_dist;
+		uint32_t m_fuel;
+	};
+
+	class ClimbDescentProfile : public std::vector<ClimbDescentProfilePoint> {
+	public:
+		using std::vector<ClimbDescentProfilePoint>::push_back;
+		void push_back(const Aircraft::ClimbDescent& cd, int32_t alt);
+
+#ifdef HAVE_JSONCPP
+		Json::Value to_json(void) const;
+		void from_json(const Json::Value& root);
+#endif
+
+		template<class Archive> void hibernate_binary(Archive& ar) {
+			{
+				uint32_t sz(size());
+				ar.ioleb(sz);
+				if (ar.is_load())
+				        resize(sz);
+				for (iterator i(begin()), e(end()); i != e; ++i)
+					i->hibernate_binary(ar);
+			}
+		}
+	};
+
 	typedef int32_t id_t;
 	FPlanRoute(FPlan& fpp);
 
@@ -591,6 +706,8 @@ public:
 	bool load_first_fp(void);
 	bool load_next_fp(void);
 
+	uint32_t distance_sum(void) const;
+	float distance_sum_nmi(void) const { return distance_sum() * (1.0 / 256.0); }
 	float total_distance_km(void) const;
 	float total_distance_nmi(void) const { return total_distance_km() * Point::km_to_nmi; }
 	double total_distance_km_dbl(void) const;
@@ -601,8 +718,11 @@ public:
 	double gc_distance_nmi_dbl(void) const { return gc_distance_km_dbl() * Point::km_to_nmi_dbl; }
 	int32_t max_altitude(void) const;
 	int32_t max_altitude(uint16_t& flags) const;
+	int32_t initial_altitude(void) const;
+	int32_t initial_altitude(uint16_t& flags) const;
 	Rect get_bbox(void) const;
 	Rect get_bbox(unsigned int wptidx0, unsigned int wptidx1) const;
+	bool get_flags(uint16_t& flags_or, uint16_t& flags_and) const;
 	char get_flightrules(void) const;
 
 	bool has_pathcodes(void) const;
@@ -674,20 +794,71 @@ public:
 		void set_dist(double d) { m_dist = d; }
 		double get_distat(unsigned int x) const;
 		void set_distat(unsigned int x, double d);
+		void remove_waypoint(unsigned int x);
 		typedef distat_t::const_iterator const_distat_iterator;
 		const_distat_iterator begin_distat(void) const { return m_distat.begin(); }
 		const_distat_iterator end_distat(void) const { return m_distat.end(); }
+		unsigned int remove_close_distat(double minsep = 1.0);
+		void clear(void);
 
 	protected:
 		double m_dist;
 		distat_t m_distat;
 	};
 
+	const ClimbDescentProfile& get_climbprofile(void) const { return m_climbprofile; }
+	const ClimbDescentProfile& get_descentprofile(void) const { return m_descentprofile; }
+
 	Profile recompute(const Aircraft& acft, float qnh = std::numeric_limits<float>::quiet_NaN(), float tempoffs = std::numeric_limits<float>::quiet_NaN(),
 			  const Aircraft::Cruise::EngineParams& ep = Aircraft::Cruise::EngineParams(), bool insert_tocbod = false);
 	Profile recompute(FPlanWaypoint& wptcenter, const Aircraft& acft, float qnh = std::numeric_limits<float>::quiet_NaN(),
 			  float tempoffs = std::numeric_limits<float>::quiet_NaN(),
 			  const Aircraft::Cruise::EngineParams& ep = Aircraft::Cruise::EngineParams(), bool insert_tocbod = false);
+
+	class FuelCalc {
+	public:
+		FuelCalc(void);
+		double get_taxifuel(void) const { return m_taxifuel; }
+		double get_taxifuelflow(void) const { return m_taxifuelflow; }
+		time_t get_taxitime(void) const { return m_taxitime; }
+		double get_tripfuel(void) const { return m_tripfuel; }
+		double get_contfuel(void) const { return m_contfuel; }
+		double get_contfuelpercent(void) const { return m_contfuelpercent; }
+		double get_contfuelflow(void) const { return m_contfuelflow; }
+		double get_altnfuel(void) const { return m_altnfuel; }
+		int32_t get_altnalt(void) const { return m_altnalt; }
+		bool is_altnalt_valid(void) const { return get_altnalt() != FPlanWaypoint::invalid_altitude; }
+		double get_holdfuel(void) const { return m_holdfuel; }
+		double get_holdfuelflow(void) const { return m_holdfuelflow; }
+		time_t get_holdtime(void) const { return m_holdtime; }
+		int32_t get_holdalt(void) const { return m_holdalt; }
+		bool is_holdalt_valid(void) const { return get_holdalt() != FPlanWaypoint::invalid_altitude; }
+		double get_reqdfuel(void) const { return m_reqdfuel; }
+		std::vector<FPlanAlternate>::size_type get_altnidx(void) const { return m_altnidx; }
+		bool is_noaltn(void) const { return get_altnidx() == invalid_altn; }
+
+	protected:
+		static const std::vector<FPlanAlternate>::size_type invalid_altn = ~0U;
+		double m_taxifuel;
+		double m_taxifuelflow;
+		double m_tripfuel;
+		double m_contfuel;
+		double m_contfuelpercent;
+		double m_contfuelflow;
+		double m_altnfuel;
+		double m_holdfuel;
+		double m_holdfuelflow;
+		double m_reqdfuel;
+		time_t m_taxitime;
+		time_t m_holdtime;
+		int32_t m_altnalt;
+		int32_t m_holdalt;
+		std::vector<FPlanAlternate>::size_type m_altnidx;
+		friend class FPlanRoute;
+	};
+
+	FuelCalc calculate_fuel(const Aircraft& acft, const std::vector<FPlanAlternate>& altn) const;
+
 	void turnpoints(bool include_dct = true, float maxdev = 0.5f);
 	void nwxweather(NWXWeather& nwx, const sigc::slot<void,bool>& cb = sigc::slot<void,bool>());
 	GFSResult gfs(GRIB2& grib2);
@@ -702,6 +873,8 @@ public:
 	void delete_nocoord_waypoints(void);
 	void delete_colocated_waypoints(void);
 	void delete_sametime_waypoints(void);
+
+	std::string get_garminpilot(void) const;
 
 	bool is_dirty(void) const;
 
@@ -738,6 +911,8 @@ private:
 	uint32_t m_curwpt;
 	typedef std::vector<FPlanWaypoint> waypoints_t;
 	waypoints_t m_wpts;
+	ClimbDescentProfile m_climbprofile;
+	ClimbDescentProfile m_descentprofile;
 	bool m_dirty;
 
 	friend class FPlan;
@@ -775,6 +950,14 @@ private:
 	friend class FPlanRoute;
 	friend class FPlanWaypoint;
 };
+
+inline FPlanWaypoint::roundalt_t operator|(FPlanWaypoint::roundalt_t x, FPlanWaypoint::roundalt_t y) { return (FPlanWaypoint::roundalt_t)((unsigned int)x | (unsigned int)y); }
+inline FPlanWaypoint::roundalt_t operator&(FPlanWaypoint::roundalt_t x, FPlanWaypoint::roundalt_t y) { return (FPlanWaypoint::roundalt_t)((unsigned int)x & (unsigned int)y); }
+inline FPlanWaypoint::roundalt_t operator^(FPlanWaypoint::roundalt_t x, FPlanWaypoint::roundalt_t y) { return (FPlanWaypoint::roundalt_t)((unsigned int)x ^ (unsigned int)y); }
+inline FPlanWaypoint::roundalt_t operator~(FPlanWaypoint::roundalt_t x){ return (FPlanWaypoint::roundalt_t)~(unsigned int)x; }
+inline FPlanWaypoint::roundalt_t& operator|=(FPlanWaypoint::roundalt_t& x, FPlanWaypoint::roundalt_t y) { x = x | y; return x; }
+inline FPlanWaypoint::roundalt_t& operator&=(FPlanWaypoint::roundalt_t& x, FPlanWaypoint::roundalt_t y) { x = x & y; return x; }
+inline FPlanWaypoint::roundalt_t& operator^=(FPlanWaypoint::roundalt_t& x, FPlanWaypoint::roundalt_t y) { x = x ^ y; return x; }
 
 const std::string& to_str(FPlanRoute::LevelChange::type_t t);
 inline std::ostream& operator<<(std::ostream& os, FPlanRoute::LevelChange::type_t t) { return os << to_str(t); }

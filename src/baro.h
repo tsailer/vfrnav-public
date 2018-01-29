@@ -1,7 +1,7 @@
 //
 // C++ Interface: baro
 //
-// Description: 
+// Description:
 //
 //
 // Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2012, 2015, 2016

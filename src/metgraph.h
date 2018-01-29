@@ -4,7 +4,7 @@
 // Description: Meteo Graphs
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2014, 2015, 2016
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2014, 2015, 2016, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -18,6 +18,7 @@
 #include <cairomm/cairomm.h>
 
 #include "sysdeps.h"
+#include "sitename.h"
 #include "baro.h"
 #include "geom.h"
 #include "dbobj.h"
@@ -29,15 +30,67 @@ class MeteoGraph {
 };
 
 class MeteoProfile : public MeteoGraph {
-  public:
+public:
+	class DriftDownProfilePoint {
+	public:
+		DriftDownProfilePoint(double dist = 0, double routedist = 0, unsigned int routeindex = 0,
+				      const Point& pt = Point::invalid, gint64 efftime = 0, int32_t alt = std::numeric_limits<int32_t>::min(),
+				      int32_t galt = std::numeric_limits<int32_t>::max(), const std::string& sitename = "");
+
+		const std::string& get_sitename(void) const { return m_sitename; }
+		const Point& get_pt(void) const { return m_pt; }
+		gint64 get_efftime(void) const { return m_efftime; }
+		int32_t get_alt(void) const { return m_alt; }
+		int32_t get_glidealt(void) const { return m_glidealt; }
+		double get_dist(void) const { return m_dist; }
+		double get_routedist(void) const { return m_routedist; }
+		unsigned int get_routeindex(void) const { return m_routeindex; }
+		bool add_glide(int32_t alt, const std::string& sitename = "");
+		std::ostream& print(std::ostream& os, unsigned int indent = 0) const;
+
+	protected:
+		std::string m_sitename;
+		Point m_pt;
+		gint64 m_efftime;
+		double m_dist;
+		double m_routedist;
+		uint32_t m_routeindex;
+		int32_t m_alt;
+		int32_t m_glidealt;
+	};
+
+	class DriftDownProfile : public std::vector<DriftDownProfilePoint> {
+	protected:
+		typedef std::vector<DriftDownProfilePoint> base_t;
+
+	public:
+		DriftDownProfile(void);
+		double get_dist(void) const;
+		std::ostream& print(std::ostream& os, unsigned int indent = 0) const;
+	};
+
 	typedef enum {
 		yaxis_altitude,
 		yaxis_pressure
 	} yaxis_t;
 
+	typedef enum {
+		altflag_none            = 0,
+		altflag_planned_thin    = 1 << 0,
+		altflag_planned_fat     = 1 << 1,
+		altflag_calculated_thin = 1 << 2,
+		altflag_calculated_fat  = 1 << 3,
+		// groups
+		altflag_planned         = altflag_planned_thin | altflag_planned_fat,
+		altflag_calculated      = altflag_calculated_thin | altflag_calculated_fat,
+		altflag_thin            = altflag_planned_thin | altflag_calculated_thin,
+		altflag_fat             = altflag_planned_fat | altflag_calculated_fat
+	} altflag_t;
+
 	MeteoProfile(const FPlanRoute& route = FPlanRoute(*(FPlan *)0),
 		     const TopoDb30::RouteProfile& routeprofile = TopoDb30::RouteProfile(),
-		     const GRIB2::WeatherProfile& wxprofile = GRIB2::WeatherProfile());
+		     const GRIB2::WeatherProfile& wxprofile = GRIB2::WeatherProfile(),
+		     const DriftDownProfile& ddprofile = DriftDownProfile());
 
 	const FPlanRoute& get_route(void) const { return m_route; }
 	void set_route(const FPlanRoute& r = FPlanRoute(*(FPlan *)0)) { m_route = r; }
@@ -45,19 +98,22 @@ class MeteoProfile : public MeteoGraph {
 	void set_routeprofile(const TopoDb30::RouteProfile& rteprof = TopoDb30::RouteProfile()) { m_routeprofile = rteprof; }
 	const GRIB2::WeatherProfile& get_wxprofile(void) const { return m_wxprofile; }
 	void set_wxprofile(const GRIB2::WeatherProfile& wxprof = GRIB2::WeatherProfile()) { m_wxprofile = wxprof; }
+	const DriftDownProfile& get_driftdownprofile(void) const { return m_ddprofile; }
+	void set_driftdownprofile(const DriftDownProfile& ddprof = DriftDownProfile()) { m_ddprofile = ddprof; }
 
 	double get_scaledist(const Cairo::RefPtr<Cairo::Context>& cr, int width, double dist) const;
 	double get_scaleelev(const Cairo::RefPtr<Cairo::Context>& cr, int height, double elev,
 			     yaxis_t yaxis = yaxis_altitude) const;
 	void draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int height,
 		  double origindist, double scaledist, double originelev, double scaleelev,
-		  yaxis_t yaxis = yaxis_altitude, bool usetruealt = false,
-		  const std::string& servicename = "autorouter.eu") const;
+		  yaxis_t yaxis = yaxis_altitude, altflag_t altflags = altflag_planned_fat,
+		  const std::string& servicename = SiteName::sitename) const;
 
-  protected:
+protected:
 	FPlanRoute m_route;
 	TopoDb30::RouteProfile m_routeprofile;
 	GRIB2::WeatherProfile m_wxprofile;
+	DriftDownProfile m_ddprofile;
 
 	static inline void set_color_sky(const Cairo::RefPtr<Cairo::Context>& cr) {
 		cr->set_source_rgb(0x76 / 255.0, 0xa3 / 255.0, 0xee / 255.0);
@@ -290,7 +346,7 @@ class MeteoProfile : public MeteoGraph {
 };
 
 class MeteoChart : public MeteoGraph {
-  public:
+public:
 	typedef std::vector<FPlanAlternate> alternates_t;
 	typedef std::vector<FPlanRoute> altroutes_t;
 
@@ -317,9 +373,9 @@ class MeteoChart : public MeteoGraph {
 	void clear(void);
 	void draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int height,
 		  const Point& center, double scalelon, double scalelat, double pressure = 0,
-		  const std::string& servicename = "autorouter.eu");
+		  const std::string& servicename = SiteName::sitename);
 
-  protected:
+protected:
 	FPlanRoute m_route;
 	alternates_t m_altn;
 	altroutes_t m_altnroutes;
@@ -375,7 +431,7 @@ class MeteoChart : public MeteoGraph {
 	}
 
 	class AreaExtract {
-	  public:
+	public:
 		AreaExtract(const Glib::RefPtr<GRIB2::LayerInterpolateResult>& lay, float lim, gint64 efftime, double sfc1value);
 		AreaExtract(const Glib::RefPtr<GRIB2::LayerInterpolateResult>& layu,
 			    const Glib::RefPtr<GRIB2::LayerInterpolateResult>& layv, float lim, gint64 efftime, double sfc1value);
@@ -388,9 +444,9 @@ class MeteoChart : public MeteoGraph {
 		std::vector<Point> extract_contour(void);
 		void extract_contours(const Cairo::RefPtr<Cairo::Context>& cr, const Point& center, double scalelon, double scalelat);
 
-	  protected:
+	protected:
 		class ScalarGridPt {
-		  public:
+		public:
 			ScalarGridPt();
 			ScalarGridPt(const Glib::RefPtr<GRIB2::LayerInterpolateResult>& lay, unsigned int x, unsigned int y,
 				     float lim, gint64 efftime, double sfc1value);
@@ -401,14 +457,14 @@ class MeteoChart : public MeteoGraph {
 			bool is_inside(void) const { return m_inside; }
 			Point contour_point(const ScalarGridPt& x, float lim) const;
 
-		  protected:
+		protected:
 			Point m_coord;
 			float m_val;
 			bool m_inside;
 		};
 
 		class WindGridPt : public ScalarGridPt {
-		  public:
+		public:
 			WindGridPt();
 			WindGridPt(const Glib::RefPtr<GRIB2::LayerInterpolateResult>& layu,
 				   const Glib::RefPtr<GRIB2::LayerInterpolateResult>& layv,
@@ -417,7 +473,7 @@ class MeteoChart : public MeteoGraph {
 		};
 
 		class CloudGridPt {
-		  public:
+		public:
 			static constexpr float mincover = 0.4;
 
 			CloudGridPt();
@@ -434,7 +490,7 @@ class MeteoChart : public MeteoGraph {
 			bool is_inside(void) const { return m_inside; }
 			Point contour_point(const CloudGridPt& x, float lim) const;
 
-		  protected:
+		protected:
 			Point m_coord;
 			float m_cover;
 			float m_base;
@@ -443,7 +499,7 @@ class MeteoChart : public MeteoGraph {
 		};
 
 		template <typename PT> class Grid {
-		  public:
+		public:
 			Grid(unsigned int w, unsigned int h);
 			PT& operator()(unsigned int x, unsigned int y);
 			const PT& operator()(unsigned int x, unsigned int y) const;
@@ -453,14 +509,14 @@ class MeteoChart : public MeteoGraph {
 			unsigned int get_index(unsigned int x, unsigned int y) const;
 			unsigned int get_edgenr(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int y1) const;
 
-		  protected:
+		protected:
 			std::vector<PT> m_v;
 			unsigned int m_width;
 			unsigned int m_height;
 		};
 
 		class Edge {
-		  public:
+		public:
 			Edge(const Point& st = Point::invalid, unsigned int ste = 0, const Point& en = Point::invalid, unsigned int ene = 0,
 			     const Point& mid = Point::invalid) : m_start(st), m_end(en), m_intermediate(mid), m_startedge(ste), m_endedge(ene) {}
 			const Point& get_start(void) const { return m_start; }
@@ -476,7 +532,7 @@ class MeteoChart : public MeteoGraph {
 			bool operator>(const Edge& x) const { return compare(x) > 0; }
 			bool operator>=(const Edge& x) const { return compare(x) >= 0; }
 
-		  protected:
+		protected:
 			Point m_start;
 			Point m_end;
 			Point m_intermediate;
@@ -492,7 +548,7 @@ class MeteoChart : public MeteoGraph {
 };
 
 class WMOStation {
-  public:
+public:
 	WMOStation(const char *icao = 0, const char *name = 0, const char *state = 0, const char *country = 0,
 		   unsigned int wmonr = ~0U, unsigned int wmoregion = ~0U, const Point& coord = Point::invalid,
 		   TopoDb30::elev_t elev = TopoDb30::nodata, bool basic = false)
@@ -521,7 +577,7 @@ class WMOStation {
 		}
 	};
 
-  protected:
+protected:
 	static const unsigned int nrstations;
 	static const WMOStation stations[];
 
@@ -537,7 +593,7 @@ class WMOStation {
 };
 
 class RadioSounding {
-  public:
+public:
 	RadioSounding(unsigned int wmonr = ~0U, time_t obstm = 0);
 
 	int compare(const RadioSounding& x) const;
@@ -552,7 +608,7 @@ class RadioSounding {
 	unsigned int get_wmonr(void) const { return m_wmonr; }
 
 	class Level {
-	  public:
+	public:
 		Level(uint16_t press = 0, int16_t temp = std::numeric_limits<int16_t>::min(),
 		      int16_t dewpt = std::numeric_limits<int16_t>::min(),
 		      uint16_t winddir = std::numeric_limits<uint16_t>::max(),
@@ -593,7 +649,7 @@ class RadioSounding {
 
 		operator GRIB2::WeatherProfilePoint::SoundingSurface(void) const;
 
-	  protected:
+	protected:
 		uint16_t m_press;
 		int16_t m_temp;
 		int16_t m_dewpt;
@@ -613,14 +669,14 @@ class RadioSounding {
 
 	std::ostream& print(std::ostream& os) const;
 
-  protected:
+protected:
 	time_t m_obstime;
 	unsigned int m_wmonr;
 	levels_t m_levels;
 };
 
 class RadioSoundings : public std::set<RadioSounding> {
-  public:
+public:
 	unsigned int parse_wmo(std::istream& is, time_t filedate);
 	unsigned int parse_wmo(const std::string& fn, time_t filedate);
 	unsigned int parse_wmo(const std::string& dir, const std::string& fn);
@@ -629,7 +685,7 @@ class RadioSoundings : public std::set<RadioSounding> {
 
 	std::ostream& print(std::ostream& os) const;
 
-  protected:
+protected:
 	unsigned int parse_ttaa(const std::vector<std::string>& tok, time_t filedate, uint16_t pressmul);
 	unsigned int parse_ttbb(const std::vector<std::string>& tok, time_t filedate, uint16_t pressmul);
 
@@ -639,21 +695,19 @@ class RadioSoundings : public std::set<RadioSounding> {
 };
 
 class METARTAFChart : public MeteoGraph {
-  public:
-	typedef enum {
-		dbmode_sqlite,
-		dbmode_pg
-	} dbmode_t;
+public:
 	typedef std::vector<FPlanAlternate> alternates_t;
 	typedef std::vector<FPlanRoute> altroutes_t;
 
 	METARTAFChart(const FPlanRoute& route = FPlanRoute(*(FPlan *)0),
 		      const alternates_t& altn = alternates_t(),
 		      const altroutes_t& altnfpl = altroutes_t(),
-		      const std::string& db = PACKAGE_DATA_DIR "/metartaf.db",
-		      dbmode_t dbmode = dbmode_sqlite,
 		      const RadioSoundings& raobs = *(const RadioSoundings *)0,
 		      const std::string& tempdir = "");
+	void set_db_sqlite(const std::string& db = PACKAGE_DATA_DIR "/metartaf.db");
+#ifdef HAVE_PQXX
+	void set_db_pg(pqxx::connection_base& conn);
+#endif
 	const FPlanRoute& get_route(void) const { return m_route; }
 	void set_route(const FPlanRoute& r = FPlanRoute(*(FPlan *)0)) { m_route = r; }
 	const alternates_t& get_alternates(void) const { return m_altn; }
@@ -710,7 +764,7 @@ class METARTAFChart : public MeteoGraph {
 				  const Point& center, double width, double height, double scalelon, double scalelat);
 
 	class Label {
-	  public:
+	public:
 		typedef enum {
 			placement_center,
 			placement_north,
@@ -747,7 +801,7 @@ class METARTAFChart : public MeteoGraph {
 		double repulsive_force(const Label& lbl, double maxx, double maxy) const;
 		void move(double dx, double dy, double minx, double maxx, double miny, double maxy);
 
-	  protected:
+	protected:
 		std::string m_txt;
 		std::string m_code;
 		double m_ax;
@@ -762,7 +816,7 @@ class METARTAFChart : public MeteoGraph {
 	};
 
 	class LabelLayout : public std::vector<Label> {
-	  public:
+	public:
 		LabelLayout(double width, double height, double maxx, double maxy);
 
 		void setk(double kr);
@@ -772,7 +826,7 @@ class METARTAFChart : public MeteoGraph {
 		double repulsive_force(size_type i) const;
 		void remove_overlapping_labels(void);
 
-	  protected:
+	protected:
 		double m_width;
 		double m_height;
 		double m_maxx;
@@ -781,17 +835,45 @@ class METARTAFChart : public MeteoGraph {
 		double m_kr;
 	};
 
-  protected:
+protected:
 	class OrderFlightPath {
-	  public:
+	public:
 		OrderFlightPath(const Point& p0, const Point& p1);
 		bool operator()(const MetarTafSet::Station& a, const MetarTafSet::Station& b) const;
 
-	  protected:
+	protected:
 		Point m_pt0;
 		Point m_pt1;
 		double m_lonscale2;
 	};
+
+	class DbLoader {
+	public:
+		DbLoader(void) {}
+		virtual void load(MetarTafSet& mtset, const Rect& bbox, time_t tmin, time_t tmax, unsigned int metarhistory, unsigned int tafhistory) = 0;
+	};
+
+	class DbLoaderSqlite : public DbLoader {
+	public:
+		DbLoaderSqlite(const std::string& db) : m_db(db) {}
+		virtual void load(MetarTafSet& mtset, const Rect& bbox, time_t tmin, time_t tmax, unsigned int metarhistory, unsigned int tafhistory);
+
+	protected:
+		std::string m_db;
+	};
+
+#ifdef HAVE_PQXX
+
+	class DbLoaderPG : public DbLoader {
+	public:
+		DbLoaderPG(pqxx::connection_base& conn) : m_conn(conn) {}
+		virtual void load(MetarTafSet& mtset, const Rect& bbox, time_t tmin, time_t tmax, unsigned int metarhistory, unsigned int tafhistory);
+
+	protected:
+		pqxx::connection_base& m_conn;
+	};
+
+#endif
 
 	static constexpr double max_dist_from_route = 50.;
 	static constexpr double max_raob_dist_from_route = 100.;
@@ -846,8 +928,7 @@ class METARTAFChart : public MeteoGraph {
 		}
 	}
 
-	void loadstn_sqlite(const Rect& bbox);
-	void loadstn_pg(const Rect& bbox);
+	void loadstn_db(const Rect& bbox);
 	void loadstn_raob(const Rect& bbox);
 	void loadstn(const Rect& bbox);
 	void filterstn(void);
@@ -871,8 +952,8 @@ class METARTAFChart : public MeteoGraph {
 	altroutes_t m_altnroutes;
 	MetarTafSet m_set;
 	std::string m_tempdir;
-	std::string m_db;
-	dbmode_t m_dbmode;
+	typedef std::unique_ptr<DbLoader> dbloader_t;
+	dbloader_t m_dbloader;
 };
 
 class SkewTChart : public MeteoGraph {
@@ -1121,6 +1202,36 @@ class SkewTChartSounding : public SkewTChart
 	virtual void drawwindbarbs(const Cairo::RefPtr<Cairo::Context>& cr, double xorigin, double height,
 				   double xorigin2 = std::numeric_limits<double>::quiet_NaN());
 };
+
+class Aircraft;
+
+class WindsAloft {
+public:
+	WindsAloft(const GRIB2& wxdb = *(GRIB2 *)0);
+	WindsAloft(const Aircraft& acft, const GRIB2& wxdb);
+	std::ostream& definitions(std::ostream& os);
+	static std::ostream& legend(std::ostream& os);
+	std::ostream& winds_aloft(std::ostream& os, unsigned int& lines, const FPlanRoute& route);
+
+protected:
+	static const int16_t isobaric_levels[3][6];
+	const GRIB2 *m_wxdb;
+	gint64 m_minefftime;
+	gint64 m_maxefftime;
+	gint64 m_minreftime;
+	gint64 m_maxreftime;
+	unsigned int m_lvlindex;
+
+	static std::ostream& hhline(std::ostream& os, bool mid);
+};
+
+inline MeteoProfile::altflag_t operator|(MeteoProfile::altflag_t x, MeteoProfile::altflag_t y) { return (MeteoProfile::altflag_t)((unsigned int)x | (unsigned int)y); }
+inline MeteoProfile::altflag_t operator&(MeteoProfile::altflag_t x, MeteoProfile::altflag_t y) { return (MeteoProfile::altflag_t)((unsigned int)x & (unsigned int)y); }
+inline MeteoProfile::altflag_t operator^(MeteoProfile::altflag_t x, MeteoProfile::altflag_t y) { return (MeteoProfile::altflag_t)((unsigned int)x ^ (unsigned int)y); }
+inline MeteoProfile::altflag_t operator~(MeteoProfile::altflag_t x){ return (MeteoProfile::altflag_t)~(unsigned int)x; }
+inline MeteoProfile::altflag_t& operator|=(MeteoProfile::altflag_t& x, MeteoProfile::altflag_t y) { x = x | y; return x; }
+inline MeteoProfile::altflag_t& operator&=(MeteoProfile::altflag_t& x, MeteoProfile::altflag_t y) { x = x & y; return x; }
+inline MeteoProfile::altflag_t& operator^=(MeteoProfile::altflag_t& x, MeteoProfile::altflag_t y) { x = x ^ y; return x; }
 
 const std::string& to_str(Cairo::SurfaceType st);
 inline std::ostream& operator<<(std::ostream& os, Cairo::SurfaceType st) { return os << to_str(st); }

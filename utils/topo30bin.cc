@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
 					TopoDb30::elev_t e(tile.get_elev(i));
 					data[2 * i] = e;
 					data[2 * i + 1] = e >> 8;
-				}				
+				}
 				of.seekp(ptr, std::ofstream::beg);
 				of.write((char *)data, nrpixels * 2);
 				ptr += nrpixels * 2;

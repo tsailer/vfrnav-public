@@ -1,7 +1,7 @@
 //
 // C++ Interface: dbser
 //
-// Description: 
+// Description:
 //
 //
 // Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2012, 2015

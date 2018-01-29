@@ -51,9 +51,12 @@ NavaidEditor::NavaidEditor(const std::string& dir_main, Engine::auxdb_mode_t aux
 	  m_navaideditormapzoomin(0), m_navaideditormapzoomout(0), m_aboutdialog(0)
 {
 #ifdef HAVE_PQXX
-	if (auxdbmode == Engine::auxdb_postgres)
-		m_db.reset(new NavaidsPGDb(dir_main));
-	else
+	if (auxdbmode == Engine::auxdb_postgres) {
+		m_pgconn = std::unique_ptr<pqxx::connection>(new pqxx::connection(dir_main));
+		if (m_pgconn->get_variable("application_name").empty())
+			m_pgconn->set_variable("application_name", "navaideditor");
+		m_db.reset(new NavaidsPGDb(*m_pgconn));
+	} else
 #endif
 	{
 		m_db.reset(new NavaidsDb(dir_main));

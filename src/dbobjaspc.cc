@@ -4,7 +4,7 @@
 // Description: Database Objects: Airspace
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2016
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2016, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -508,7 +508,7 @@ void DbBaseElements::Airspace::load_subtables(pqxx::basic_transaction& w, unsign
 	}
 }
 
-void DbBaseElements::Airspace::save(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Airspace::save(pqxx::connection_base& conn, bool rtree)
 {
 	pqxx::work w(conn);
 	if (!m_id) {
@@ -575,7 +575,7 @@ void DbBaseElements::Airspace::save(pqxx::connection& conn, bool rtree)
 	w.commit();
 }
 
-void DbBaseElements::Airspace::erase(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Airspace::erase(pqxx::connection_base& conn, bool rtree)
 {
 	if (!is_valid())
 		return;
@@ -589,7 +589,7 @@ void DbBaseElements::Airspace::erase(pqxx::connection& conn, bool rtree)
 	m_id = 0;
 }
 
-void DbBaseElements::Airspace::update_index(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Airspace::update_index(pqxx::connection_base& conn, bool rtree)
 {
 	if (!m_id)
 		return;
@@ -830,14 +830,14 @@ void DbBaseElements::Airspace::recompute_lineapprox_expand(void)
 	for (unsigned int i = 1; i < get_nrsegments(); ++i) {
 		Segment& seg1(operator[](i - 1));
 		Segment& seg2(operator[](i));
-		if (seg1.get_shape() != 'B' && seg1.get_shape() != 'H' && 
+		if (seg1.get_shape() != 'B' && seg1.get_shape() != 'H' &&
 		    seg1.get_shape() != '-') {
 			std::cerr << "DbBaseElements::Airspace::recompute_lineapprox: Warning: Airspace "
 				  << get_icao() << '/' << get_class_string() << ": cannot expand due invalid shape: "
 				  << seg1.get_shape() << std::endl;
 			continue;
 		}
-		if (seg2.get_shape() != 'B' && seg2.get_shape() != 'H' && 
+		if (seg2.get_shape() != 'B' && seg2.get_shape() != 'H' &&
 		    seg2.get_shape() != '-' && seg2.get_shape() != 'E') {
 			std::cerr << "DbBaseElements::Airspace::recompute_lineapprox: Warning: Airspace "
 				  << get_icao() << '/' << get_class_string() << ": cannot expand due invalid shape: "
@@ -1809,4 +1809,21 @@ const Glib::ustring& DbBaseElements::Airspace::get_type_string(uint8_t tc)
 		return r;
 	}
 	}
+}
+
+const DbBaseElements::Airspace::IcaoRegion::Country *DbBaseElements::Airspace::find_icaoregion_countries(const std::string& rgname)
+{
+	for (const IcaoRegion *rgn = icao_regions; rgn->region; ++rgn)
+		if (rgname == rgn->region)
+			return rgn->countries;
+	return 0;
+}
+
+const char *DbBaseElements::Airspace::find_icaoregion_from_ident(const std::string& id)
+{
+	for (const IcaoRegion *rgn = icao_regions; rgn->region; ++rgn)
+		for (const IcaoRegion::Country *ctry = rgn->countries; ctry->ident; ++ctry)
+			if (id == ctry->ident)
+				return rgn->region;
+	return 0;
 }

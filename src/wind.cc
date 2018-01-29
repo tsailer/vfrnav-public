@@ -3,7 +3,7 @@
 /*
  *      wind.c  --  Wind Triangle related Computations.
  *
- *      Copyright (C) 2012, 2013, 2014  Thomas Sailer (t.sailer@alumni.ethz.ch)
+ *      Copyright (C) 2012, 2013, 2014, 2017  Thomas Sailer (t.sailer@alumni.ethz.ch)
  *
  *      This program is free software; you can redistribute it and/or modify
  *      it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 /*****************************************************************************/
 
 #include "wind.h"
+#include "geom.h"
 #include <stdexcept>
 #include <limits>
 #include <iostream>
@@ -195,6 +196,19 @@ template <typename T> void Wind<T>::set_hdg_tas_crs_gs(float_t hdg, float_t tas,
         while (d < 0)
                 d += 360;
         m_winddir = d;
+}
+
+template <typename T> void Wind<T>::set_wind_grib_mps(float_t wu, float_t wv)
+{
+	// convert from m/s to kts
+        wu *= (-1e-3f * Point::km_to_nmi * 3600);
+        wv *= (-1e-3f * Point::km_to_nmi * 3600);
+        set_wind((M_PI - atan2f(wu, wv)) * from_rad, sqrtf(wu * wu + wv * wv));
+}
+
+template <typename T> void Wind<T>::set_wind_grib_mps(const gribwind_t& w)
+{
+	set_wind_grib_mps(w.first, w.second);
 }
 
 template class Wind<float>;

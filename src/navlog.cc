@@ -3,7 +3,7 @@
 /*
  *      navlog.cc  --  Navigation Log Creation.
  *
- *      Copyright (C) 2012, 2013, 2014, 2015, 2016
+ *      Copyright (C) 2012, 2013, 2014, 2015, 2016, 2017
  *          Thomas Sailer (t.sailer@alumni.ethz.ch)
  *
  *      This program is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 
 /*****************************************************************************/
 
+#include "sitename.h"
 #include "aircraft.h"
 #include "fplan.h"
 #include "airdata.h"
@@ -186,7 +187,7 @@ Aircraft::NavFPlan::~NavFPlan()
 }
 
 void Aircraft::NavFPlan::begin(const WeightBalance::elementvalues_t& wbev)
-{	
+{
 	if (m_tempfile) {
 		m_tempfile->close();
 		delete m_tempfile;
@@ -201,7 +202,7 @@ void Aircraft::NavFPlan::begin(const WeightBalance::elementvalues_t& wbev)
 	   << '|' << m_aircraft.get_year()
 	   << '|' << m_aircraft.get_description()
 	   << '|' << m_aircraft.get_icaotype()
-	   << '|' << m_aircraft.get_equipment()
+	   << '|' << m_aircraft.get_equipment_string()
 	   << '|' << m_aircraft.get_transponder()
 	   << '|' << m_aircraft.get_pbn()
 	   << '|' << m_aircraft.get_colormarking()
@@ -222,8 +223,6 @@ void Aircraft::NavFPlan::begin(const WeightBalance::elementvalues_t& wbev)
 	   << '|' << m_aircraft.get_vfe()
 	   << '|' << m_aircraft.get_vgearext()
 	   << '|' << m_aircraft.get_vgearret()
-	   << '|' << m_aircraft.get_vbestglide()
-	   << '|' << m_aircraft.get_glideslope()
 	   << '|' << m_aircraft.get_fuelmass()
 	   << '|' << m_aircraft.get_maxbhp()
 	   << '|' << m_aircraft.get_contingencyfuel() << std::endl;
@@ -267,7 +266,7 @@ void Aircraft::NavFPlan::begin(const WeightBalance::elementvalues_t& wbev)
 				os << 'C';
 			for (unsigned int j = 0; j < el.get_nrunits(); ++j) {
 				const Aircraft::WeightBalance::Element::Unit& u(el.get_unit(j));
-				os << '|' << u.get_name() 
+				os << '|' << u.get_name()
 				   << '|' << u.get_factor()
 				   << '|' << u.get_offset();
 			}
@@ -576,7 +575,7 @@ void Aircraft::NavFPlan::end(const Glib::ustring& templatefile)
 					}
 					version = ver1;
 					path = (char *)lpData;
-					
+
 				}
 				RegCloseKey(hKey);
 			}
@@ -729,13 +728,13 @@ std::string Aircraft::GnmCellSpec::get_colrow(bool absolute) const
 
 bool Aircraft::GnmCellSpec::is_fplanrow(const std::string& name)
 {
-	return name == "WPTICAO" || name == "WPTNAME" || name == "WPTICAONAME" || name == "WPTIDENT" || 
-		name == "WPTPATHNAME" || name == "WPTPATHCODE" || name == "WPTNOTE" || name == "WPTTIME" || name == "WPTFLTTIME" || 
-		name == "WPTFREQ" || name == "WPTLAT" || name == "WPTLON" || name == "WPTALT" || name == "WPTALTSTD" || 
-		name == "WPTFRULES" || name == "WPTCLIMB" || name == "WPTDESCENT" || name == "WPTTURNPOINT" || 
-		name == "WPTWINDDIR" || name == "WPTWINDSPEED" || name == "WPTQFF" || name == "WPTISAOFFS" || 
-		name == "WPTSLT" || name == "WPTOAT" || name == "WPTPA" || name == "WPTTA" || name == "WPTDA" || name == "WPTTRUEALT" || 
-		name == "WPTTT" || name == "WPTTH" || name == "WPTMT" || name == "WPTMH" || name == "WPTDECL" || 
+	return name == "WPTICAO" || name == "WPTNAME" || name == "WPTICAONAME" || name == "WPTIDENT" ||
+		name == "WPTPATHNAME" || name == "WPTPATHCODE" || name == "WPTNOTE" || name == "WPTTIME" || name == "WPTFLTTIME" ||
+		name == "WPTFREQ" || name == "WPTLAT" || name == "WPTLON" || name == "WPTALT" || name == "WPTALTSTD" ||
+		name == "WPTFRULES" || name == "WPTCLIMB" || name == "WPTDESCENT" || name == "WPTTURNPOINT" ||
+		name == "WPTWINDDIR" || name == "WPTWINDSPEED" || name == "WPTQFF" || name == "WPTISAOFFS" ||
+		name == "WPTSLT" || name == "WPTOAT" || name == "WPTPA" || name == "WPTTA" || name == "WPTDA" || name == "WPTTRUEALT" ||
+		name == "WPTTT" || name == "WPTTH" || name == "WPTMT" || name == "WPTMH" || name == "WPTDECL" ||
 		name == "WPTDIST" || name == "WPTFUEL" || name == "WPTTAS" || name == "WPTCRUISETAS" || name == "WPTAVGTAS" ||
 		name == "WPTGS" || name == "WPTCRUISEGS" || name == "WPTAVGGS" ||
 		name == "WPTRPM" || name == "WPTMP" || name == "WPTTYPE";
@@ -2547,7 +2546,7 @@ void Aircraft::navfplan_gnumeric(const std::string& outfile, Engine& engine, con
 							row += cellspecs.get_fplfirstrow() + cellspecs.get_fplrows() * (i - 1);
 							row -= cellspecs.get_pgbrkheader();
 							std::ostringstream oss;
-							oss << row;							
+							oss << row;
 							xmlpp::Element *el((*ni)->add_child("break", root->get_namespace_prefix()));
 							el->set_attribute("pos", oss.str());
 							el->set_attribute("type", "manual");
@@ -2948,7 +2947,7 @@ protected:
 		par_linepathnterrain,
 		par_linepathnmsa,
 		par_lineendpathn = par_linepathnmsa,
-		par_nrparam			
+		par_nrparam
 	} par_t;
 	static const char * const param_names[par_nrparam];
 	std::string m_param[par_nrparam];
@@ -3260,7 +3259,7 @@ void PLogParam::clear_engine(void)
 	m_param[par_headerengbhp] = "N";
 	m_param[par_headerengrpmmp] = "N";
 }
-		
+
 void PLogParam::set_engine(const FPlanWaypoint& wpt)
 {
 	if (wpt.get_bhp_raw() > 0)
@@ -3586,7 +3585,7 @@ void PLogParam::set_lastline(const FPlanWaypoint& wptp, const FPlanWaypoint& wpt
 	set_path(wptp, wpt, par_linebeginpathp);
 	clear_param(par_linebeginpathn, par_lineendpathn);
 }
-	
+
 void PLogParam::set_line(const FPlanWaypoint& wptp, const FPlanWaypoint& wpt, const FPlanWaypoint& wptn, time_t deptime, double cumdist, double totdist, double totfuel, double tofuel)
 {
 	{
@@ -3619,7 +3618,7 @@ std::ostream& PLogParam::write_param(std::ostream& os, par_t from, par_t to)
 
 std::ostream& Aircraft::navfplan_latex_defpathfrom(std::ostream& os)
 {
-	static const char code[] =
+	static const char code1[] =
 		"\\newlength{\\plogcolwaypointwidth}\n"
 		"\\newlength{\\plogcolaltwidth}\n"
 		"\\newlength{\\plogcollatlonwidth}\n"
@@ -3687,7 +3686,11 @@ std::ostream& Aircraft::navfplan_latex_defpathfrom(std::ostream& os)
 		"\\global\\def\\ploglineend{}%\n"
 		"\\noindent\\begin{longtable}{|p{\\plogcolwaypointwidth}|p{\\plogcolaltwidth}|p{\\plogcollatlonwidth}|p{\\plogcolmagwidth}|p{\\plogcoltruewidth}|p{\\plogcoldistwidth}|p{\\plogcolfuelwidth}|p{\\plogcolgswidth}|p{\\plogcoletewidth}|p{\\plogcoletawidth}|p{\\plogcoltaswidth}|p{\\plogcolatmowidth}|}\n"
 		"  \\hline\n"
-		"  \\rowcolor[gray]{0.8}\\multicolumn{12}{|p{\\plogtablefullwidth}|}{{\\bf Navigation Log} \\plogheaderdepicaoname $\\rightarrow$ \\plogheaderdesticaoname\\hfill\\href{http://www.autorouter.eu}{www.autorouter.eu}} \\\\\n"
+		"  \\rowcolor[gray]{0.8}\\multicolumn{12}{|p{\\plogtablefullwidth}|}{{\\bf Navigation Log} \\plogheaderdepicaoname $\\rightarrow$ \\plogheaderdesticaoname\\hfill\\href{";
+	static const char code2[] =
+		"}{";
+	static const char code3[] =
+		"}} \\\\\n"
 		"  \\hline\n"
 		"  \\rowcolor[gray]{1.0}\\multicolumn{12}{|l|}{Dep \\StrMid{\\plogheaderdeptime}{1}{10}{} \\StrMid{\\plogheaderdeptime}{12}{16}Z DA \\plogheaderdepdensityalt{}ft Arr \\StrMid{\\plogheaderdesttime}{1}{10}{} \\StrMid{\\plogheaderdesttime}{12}{16}Z DA \\plogheaderdestdensityalt{}ft Enroute \\plogheaderenroutetime} \\\\\n"
 		"  \\hline\n"
@@ -3784,12 +3787,12 @@ std::ostream& Aircraft::navfplan_latex_defpathfrom(std::ostream& os)
 		"  \\global\\def\\ploglineend{\\\\\\hline\\plogzebrarowcol}%\n"
 		"}\n"
 		"\n";
-	return os << code;
+	return os << code1 << SiteName::sitesecureurl << code2 << SiteName::siteurlnoproto << code3;
 }
 
 std::ostream& Aircraft::navfplan_latex_defpathto(std::ostream& os)
 {
-	static const char code[] =
+	static const char code1[] =
 		"\\newlength{\\plogcolwaypointwidth}\n"
 		"\\newlength{\\plogcolaltwidth}\n"
 		"\\newlength{\\plogcollatlonwidth}\n"
@@ -3857,7 +3860,11 @@ std::ostream& Aircraft::navfplan_latex_defpathto(std::ostream& os)
 		"\\global\\def\\ploglineend{}%\n"
 		"\\noindent\\begin{longtable}{|p{\\plogcolwaypointwidth}|p{\\plogcolaltwidth}|p{\\plogcollatlonwidth}|p{\\plogcolmagwidth}|p{\\plogcoltruewidth}|p{\\plogcoldistwidth}|p{\\plogcolfuelwidth}|p{\\plogcolgswidth}|p{\\plogcoletewidth}|p{\\plogcoletawidth}|p{\\plogcoltaswidth}|p{\\plogcolatmowidth}|}\n"
 		"  \\hline\n"
-		"  \\rowcolor[gray]{0.8}\\multicolumn{12}{|p{\\plogtablefullwidth}|}{{\\bf Navigation Log} \\plogheaderdepicaoname $\\rightarrow$ \\plogheaderdesticaoname\\hfill\\href{http://www.autorouter.eu}{www.autorouter.eu}} \\\\\n"
+		"  \\rowcolor[gray]{0.8}\\multicolumn{12}{|p{\\plogtablefullwidth}|}{{\\bf Navigation Log} \\plogheaderdepicaoname $\\rightarrow$ \\plogheaderdesticaoname\\hfill\\href{";
+	static const char code2[] =
+		"}{";
+	static const char code3[] =
+		"}} \\\\\n"
 		"  \\hline\n"
 		"  \\rowcolor[gray]{1.0}\\multicolumn{12}{|l|}{Dep \\StrMid{\\plogheaderdeptime}{1}{10}{} \\StrMid{\\plogheaderdeptime}{12}{16}Z DA \\plogheaderdepdensityalt{}ft Arr \\StrMid{\\plogheaderdesttime}{1}{10}{} \\StrMid{\\plogheaderdesttime}{12}{16}Z DA \\plogheaderdestdensityalt{}ft Enroute \\plogheaderenroutetime} \\\\\n"
 		"  \\hline\n"
@@ -3955,12 +3962,12 @@ std::ostream& Aircraft::navfplan_latex_defpathto(std::ostream& os)
 		"  \\global\\def\\ploglineend{\\\\\\hline\\plogzebrarowcol}%\n"
 		"}\n"
 		"\n";
-	return os << code;
+	return os << code1 << SiteName::sitesecureurl << code2 << SiteName::siteurlnoproto << code3;
 }
 
 std::ostream& Aircraft::navfplan_latex_defpathmid(std::ostream& os)
 {
-	static const char code[] =
+	static const char code1[] =
 		"\\newlength{\\plogcolwaypointwidth}\n"
 		"\\newlength{\\plogcolaltwidth}\n"
 		"\\newlength{\\plogcollatlonwidth}\n"
@@ -4024,7 +4031,11 @@ std::ostream& Aircraft::navfplan_latex_defpathmid(std::ostream& os)
 		"\\global\\def\\ploglineend{}%\n"
 		"\\noindent\\begin{longtable}{|p{\\plogcolwaypointwidth}|p{\\plogcolaltwidth}|p{\\plogcollatlonwidth}|p{\\plogcoldistfuelwidth}|p{\\plogcoletawidth}|p{\\plogcoletewidth}|p{\\plogcolmagwidth}|p{\\plogcoltruewidth}|p{\\plogcoldistfuelwidth}|p{\\plogcolgswidth}|p{\\plogcoltaswidth}|p{\\plogcolatmowidth}|}\n"
 		"  \\hline\n"
-		"  \\rowcolor[gray]{0.8}\\multicolumn{12}{|p{\\plogtablefullwidth}|}{{\\bf Navigation Log} \\plogheaderdepicaoname $\\rightarrow$ \\plogheaderdesticaoname\\hfill\\href{http://www.autorouter.eu}{www.autorouter.eu}} \\\\\n"
+		"  \\rowcolor[gray]{0.8}\\multicolumn{12}{|p{\\plogtablefullwidth}|}{{\\bf Navigation Log} \\plogheaderdepicaoname $\\rightarrow$ \\plogheaderdesticaoname\\hfill\\href{";
+	static const char code2[] =
+		"}{";
+	static const char code3[] =
+		"}} \\\\\n"
 		"  \\hline\n"
 		"  \\rowcolor[gray]{1.0}\\multicolumn{12}{|l|}{Dep \\StrMid{\\plogheaderdeptime}{1}{10}{} \\StrMid{\\plogheaderdeptime}{12}{16}Z DA \\plogheaderdepdensityalt{}ft Arr \\StrMid{\\plogheaderdesttime}{1}{10}{} \\StrMid{\\plogheaderdesttime}{12}{16}Z DA \\plogheaderdestdensityalt{}ft Enroute \\plogheaderenroutetime} \\\\\n"
 		"  \\hline\n"
@@ -4121,7 +4132,7 @@ std::ostream& Aircraft::navfplan_latex_defpathmid(std::ostream& os)
 		"  \\global\\def\\ploglineend{\\\\\\hline\\plogzebrarowcol}%\n"
 		"}\n"
 		"\n";
-	return os << code;
+	return os << code1 << SiteName::sitesecureurl << code2 << SiteName::siteurlnoproto << code3;
 }
 
 std::ostream& Aircraft::navfplan_latex(std::ostream& os, Engine& engine, const FPlanRoute& fplan,
@@ -4223,11 +4234,27 @@ std::ostream& Aircraft::navfplan_latex(std::ostream& os, Engine& engine, const F
 
 std::string Aircraft::to_luastring(const std::string& x)
 {
+	static const char escapes[] = "abtnvfr";
+	static const char hexdigits[] = "0123456789abcdef";
 	std::string r;
 	r.reserve(x.size() + 2);
 	r.push_back('"');
 	for (std::string::const_iterator i(x.begin()), e(x.end()); i != e; ++i) {
 		switch (*i) {
+		case 7 ... 13:
+			r.push_back('\\');
+			r.push_back(escapes[*i - 7]);
+			break;
+
+		case -128 ... 6:
+		case 14 ... 31:
+		case 127 ... 255:
+			r.push_back('\\');
+			r.push_back('x');
+			r.push_back(hexdigits[(*i >> 4) & 15]);
+			r.push_back(hexdigits[*i & 15]);
+			break;
+
 		case '"':
 		case '\\':
 			r.push_back('\\');
@@ -4239,6 +4266,22 @@ std::string Aircraft::to_luastring(const std::string& x)
 	}
 	r.push_back('"');
 	return r;
+}
+
+std::string Aircraft::to_luastring(double x)
+{
+	if (std::isnan(x))
+		return "nil";
+	std::ostringstream oss;
+	oss << x;
+	return oss.str();
+}
+
+std::string Aircraft::to_luastring(bool x)
+{
+	if (x)
+		return "true";
+	return "false";
 }
 
 std::ostream& Aircraft::write_lua_point(std::ostream& os, const std::string& ident, Aircraft::unit_t fuelunit,
@@ -4293,6 +4336,8 @@ std::ostream& Aircraft::write_lua_point(std::ostream& os, const std::string& ide
 	   << ident << "isaoffsstr = \"" << Point::round<int,double>(wpt.get_isaoffset_kelvin()) << "\"," << std::endl
 	   << ident << "oat = " << (wpt.get_oat_kelvin() - IcaoAtmosphere<double>::degc_to_kelvin) << ',' << std::endl
 	   << ident << "oatstr = \"" << Point::round<int,double>(wpt.get_oat_kelvin() - IcaoAtmosphere<double>::degc_to_kelvin) << "\"," << std::endl;
+	if (wpt.is_tropopause_valid())
+		os << ident << "tropopause = " << wpt.get_tropopause() << ',' << std::endl;
 	if (!std::isnan(cumdist))
 		os << ident << "cumdist = " << cumdist << ',' << std::endl
 		   << ident << "cumdiststr = " << to_luastring(Conversions::dist_str(cumdist)) << ',' << std::endl;
@@ -4300,32 +4345,44 @@ std::ostream& Aircraft::write_lua_point(std::ostream& os, const std::string& ide
 		os << ident << "remdist = " << remdist << ',' << std::endl
 		   << ident << "remdiststr = " << to_luastring(Conversions::dist_str(remdist)) << ',' << std::endl;
 	os << ident << "mass = " << wpt.get_mass_kg() << ',' << std::endl
-	   << ident << "massstr = \"" << Point::round<int,double>(wpt.get_mass_kg()) << "\"," << std::endl;
+	   << ident << "massstr = \"" << Point::round<int,double>(wpt.get_mass_kg()) << "\",";
 	{
 		std::ostringstream oss;
 		unsigned int prec(fuelunit == Aircraft::unit_usgal);
 		double f(convert_fuel(get_fuelunit(), fuelunit, wpt.get_fuel_usg()));
 		oss << std::fixed << std::setprecision(prec) << f;
-		os << ident << "fuel = " << f << ',' << std::endl
-		   << ident << "fuelstr = " << to_luastring(oss.str()) << ',' << std::endl;
+		os << std::endl << ident << "fuel = " << f << ','
+		   << std::endl << ident << "fuelstr = " << to_luastring(oss.str()) << ',';
 	}
-	{
+	if (!std::isnan(totalfuel)) {
 		std::ostringstream oss;
 		unsigned int prec(fuelunit == Aircraft::unit_usgal);
 		double f(convert_fuel(get_fuelunit(), fuelunit, totalfuel - wpt.get_fuel_usg()));
 		oss << std::fixed << std::setprecision(prec) << f;
-		os << ident << "remfuel = " << f << ',' << std::endl
-		   << ident << "remfuelstr = " << to_luastring(oss.str()) << ',' << std::endl;
+		os << std::endl << ident << "remfuel = " << f << ','
+		   << std::endl << ident << "remfuelstr = " << to_luastring(oss.str()) << ',';
 	}
-	{
+	if (!std::isnan(tofuel)) {
 		std::ostringstream oss;
 		unsigned int prec(fuelunit == Aircraft::unit_usgal);
 		double f(convert_fuel(get_fuelunit(), fuelunit, tofuel - wpt.get_fuel_usg()));
 		oss << std::fixed << std::setprecision(prec) << f;
-		os << ident << "totremfuel = " << f << ',' << std::endl
-		   << ident << "totremfuelstr = " << to_luastring(oss.str());
+		os << std::endl << ident << "totremfuel = " << f << ','
+		   << std::endl << ident << "totremfuelstr = " << to_luastring(oss.str());
 	}
 	return os;
+}
+
+std::ostream& Aircraft::write_lua_alternate(std::ostream& os, const std::string& ident, Aircraft::unit_t fuelunit,
+					    const FPlanAlternate& alt, time_t deptime, double totalfuel, double tofuel, double cumdist, double remdist) const
+{
+	write_lua_point(os, ident, fuelunit, alt, deptime, totalfuel, tofuel, cumdist, remdist);
+	if (alt.is_cruisealtitude_valid())
+		os << std::endl << ident << "cruisealt = " << alt.get_cruisealtitude() << ',';
+	if (alt.is_holdaltitude_valid())
+		os << std::endl << ident << "holdalt = " << alt.get_holdaltitude() << ',';
+	return os << std::endl << ident << "holdtime = " << alt.get_holdtime() << ','
+		  << std::endl << ident << "holdfuel = " << convert_fuel(get_fuelunit(), fuelunit, alt.get_holdfuel_usg()) << ',';
 }
 
 std::ostream& Aircraft::write_lua_path(std::ostream& os, const std::string& ident, Aircraft::unit_t fuelunit,
@@ -4501,6 +4558,8 @@ std::ostream& Aircraft::navfplan_lualatex(std::ostream& os, Engine& engine, cons
 		os << "  has_eng_bhp = " << (engbhp ? "true" : "false") << std::endl
 		   << "  has_eng_rpmmp = " << (engrpmmp ? "true" : "false") << std::endl;
 	}
+	bool noaltn(altn.empty() || (fplan.get_nrwpt() && altn.size() == 1 && !fplan[fplan.get_nrwpt()-1].get_coord().is_invalid() &&
+				     fplan[fplan.get_nrwpt()-1].get_coord() == altn.front().get_coord()));
 	if (fplan.get_nrwpt() > 0) {
 		if (std::isnan(tofuel) || tofuel < 0)
 			tofuel = 0;
@@ -4525,7 +4584,8 @@ std::ostream& Aircraft::navfplan_lualatex(std::ostream& os, Engine& engine, cons
 			   << std::setw(2) << std::setfill('0') << (tm % 60) << "\"";
 		}
 		os << ',' << std::endl << "    fuelunit = " << to_luastring(to_str(fuelunit, true))
-		   << ',' << std::endl << "    fuelname = " << to_luastring(get_fuelname());		
+		   << ',' << std::endl << "    fuelname = " << to_luastring(get_fuelname())
+		   << ',' << std::endl << "    taxitime = " << (fplan[0].get_time_unix() - fplan.get_time_offblock_unix());
 		double cumdist(0);
 		unsigned int n(fplan.get_nrwpt());
 		for (unsigned int i(0); i < n; ++i) {
@@ -4536,55 +4596,74 @@ std::ostream& Aircraft::navfplan_lualatex(std::ostream& os, Engine& engine, cons
 				write_lua_path(os << ',' << std::endl, "      ", fuelunit, fplan[i], fplan[i + 1]);
 			os << " }";
 		}
+		os << ", alt = {";
 		Point ptdest(fplan[fplan.get_nrwpt()-1].get_coord());
-		if (!ptdest.is_invalid()) {
-			os << ", alt = {" << std::endl;
+		if (!ptdest.is_invalid() && !noaltn) {
+			bool subseq(false);
 			for (std::vector<FPlanAlternate>::const_iterator ai(altn.begin()), ae(altn.end()); ai != ae; ++ai) {
+				if (subseq)
+					os << ',';
+				subseq = true;
+				os << std::endl << "      {" << std::endl;
+				if (ai->is_cruisealtitude_valid())
+					os << "        cruisealt = " << ai->get_cruisealtitude() << ',' << std::endl;
+				if (ai->is_holdaltitude_valid())
+					os << "        holdalt = " << ai->get_holdaltitude() << ',' << std::endl;
+				os << "        holdtime = " << ai->get_holdtime() << ',' << std::endl
+				   << "        holdfuel = " << convert_fuel(get_fuelunit(), fuelunit, ai->get_holdfuel_usg()) << ',' << std::endl;
 				std::vector<FPlanRoute>::const_iterator afi(altnfpl.begin()), afe(altnfpl.end());
 				{
 					Point ptalt(ai->get_coord());
-					if (ptalt.is_invalid())
+					if (!ptalt.is_invalid()) {
+						for (; afi != afe; ++afi)
+							if (afi->get_nrwpt() > 1 && !(*afi)[0].get_coord().is_invalid() &&
+							    ptdest.simple_distance_nmi((*afi)[0].get_coord()) < 1 &&
+							    !(*afi)[afi->get_nrwpt()-1].get_coord().is_invalid() &&
+							    ptalt.simple_distance_nmi((*afi)[afi->get_nrwpt()-1].get_coord()) < 1)
+								break;
+					}
+					if (afi == afe) {
+						double tofuel1(tofuel - fplan[fplan.get_nrwpt() - 1].get_fuel_usg());
+						write_lua_point(os, "        ", fuelunit, *ai, fplan[fplan.get_nrwpt() - 1].get_time_unix(),
+								ai->get_fuel_usg() - fplan[fplan.get_nrwpt() - 1].get_fuel_usg(), tofuel1, 0, totdist);
+						os << " }";
 						continue;
-					for (; afi != afe; ++afi)
-						if (afi->get_nrwpt() > 1 && !(*afi)[0].get_coord().is_invalid() &&
-						    ptdest.simple_distance_nmi((*afi)[0].get_coord()) < 1 &&
-						    !(*afi)[afi->get_nrwpt()-1].get_coord().is_invalid() &&
-						    ptalt.simple_distance_nmi((*afi)[afi->get_nrwpt()-1].get_coord()) < 1)
-							break;
-					if (afi == afe)
-						continue;
+					}
 				}
 				double totdist(afi->total_distance_nmi_dbl());
 				double cumdist(0);
 				unsigned int n(afi->get_nrwpt());
 				double tofuel1(tofuel - fplan[fplan.get_nrwpt() - 1].get_fuel_usg());
-				write_lua_point(os << "      {" << std::endl, "        ", fuelunit, (*afi)[afi->get_nrwpt() - 1], (*afi)[0].get_time_unix(),
+				write_lua_point(os, "        ", fuelunit, (*afi)[afi->get_nrwpt() - 1], (*afi)[0].get_time_unix(),
 						(*afi)[afi->get_nrwpt() - 1].get_fuel_usg() - (*afi)[0].get_fuel_usg(), tofuel1, 0, totdist);
 				{
 					double gcdist(afi->gc_distance_nmi_dbl());
-					os << ',' << std::endl << "        gcdist = " << gcdist
+					os << ',' << std::endl << "        totdist = " << totdist
+					   << ',' << std::endl << "        gcdist = " << gcdist
 					   << ',' << std::endl << "        gcdiststr = " << to_luastring(Conversions::dist_str(gcdist));
 				}
 				{
 					unsigned int tm((*afi)[afi->get_nrwpt() - 1].get_flighttime());
-					os << ',' << std::endl << "        flighttime = " << tm;
+					os << ',' << std::endl << "        enrtime = " << tm;
 					tm /= 60;
-					os << ',' << std::endl << "        flighttimestr = \""
+					os << ',' << std::endl << "        enrtimestr = \""
 					   << std::setw(2) << std::setfill('0') << (tm / 60) << ':'
 					   << std::setw(2) << std::setfill('0') << (tm % 60) << "\"";
 				}
+				os << ',' << std::endl << "        fuelunit = " << to_luastring(to_str(fuelunit, true))
+				   << ',' << std::endl << "        fuelname = " << to_luastring(get_fuelname());
 				for (unsigned int i(0); i < n; ++i) {
 					write_lua_point(os << ", {" << std::endl, "          ", fuelunit, (*afi)[i], (*afi)[0].get_time_unix(),
 							(*afi)[n - 1].get_fuel_usg(), tofuel, cumdist, totdist - cumdist);
-					cumdist += fplan[i].get_dist_nmi();
+					cumdist += (*afi)[i].get_dist_nmi();
 					if (i + 1 < n)
 						write_lua_path(os << ',' << std::endl, "          ", fuelunit, (*afi)[i], (*afi)[i + 1]);
 					os << " }";
 				}
+				os << " }";
 			}
-			os << " }";
 		}
-		os << " }";
+		os << " } }" << std::endl;
 	}
 	return os;
 }
@@ -4595,6 +4674,12 @@ std::ostream& Aircraft::massbalance_latex(std::ostream& os, const FPlanRoute& fp
 					  double fuel_on_board, const WeightBalance::elementvalues_t& wbev,
 					  unit_t fuelunit, unit_t massunit, double *tomass) const
 {
+	static const char table_header[] = "\\noindent\\begin{longtable}{|l|r|l|r|r|r|r|r|}\n"
+		"  \\hline\n"
+		"  \\rowcolor[gray]{0.8}Name & Value & Unit & Arm & Mass & Mass Min & Mass Max & Moment \\\\\n"
+		"  \\hline\n"
+		"  \\endhead\n";
+	static const char table_footer[] = "\\end{longtable}\n\n";
 	if (fuelunit == unit_invalid)
 		fuelunit = get_fuelunit();
 	if (massunit == unit_invalid)
@@ -4602,24 +4687,9 @@ std::ostream& Aircraft::massbalance_latex(std::ostream& os, const FPlanRoute& fp
 	WeightBalance::elementvalues_t wbv(prepare_wb(wbev, fuel_on_board, fuelunit, massunit, unit_invalid));
 	const WeightBalance& wb(get_wb());
 	// convert fuel stations to preferred fuel units
-	bool noaltn(altn.empty() || (fplan.get_nrwpt() && altn.size() == 1 && !fplan[fplan.get_nrwpt()-1].get_coord().is_invalid() &&
-				     fplan[fplan.get_nrwpt()-1].get_coord() == altn.front().get_coord()));
-	std::vector<FPlanAlternate>::size_type altnidx(0);
-	if (!noaltn) {
-		time_t ft(0);
-		for (std::vector<FPlanAlternate>::size_type i(0), n(altn.size()); i < n; ++i) {
-			const FPlanAlternate& a(altn[i]);
-			if (a.get_coord().is_invalid() || a.get_flighttime() < ft)
-				continue;
-			ft = a.get_flighttime();
-			altnidx = i;
-		}
-	}
-	os << "\\subsection{Mass \\& Balance}\n\n"
-	   << "\\begin{tabular}{|l|r|l|r|r|r|r|r|}\n"
-	   << "  \\hline\n"
-	   << "  \\rowcolor[gray]{0.8}Name & Value & Unit & Arm & Mass & Mass Min & Mass Max & Moment \\\\\n"
-	   << "  \\hline\n";
+	FPlanRoute::FuelCalc fc(fplan.calculate_fuel(*this, altn));
+	os << "\\ifneedsmassbalance\n\\subsection{Mass \\& Balance}\n\n"
+	   << table_header;
 	typedef enum {
 		mass_zf,
 		mass_althld,
@@ -4655,7 +4725,7 @@ std::ostream& Aircraft::massbalance_latex(std::ostream& os, const FPlanRoute& fp
 			if (i < wbv.size() && wbv[i].get_unit() < wel.get_nrunits()) {
 				const WeightBalance::Element::Unit& u(wel.get_unit(wbv[i].get_unit()));
 				mass = std::min(std::max(wbv[i].get_value() * u.get_factor() + u.get_offset(), wel.get_massmin()), wel.get_massmax());
-				
+
 			} else {
 				mass = wel.get_massmin();
 			}
@@ -4779,35 +4849,19 @@ std::ostream& Aircraft::massbalance_latex(std::ostream& os, const FPlanRoute& fp
 			double loosefuel(std::numeric_limits<double>::quiet_NaN());
 			switch (m) {
 			case mass_to:
-				loosefuel = get_taxifuel();
-				if (fplan.get_nrwpt()) {
-					double tf(fplan[0].get_time_unix() - fplan.get_time_offblock_unix());
-					tf *= get_taxifuelflow() * (1.0 / 3600.0);
-					if (!std::isnan(tf)) {
-						if (std::isnan(loosefuel))
-							loosefuel = 0;
-						loosefuel += tf;
-					}
-				}
+				loosefuel = fc.get_taxifuel();
 				break;
 
 			case mass_ldg:
-				if (fplan.get_nrwpt() >= 2)
-					loosefuel = fplan[fplan.get_nrwpt()-1].get_fuel_usg();
+				loosefuel = fc.get_tripfuel();
 				break;
 
 			case mass_alt:
-				if (noaltn || altnidx >= altn.size())
-					break;
-				loosefuel = altn[altnidx].get_fuel_usg();
-				if (fplan.get_nrwpt() >= 2)
-					loosefuel -= fplan[fplan.get_nrwpt()-1].get_fuel_usg();
+				loosefuel = fc.get_altnfuel();
 				break;
 
 			case mass_althld:
-				if (altnidx >= altn.size())
-					break;
-				loosefuel = altn[altnidx].get_holdfuel_usg();
+				loosefuel = fc.get_holdfuel();
 				break;
 
 			case mass_zf:
@@ -4951,14 +5005,11 @@ std::ostream& Aircraft::massbalance_latex(std::ostream& os, const FPlanRoute& fp
 			++i;
 		}
 	}
-	os << "\\end{tabular}\n\n";
+	os << table_footer;
 	if (true && consumables.size()) {
 		for (unsigned int ci = 1, cn = std::min((unsigned int)consumables.size(), 4U), cm = 1 << cn; ci < cm; ++ci) {
 			double masscorr(0), momentcorr(0);
-			os << "\\noindent\\begin{tabular}{|l|r|l|r|r|r|r|r|}\n"
-			   << "  \\hline\n"
-			   << "  \\rowcolor[gray]{0.8}Name & Value & Unit & Arm & Mass & Mass Min & Mass Max & Moment \\\\\n"
-			   << "  \\hline\n";
+			os << table_header;
 			for (unsigned int i = 0; i < wb.get_nrelements(); ++i) {
 				const WeightBalance::Element& wel(wb.get_element(i));
 				if (i < wbv.size()) {
@@ -4975,7 +5026,7 @@ std::ostream& Aircraft::massbalance_latex(std::ostream& os, const FPlanRoute& fp
 					if (i < wbv.size() && wbv[i].get_unit() < wel.get_nrunits()) {
 						const WeightBalance::Element::Unit& u(wel.get_unit(wbv[i].get_unit()));
 						mass = std::min(std::max(wbv[i].get_value() * u.get_factor() + u.get_offset(), wel.get_massmin()), wel.get_massmax());
-				
+
 					} else {
 						mass = wel.get_massmin();
 					}
@@ -5110,7 +5161,7 @@ std::ostream& Aircraft::massbalance_latex(std::ostream& os, const FPlanRoute& fp
 				os << "\\\\\n  \\hline\n";
 				++i;
 			}
-			os << "\\end{tabular}\n\n";
+			os << table_footer;
 		}
 	}
 	// Mass&Balance Graph
@@ -5303,111 +5354,84 @@ std::ostream& Aircraft::massbalance_latex(std::ostream& os, const FPlanRoute& fp
 		}
 		os << "\\end{tikzpicture}\\end{center}\n\n";
 	}
+	os << "\\fi\n\n";
 	// fuel planning
 	{
-		os << "\\subsection{Fuel Planning}\n\n"
+		os << "\\ifneedsfuelplan\n"
+		   << "\\subsection{Fuel Planning}\n\n"
 		   << "\\newsavebox{\\fueltable}\\savebox{\\fueltable}{\\begin{tabular}{|l|r|r|r|}\n"
 		   << "  \\hline\n"
 		   << "  \\rowcolor[gray]{0.8}Name & Fuelflow & Amount & Fuel \\\\\n"
 		   << "  \\hline\n";
 		bool grayinv(true);
 		unsigned int prec(fuelunit == unit_usgal);
-		double fuel(get_taxifuel());
-		if (fplan.get_nrwpt()) {
-			double tf(fplan[0].get_time_unix() - fplan.get_time_offblock_unix());
-			tf *= get_taxifuelflow() * (1.0 / 3600.0);
-			if (!std::isnan(tf) && tf >= 0) {
-				if (std::isnan(fuel))
-					fuel = 0;
-				fuel += tf;
-			}
-		}
-		if (std::isnan(fuel)) {
-			fuel = 0;
-		} else {
+		if (!std::isnan(fc.get_taxifuel())) {
 			os << "  Taxi Fuel & ";
 			std::ostringstream oss;
-			if (!std::isnan(get_taxifuelflow()))
-				oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, get_taxifuelflow());
+			if (!std::isnan(fc.get_taxifuelflow()))
+				oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, fc.get_taxifuelflow());
 			oss << " & ";
-			time_t tt(0);
-			if (fplan.get_nrwpt())
-				tt = fplan[0].get_time_unix() - fplan.get_time_offblock_unix();
-			if (tt > 0)
-				oss << std::setw(2) << std::setfill('0') << (tt / 3600)
-				    << ':' << std::setw(2) << std::setfill('0') << ((tt / 60) % 60);
+			if (fc.get_taxitime())
+				oss << std::setw(2) << std::setfill('0') << (fc.get_taxitime() / 3600)
+				    << ':' << std::setw(2) << std::setfill('0') << ((fc.get_taxitime() / 60) % 60);
 			oss << " & ";
-			oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, fuel);
+			oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, fc.get_taxifuel());
 			os << oss.str() << " \\\\\n  \\hline\n";
 			grayinv = false;
 		}
-		if (fplan.get_nrwpt() >= 2) {
-			fuel += fplan[fplan.get_nrwpt()-1].get_fuel_usg();
+		if (!std::isnan(fc.get_tripfuel())) {
 			std::ostringstream oss;
-			oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, fplan[fplan.get_nrwpt()-1].get_fuel_usg());
+			oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, fc.get_tripfuel());
 			os << "  " << (grayinv ? "" : "\\rowcolor[gray]{0.9}") << "Trip Fuel & & & " << oss.str() << " \\\\\n  \\hline\n";
-			double contfuelpercent(get_contingencyfuel());
-			if (std::isnan(contfuelpercent))
-				contfuelpercent = 5;
-			double contfuel(1e-2 * contfuelpercent * fplan[fplan.get_nrwpt()-1].get_fuel_usg());
-			std::ostringstream oss2, oss3, oss4;
-			double mincontfuel(std::numeric_limits<double>::quiet_NaN());
-			if (!altn.empty() && altn.front().get_holdtime() > 0)
-				mincontfuel = altn.front().get_holdfuel_usg() * (5.0 * 60.0) / altn.front().get_holdtime();
-			if (!std::isnan(mincontfuel) && contfuel < mincontfuel) {
-				contfuel = mincontfuel;
-				oss3 << "0:05";
-				oss4 << std::fixed << std::setprecision(prec)
-				     << convert_fuel(get_fuelunit(), fuelunit, altn.front().get_holdfuel_usg());
-			} else {
-				oss3 << std::fixed << std::setprecision(0) << contfuelpercent << "\\%";
-			}
-			oss2 << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, contfuel);
-			fuel += contfuel;
-			os << "  " << (grayinv ? "\\rowcolor[gray]{0.9}" : "") << "Contingency & " << oss4.str()
-			   << " & " << oss3.str() << " & " << oss2.str() << " \\\\\n  \\hline\n";
+			grayinv = !grayinv;
 		}
-		if (!noaltn && altnidx < altn.size()) {
+		if (!std::isnan(fc.get_contfuel())) {
+			std::ostringstream oss2, oss3, oss4;
+			if (!std::isnan(fc.get_contfuelflow()) && fc.get_contfuelflow() > 0) {
+				time_t ct(fc.get_contfuel() / fc.get_contfuelflow() * 3600.0);
+				oss3 << std::setw(2) << std::setfill('0') << (ct / 3600)
+				     << ':' << std::setw(2) << std::setfill('0') << ((ct / 60) % 60);;
+				oss4 << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, fc.get_contfuelflow());
+			} else if (!std::isnan(fc.get_contfuelpercent())) {
+				oss3 << std::fixed << std::setprecision(0) << fc.get_contfuelpercent() << "\\%";
+			}
+			oss2 << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, fc.get_contfuel());
+			os << "  " << (grayinv ? "" : "\\rowcolor[gray]{0.9}") << "Contingency & " << oss4.str()
+			   << " & " << oss3.str() << " & " << oss2.str() << " \\\\\n  \\hline\n";
+			grayinv = !grayinv;
+		}
+		if (!std::isnan(fc.get_altnfuel())) {
 			os << "  " << (grayinv ? "" : "\\rowcolor[gray]{0.9}") << "Alternate Fuel";
 			grayinv = !grayinv;
-			const FPlanAlternate& a(altn[altnidx]);
-			if (a.is_cruisealtitude_valid()) {
+			if (fc.is_altnalt_valid()) {
 				std::ostringstream oss;
-				oss << " F" << std::setw(3) << std::setfill('0') << ((a.get_cruisealtitude() + 50) / 100);
+				oss << " F" << std::setw(3) << std::setfill('0') << ((fc.get_altnalt() + 50) / 100);
 				os << oss.str();
 			}
-			double f(a.get_fuel_usg());
-			if (fplan.get_nrwpt() >= 2)
-				f -= fplan[fplan.get_nrwpt()-1].get_fuel_usg();
-			f = std::max(f, 0.);
-			fuel += f;
-			std::ostringstream oss;
-			oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, f);
+        		std::ostringstream oss;
+			oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, fc.get_altnfuel());
 			os << " & & & " << oss.str() << " \\\\\n  \\hline\n";
 		}
-		if (altnidx < altn.size()) {
+		if (!std::isnan(fc.get_holdfuel())) {
 			os << "  " << (grayinv ? "" : "\\rowcolor[gray]{0.9}") << "Final Reserve";
 			grayinv = !grayinv;
-			const FPlanAlternate& a(altn[altnidx]);
-			if (a.is_holdaltitude_valid()) {
+			if (fc.is_holdalt_valid()) {
 				std::ostringstream oss;
-				oss << " F" << std::setw(3) << std::setfill('0') << ((a.get_holdaltitude() + 50) / 100);
+				oss << " F" << std::setw(3) << std::setfill('0') << ((fc.get_holdalt() + 50) / 100);
 				os << oss.str();
 			}
-			fuel += a.get_holdfuel_usg();
-			double f(convert_fuel(get_fuelunit(), fuelunit, a.get_holdfuel_usg()));
 			std::ostringstream oss;
-			if (a.get_holdtime() > 0)
-				oss << std::fixed << std::setprecision(prec) << (f * 3600.0 / a.get_holdtime());
-			oss << " & " << std::setw(2) << std::setfill('0') << (a.get_holdtime() / 3600)
-			    << ':' << std::setw(2) << std::setfill('0') << ((a.get_holdtime() / 60) % 60)
-			    << " & " << std::fixed << std::setprecision(prec) << f;
+			if (!std::isnan(fc.get_holdfuelflow()))
+				oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, fc.get_holdfuelflow());
+			oss << " & " << std::setw(2) << std::setfill('0') << (fc.get_holdtime() / 3600)
+			    << ':' << std::setw(2) << std::setfill('0') << ((fc.get_holdtime() / 60) % 60)
+			    << " & " << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, fc.get_holdfuel());
 			os << " & " << oss.str() << " \\\\\n  \\hline\n";
 		}
 		os << "  " << (grayinv ? "" : "\\rowcolor[gray]{0.9}") << "Required Fuel & & & ";
 		{
 			std::ostringstream oss;
-			oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, fuel);
+			oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, fc.get_reqdfuel());
 			os << oss.str() << ' ';
 		}
 		double loadedfuel(0);
@@ -5427,7 +5451,7 @@ std::ostream& Aircraft::massbalance_latex(std::ostream& os, const FPlanRoute& fp
 		os << "\\\\\n  \\hline\n  " << (grayinv ? "\\rowcolor[gray]{0.9}" : "") << "Extra Fuel & & & ";
 		{
 			std::ostringstream oss;
-			oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, loadedfuel - fuel);
+			oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, loadedfuel - fc.get_reqdfuel());
 			os << oss.str() << ' ';
 		}
 		os << "\\\\\n  \\hline\n  " << (grayinv ? "" : "\\rowcolor[gray]{0.9}") << "Block Fuel & & & ";
@@ -5438,7 +5462,7 @@ std::ostream& Aircraft::massbalance_latex(std::ostream& os, const FPlanRoute& fp
 		}
 	}
 	os << "\\\\\n  \\hline\n\\end{tabular}}\n\\newsavebox{\\altntable}\\savebox{\\altntable}{";
-	if (!noaltn && !altn.empty()) {
+	if (!fc.is_noaltn() && !altn.empty()) {
 		int mode(-1);
 		for (std::vector<FPlanAlternate>::const_iterator ai(altn.begin()), ae(altn.end()); ai != ae; ++ai) {
 			if (ai->get_coord().is_invalid())
@@ -5503,10 +5527,599 @@ std::ostream& Aircraft::massbalance_latex(std::ostream& os, const FPlanRoute& fp
 	   << "\\newlength{\\altntablewidth}\n"
 	   << "\\settowidth{\\altntablewidth}{\\usebox{\\altntable}}\n"
 	   << "\\noindent\\begin{minipage}[t]{\\fueltablewidth}\\vspace{0pt}\\usebox{\\fueltable}\\end{minipage}\\hfill%\n"
-	   << "\\begin{minipage}[t]{\\altntablewidth}\\vspace{0pt}\\usebox{\\altntable}\\end{minipage}\n";
+	   << "\\begin{minipage}[t]{\\altntablewidth}\\vspace{0pt}\\usebox{\\altntable}\\end{minipage}\n"
+	   << "\\fi\n";
 	if (tomass)
 		*tomass = masses[mass_to];
 	return os;
+}
+
+std::ostream& Aircraft::massbalance_lualatex(std::ostream& os, const FPlanRoute& fplan,
+					     const std::vector<FPlanAlternate>& altn,
+					     const Cruise::EngineParams& epcruise,
+					     double fuel_on_board, const WeightBalance::elementvalues_t& wbev,
+					     unit_t fuelunit, unit_t massunit, double *tomass) const
+{
+	if (fuelunit == unit_invalid)
+		fuelunit = get_fuelunit();
+	if (massunit == unit_invalid)
+		massunit = get_wb().get_massunit();
+	WeightBalance::elementvalues_t wbv(prepare_wb(wbev, fuel_on_board, fuelunit, massunit, unit_invalid));
+	const WeightBalance& wb(get_wb());
+	// convert fuel stations to preferred fuel units
+	FPlanRoute::FuelCalc fc(fplan.calculate_fuel(*this, altn));
+	bool noaltn(fc.is_noaltn());
+	std::vector<FPlanAlternate>::size_type altnidx(fc.get_altnidx());
+	if (noaltn)
+		altnidx = 0;
+	os << "  massbalance = {" << std::endl
+	   << "    fuelunit = " << to_luastring(to_str(fuelunit, true)) << ',' << std::endl
+	   << "    massunit = " << to_luastring(to_str(massunit, true)) << ',' << std::endl
+	   << "    stations = {" << std::endl;
+	typedef enum {
+		mass_zf,
+		mass_althld,
+		mass_alt,
+		mass_ldg,
+		mass_to,
+		mass_ramp,
+		mass_size
+	} mass_t;
+	double moments[mass_size], masses[mass_size];
+	masses[mass_ramp] = masses[mass_zf] = 0;
+	moments[mass_ramp] = moments[mass_zf] = 0;
+	typedef std::pair<double,double> massmoment_t;
+	typedef std::vector<massmoment_t> massmoments_t;
+	typedef std::vector<massmoments_t> consumables_t;
+	consumables_t consumables;
+	typedef std::vector<unsigned int> consumableindex_t;
+	consumableindex_t consumableindex;
+	for (unsigned int i = 0; i < wb.get_nrelements(); ++i) {
+		consumableindex.push_back(~0U);
+		const WeightBalance::Element& wel(wb.get_element(i));
+		if (i)
+			os << ',' << std::endl;
+		os << "      { name = " << to_luastring(wel.get_name());
+		double mass(0);
+		if (wel.get_flags() & WeightBalance::Element::flag_fixed) {
+			if (i < wbv.size() && wbv[i].get_unit() < wel.get_nrunits()) {
+				const WeightBalance::Element::Unit& u(wel.get_unit(wbv[i].get_unit()));
+				mass = std::min(std::max(wbv[i].get_value() * u.get_factor() + u.get_offset(), wel.get_massmin()), wel.get_massmax());
+
+			} else {
+				mass = wel.get_massmin();
+			}
+		} else {
+			if (i < wbv.size()) {
+				if (wel.get_flags() & WeightBalance::Element::flag_binary)
+					wbv[i].set_value(0);
+				if (wbv[i].get_unit() < wel.get_nrunits()) {
+					const WeightBalance::Element::Unit& u(wel.get_unit(wbv[i].get_unit()));
+					mass = wbv[i].get_value() * u.get_factor() + u.get_offset();
+				}
+				os << ", massraw = " << wbv[i].get_value();
+			}
+		}
+		os << ", mass = " << mass << ", massmin = " << wel.get_massmin() << ", massmax = " << wel.get_massmax();
+		if (wel.get_flags() & WeightBalance::Element::flag_consumable &&
+		    !(wel.get_flags() & WeightBalance::Element::flag_fuel) &&
+		    mass > wel.get_massmin()) {
+			consumableindex[i] = consumables.size();
+			consumables.push_back(massmoments_t());
+			consumables.back().push_back(massmoment_t(0, 0));
+			double moment(wel.get_moment(mass));
+			double massmin(wel.get_massmin());
+			double mass1(mass);
+			for (;;) {
+				std::pair<double,double> lim(wel.get_piecelimits(mass1, true));
+				if (std::isnan(lim.first) || lim.first <= massmin) {
+					consumables.back().push_back(massmoment_t(massmin - mass, wel.get_moment(massmin) - moment));
+					break;
+				}
+				consumables.back().push_back(massmoment_t(lim.first - mass, wel.get_moment(lim.first) - moment));
+				if (lim.first >= mass1)
+					break;
+				mass1 = lim.first;
+			}
+		}
+		{
+			std::string unit;
+			if (i < wbv.size() && wbv[i].get_unit() < wel.get_nrunits())
+				unit = wel.get_unit(wbv[i].get_unit()).get_name();
+			else if (wel.get_nrunits())
+				unit = wel.get_unit(0).get_name();
+			os << ", unit = " << to_luastring(unit);
+		}
+		os << ", arm = " << wel.get_arm(mass)
+		   << ", moment = " << wel.get_moment(mass)
+		   << ", fixed = " << to_luastring(!!(wel.get_flags() & WeightBalance::Element::flag_fixed))
+		   << ", binary = " << to_luastring(!!(wel.get_flags() & WeightBalance::Element::flag_binary))
+		   << ", avgas = " << to_luastring(!!(wel.get_flags() & WeightBalance::Element::flag_avgas))
+		   << ", jeta = " << to_luastring(!!(wel.get_flags() & WeightBalance::Element::flag_jeta))
+		   << ", diesel = " << to_luastring(!!(wel.get_flags() & WeightBalance::Element::flag_diesel))
+		   << ", oil = " << to_luastring(!!(wel.get_flags() & WeightBalance::Element::flag_oil))
+		   << ", gear = " << to_luastring(!!(wel.get_flags() & WeightBalance::Element::flag_gear))
+		   << ", consumable = " << to_luastring(!!(wel.get_flags() & WeightBalance::Element::flag_consumable))
+		   << ", fuel = " << to_luastring(!!(wel.get_flags() & WeightBalance::Element::flag_fuel));
+		if (wel.get_flags() & WeightBalance::Element::flag_fuel) {
+			moments[mass_zf] += wel.get_moment(wel.get_massmin());
+			masses[mass_zf] += wel.get_massmin();
+		} else if (i < wbv.size()) {
+			moments[mass_zf] += wel.get_moment(mass);
+			masses[mass_zf] += mass;
+		}
+		if (i < wbv.size()) {
+			moments[mass_ramp] += wel.get_moment(mass);
+			masses[mass_ramp] += mass;
+		}
+		os << " }";
+	}
+	os << " }," << std::endl
+	   << "    envelopes = {" << std::endl;
+	for (unsigned int i(0); i < wb.get_nrenvelopes(); ++i) {
+		const WeightBalance::Envelope& env(wb.get_envelope(i));
+		if (i)
+			os << ',' << std::endl;
+		os << "      { name = " << to_luastring(env.get_name());
+		for (unsigned int j(0); j < env.size(); ++j)
+			os << ", { " << env[j].get_mass() << ',' << env[j].get_arm() << " }";
+		os << " }";
+	}
+	os << " }," << std::endl;
+	// compute maximum masses
+	typedef enum {
+		maxmass_zf,
+		maxmass_ldg,
+		maxmass_to,
+		maxmass_ramp,
+		maxmass_size
+	} maxmass_t;
+	double maxmasses[maxmass_size] = { get_mzfm(), get_mlm(), get_mtom(), get_mrm() };
+	for (maxmass_t m(maxmass_ldg); m <= maxmass_ramp; m = (maxmass_t)(m + 1))
+		if (std::isnan(maxmasses[m]))
+			maxmasses[m] = maxmasses[m - 1];
+	for (maxmass_t m(maxmass_ramp); m >= maxmass_ldg; m = (maxmass_t)(m - 1))
+		if (std::isnan(maxmasses[m - 1]))
+			maxmasses[m - 1] = maxmasses[m];
+	// compute fuel consumed masses & moments
+	typedef std::pair<double,double> massarm_t;
+	typedef std::pair<massarm_t,unsigned int> graphpt_t;
+	typedef std::vector<graphpt_t> graph_t;
+	graph_t graph;
+	graph.push_back(graphpt_t(massarm_t(masses[mass_ramp], moments[mass_ramp] / masses[mass_ramp]), 8 | mass_ramp));
+	{
+		WeightBalance::elementvalues_t wbv1(wbv);
+		for (mass_t m = mass_ramp; m > mass_zf; ) {
+			double mmoment(moments[m]), mmass(masses[m]);
+			m = (mass_t)(m - 1);
+			double loosefuel(std::numeric_limits<double>::quiet_NaN());
+			switch (m) {
+			case mass_to:
+				loosefuel = fc.get_taxifuel();
+				break;
+
+			case mass_ldg:
+				loosefuel = fc.get_tripfuel();
+				break;
+
+			case mass_alt:
+				loosefuel = fc.get_altnfuel();
+				break;
+
+			case mass_althld:
+				loosefuel = fc.get_holdfuel();
+				break;
+
+			case mass_zf:
+				loosefuel = std::numeric_limits<double>::max();
+				break;
+
+			default:
+				break;
+			}
+			if (!std::isnan(loosefuel) && loosefuel > 0) {
+				for (WeightBalance::elementvalues_t::size_type i(wbv1.size()); i > 0; ) {
+					--i;
+					const WeightBalance::Element& wel(wb.get_element(i));
+					if (!(wel.get_flags() & WeightBalance::Element::flag_fuel))
+						continue;
+					if (wbv1[i].get_unit() >= wel.get_nrunits())
+						continue;
+					const WeightBalance::Element::Unit& u(wel.get_unit(wbv1[i].get_unit()));
+					double mass(wbv1[i].get_value() * u.get_factor() + u.get_offset());
+					if (mass <= wel.get_massmin())
+						continue;
+					double massdiff(mass - wel.get_massmin());
+					double fueldiff(convert(wb.get_massunit(), get_fuelunit(), massdiff, wel.get_flags()));
+					if (fueldiff > loosefuel) {
+						fueldiff = loosefuel;
+						massdiff = convert(get_fuelunit(), wb.get_massunit(), fueldiff, wel.get_flags());
+					}
+					loosefuel -= fueldiff;
+				        for (;;) {
+						if (std::isnan(massdiff))
+							break;
+						std::pair<double,double> lim(wel.get_piecelimits(mass, true));
+						double massdiff1(mass - lim.first);
+						if (std::isnan(massdiff1)) {
+							massdiff1 = mass;
+							if (std::isnan(massdiff1))
+								break;
+						}
+						if (false)
+							std::cerr << "mass " << mass << " lim " << lim.first << ',' << lim.second
+								  << " massdiff " << massdiff << " massdiff1 " << massdiff1
+								  << " arm " << wel.get_arm(mass) << " name " << wel.get_name() << std::endl;
+						if (massdiff1 > massdiff)
+							massdiff1 = massdiff;
+						mmass -= massdiff1;
+						mmoment -= wel.get_moment(mass);
+						mass -= massdiff1;
+						mmoment += wel.get_moment(mass);
+						massdiff -= massdiff1;
+						if (massdiff <= 0)
+							break;
+						graph.push_back(graphpt_t(massarm_t(mmass, mmass > 0 ? mmoment / mmass : std::numeric_limits<double>::quiet_NaN()), m));
+					}
+					wbv1[i].set_value((mass - u.get_offset()) / u.get_factor());
+					if (loosefuel <= 0)
+						break;
+					graph.push_back(graphpt_t(massarm_t(mmass, mmass > 0 ? mmoment / mmass : std::numeric_limits<double>::quiet_NaN()), m));
+				}
+			}
+			graph.push_back(graphpt_t(massarm_t(mmass, mmass > 0 ? mmoment / mmass : std::numeric_limits<double>::quiet_NaN()), 8 | m));
+			if (m != mass_zf) {
+				moments[m] = mmoment;
+				masses[m] = mmass;
+			}
+		}
+	}
+	static const maxmass_t masslimits[] = {
+		maxmass_zf,   // mass_zf
+		maxmass_ldg,  // mass_althld
+		maxmass_ldg,  // mass_alt
+		maxmass_ldg,  // mass_ldg
+		maxmass_to,   // mass_to
+		maxmass_ramp  // mass_ramp
+	};
+	static const char * const massnames[] = {
+		"Zero Fuel",  // mass_zf
+		"Hold",       // mass_althld
+		"Alternate",  // mass_alt
+		"Landing",    // mass_ldg
+		"Take Off",   // mass_to
+		"Ramp"        // mass_ramp
+	};
+	os << "    masses = {" << std::endl;
+	for (mass_t m(mass_zf); m <= mass_ramp; m = (mass_t)(m + 1)) {
+		if (m != mass_zf)
+			os << ',' << std::endl;
+		double mass(masses[m]);
+		double moment(moments[m]);
+		double arm(moment / mass);
+		double masslim(maxmasses[masslimits[m]]);
+		os << "      { name = " << to_luastring((std::string)massnames[m]);
+		if (!std::isnan(mass))
+			os << ", mass = " << mass;
+		if (!std::isnan(moment))
+			os << ", moment = " << moment;
+		if (!std::isnan(arm))
+			os << ", arm = " << arm;
+		if (!std::isnan(masslim))
+			os << ", masslim = " << masslim;
+		bool overmass(!std::isnan(masslim) && mass > masslim * 1.000001);
+		bool outsideenv(!!wb.get_nrenvelopes());
+		for (unsigned int j = 0; j < wb.get_nrenvelopes(); ++j) {
+			const WeightBalance::Envelope& env(wb.get_envelope(j));
+			if (!env.is_inside(WeightBalance::Envelope::Point(arm, mass)))
+				continue;
+			outsideenv = false;
+			break;
+		}
+		os << ", overmass = " << to_luastring(overmass)
+		   << ", outsideenv = " << to_luastring(outsideenv)
+		   << " }";
+	}
+	os << " }," << std::endl;
+	// FIXME
+	if (false && consumables.size()) {
+		for (unsigned int ci = 1, cn = std::min((unsigned int)consumables.size(), 4U), cm = 1 << cn; ci < cm; ++ci) {
+			double masscorr(0), momentcorr(0);
+			for (unsigned int i = 0; i < wb.get_nrelements(); ++i) {
+				const WeightBalance::Element& wel(wb.get_element(i));
+				if (i < wbv.size()) {
+					std::ostringstream oss;
+					oss << std::fixed << std::setprecision(1) << wbv[i].get_value();
+					os << "  % station " << i << " unit " << wbv[i].get_unit() << " value " << oss.str() << "\n";
+				}
+				os << "  ";
+				if (i & 1)
+					os << "\\rowcolor[gray]{0.9}";
+				os << (std::string)METARTAFChart::latex_string_meta(wel.get_name()) << " & ";
+				double mass(0);
+				if (wel.get_flags() & WeightBalance::Element::flag_fixed) {
+					if (i < wbv.size() && wbv[i].get_unit() < wel.get_nrunits()) {
+						const WeightBalance::Element::Unit& u(wel.get_unit(wbv[i].get_unit()));
+						mass = std::min(std::max(wbv[i].get_value() * u.get_factor() + u.get_offset(), wel.get_massmin()), wel.get_massmax());
+					} else {
+						mass = wel.get_massmin();
+					}
+					os << " & ";
+				} else {
+					if (i < wbv.size()) {
+						if (wel.get_flags() & WeightBalance::Element::flag_binary)
+							wbv[i].set_value(0);
+						double value(wbv[i].get_value());
+						if (wbv[i].get_unit() < wel.get_nrunits()) {
+							const WeightBalance::Element::Unit& u(wel.get_unit(wbv[i].get_unit()));
+							mass = value * u.get_factor() + u.get_offset();
+							if (ci & (1 << consumableindex[i])) {
+								mass += consumables[consumableindex[i]].back().first;
+								if (u.get_factor() > 0)
+									value = (mass - u.get_offset()) / u.get_factor();
+								else
+									value = 0;
+							}
+						}
+						std::ostringstream oss;
+						oss << std::fixed << std::setprecision(1) << value;
+						os << oss.str();
+					}
+					os << " & ";
+				}
+				{
+					std::string unit;
+					if (i < wbv.size() && wbv[i].get_unit() < wel.get_nrunits())
+						unit = wel.get_unit(wbv[i].get_unit()).get_name();
+					else if (wel.get_nrunits())
+						unit = wel.get_unit(0).get_name();
+					os << unit;
+				}
+				os << " & ";
+				{
+					std::ostringstream oss;
+					oss << std::fixed << std::setprecision(2) << wel.get_arm(mass);
+					os << oss.str();
+				}
+				os << " & ";
+				{
+					std::ostringstream oss;
+					oss << std::fixed << std::setprecision(1) << mass;
+					if (mass < wel.get_massmin() || mass > wel.get_massmax())
+						os << "{\\bf " << oss.str() << '}';
+					else
+						os << oss.str();
+				}
+				os << " & ";
+				{
+					std::ostringstream oss;
+					oss << std::fixed << std::setprecision(1) << wel.get_massmin();
+					os << oss.str();
+				}
+				os << " & ";
+				{
+					std::ostringstream oss;
+					oss << std::fixed << std::setprecision(1) << wel.get_massmax();
+					os << oss.str();
+				}
+				os << " & ";
+				{
+					std::ostringstream oss;
+					oss << std::fixed << std::setprecision(1) << wel.get_moment(mass);
+					os << oss.str();
+				}
+				os << " \\\\\n  \\hline\n";
+				if (ci & (1 << consumableindex[i])) {
+					const massarm_t& ma(consumables[consumableindex[i]].back());
+					masscorr += ma.first;
+					momentcorr += ma.second;
+				}
+        		}
+			os << "  \\hline\n";
+			unsigned int i(wb.get_nrelements());
+			for (mass_t m(mass_zf); m <= mass_ramp; m = (mass_t)(m + 1)) {
+				os << "  ";
+				double mass(masses[m] + masscorr);
+				double moment(moments[m] + momentcorr);
+				double arm(moment / mass);
+				double masslim(maxmasses[masslimits[m]]);
+				bool overmass(!std::isnan(masslim) && mass > masslim * 1.000001);
+				bool outsideenv(!!wb.get_nrenvelopes());
+				for (unsigned int j = 0; j < wb.get_nrenvelopes(); ++j) {
+					const WeightBalance::Envelope& env(wb.get_envelope(j));
+					if (!env.is_inside(WeightBalance::Envelope::Point(arm, mass)))
+						continue;
+					outsideenv = false;
+					break;
+				}
+				if (overmass || outsideenv)
+					os << "\\rowcolor[rgb]{1.0,0.5,0.5}";
+				else if (i & 1)
+					os << "\\rowcolor[gray]{0.9}";
+				os << massnames[m] << " & & & ";
+				if (!std::isnan(arm)) {
+					std::ostringstream oss;
+					oss << std::fixed << std::setprecision(2) << arm;
+					if (outsideenv)
+						os << "{\\bf " << oss.str() << '}';
+					else
+						os << oss.str();
+				}
+				os << " & ";
+				if (!std::isnan(mass)) {
+					std::ostringstream oss;
+					oss << std::fixed << std::setprecision(1) << mass;
+					if (overmass || outsideenv)
+						os << "{\\bf " << oss.str() << '}';
+					else
+						os << oss.str();
+				}
+				os << " & & ";
+				if (!std::isnan(masslim)) {
+					std::ostringstream oss;
+					oss << std::fixed << std::setprecision(1) << masslim;
+					if (overmass)
+						os << "{\\bf " << oss.str() << '}';
+					else
+						os << oss.str();
+				}
+				os << " & ";
+				if (!std::isnan(moment)) {
+					std::ostringstream oss;
+					oss << std::fixed << std::setprecision(1) << moment;
+					if (outsideenv)
+						os << "{\\bf " << oss.str() << '}';
+					else
+						os << oss.str();
+				}
+				os << "\\\\\n  \\hline\n";
+				++i;
+			}
+		}
+	}
+	// Mass&Balance Graph
+	os << "    graphs = {";
+	{
+		bool subseq(false);
+		for (unsigned int ci = 0, cn = std::min((unsigned int)consumables.size(), 4U), cm = 1 << cn; ci < cm; ++ci) {
+			double masscorr(0), momentcorr(0);
+			for (unsigned int cj = 0; cj < cn; ++cj) {
+				if (ci & (1U << cj)) {
+					const massarm_t& ma(consumables[cj].back());
+					masscorr += ma.first;
+					momentcorr += ma.second;
+				}
+			}
+			if (subseq)
+				os << ',';
+			os << std::endl << "      {";
+			subseq = false;
+			for (graph_t::size_type i(0), n(graph.size()); i < n; ++i) {
+				if (std::isnan(graph[i].first.first) ||
+				    std::isnan(graph[i].first.second))
+					break;
+				double arm(graph[i].first.second), mass(graph[i].first.first);
+				if (ci) {
+					double moment(arm * mass);
+					mass += masscorr;
+					moment += momentcorr;
+					arm = moment / mass;
+				}
+				if (subseq)
+					os << ',';
+				os << " { " << mass << ", " << arm << ", " << (int)(graph[i].second & 7) << ", " << (!!(graph[i].second & 8)) << ", {";
+				if (!consumables.empty()) {
+					subseq = false;
+					unsigned int cn = std::min((unsigned int)consumables.size(), 4U);
+					for (unsigned int ci = 0; ci < cn; ++ci) {
+						const massmoments_t& mm(consumables[ci]);
+						if (mm.size() < 2)
+							continue;
+						for (unsigned int mi(0), mn(mm.size()); mi < mn; ++mi) {
+							double mass1(mass + mm[mi].first), moment1(mass * arm + mm[mi].second);
+							double arm1(moment1 / mass1);
+							if (subseq)
+								os << ',';
+							subseq = true;
+							os << " { " << mass1 << ", " << arm1 << " }";
+						}
+					}
+				}
+				os << " } }";
+				subseq = true;
+			}
+			os << " }";
+			subseq = true;
+		}
+	}
+	os << " } }" << std::endl;
+	// fuel planning
+	os << "  fuelplan = {";
+	if (fc.get_taxitime() > 0)
+		os << std::endl << "    taxitime = " << fc.get_taxitime() << ',';
+	if (!std::isnan(get_taxifuel()))
+		os << std::endl << "    taxifuelbase = " << convert_fuel(get_fuelunit(), fuelunit, get_taxifuel()) << ',';
+	if (!std::isnan(fc.get_taxifuelflow()))
+		os << std::endl << "    taxifuelflow = " << convert_fuel(get_fuelunit(), fuelunit, fc.get_taxifuelflow()) << ',';
+	if (!std::isnan(fc.get_taxifuel()))
+		os << std::endl << "    taxifuel = " << convert_fuel(get_fuelunit(), fuelunit, fc.get_taxifuel()) << ',';
+	if (!std::isnan(fc.get_tripfuel()))
+		os << std::endl << "    tripfuel = " << convert_fuel(get_fuelunit(), fuelunit, fc.get_tripfuel()) << ',';
+	if (!std::isnan(fc.get_contfuel())) {
+		os << std::endl << "    contingencyfuel = " << convert_fuel(get_fuelunit(), fuelunit, fc.get_contfuel()) << ',';
+		if (!std::isnan(fc.get_contfuelflow()) && fc.get_contfuelflow() > 0 && fc.get_contfuel() > 0)
+			os << std::endl << "    contingencytime = " << Point::round<double,int>(fc.get_contfuel() / fc.get_contfuelflow() * 3600.0) << ',';
+	}
+	if (!std::isnan(fc.get_contfuelpercent()))
+		os << std::endl << "    contingencypercent = " << convert_fuel(get_fuelunit(), fuelunit, fc.get_contfuelpercent()) << ',';
+	if (!std::isnan(fc.get_contfuelflow()))
+		os << std::endl << "    contingencyfuelflow = " << convert_fuel(get_fuelunit(), fuelunit, fc.get_contfuelflow()) << ',';
+	if (!noaltn && altnidx < altn.size()) {
+		const FPlanAlternate& a(altn[altnidx]);
+		os << std::endl << "    alternateindex = " << (altnidx + 1) << ','
+		   << std::endl << "    alternateident = " << to_luastring(a.get_ident()) << ',';
+	}
+	if (fc.is_altnalt_valid())
+		os << std::endl << "    alternatecruisealt = " << fc.get_altnalt() << ',';
+	if (!std::isnan(fc.get_altnfuel()))
+		os << std::endl << "    alternatefuel = " << convert_fuel(get_fuelunit(), fuelunit, fc.get_altnfuel()) << ',';
+	if (fc.is_holdalt_valid())
+		os << std::endl << "    finalreservealt = " << fc.get_holdalt() << ',';
+	if (!std::isnan(fc.get_holdfuelflow()))
+		os << std::endl << "    finalreservefuelflow = " << convert_fuel(get_fuelunit(), fuelunit, fc.get_holdfuelflow()) << ',';
+	os << std::endl << "    finalreservetime = " << fc.get_holdtime() << ',';
+	if (!std::isnan(fc.get_holdfuel()))
+		os << std::endl << "    finalreservefuel = " << convert_fuel(get_fuelunit(), fuelunit, fc.get_holdfuel()) << ',';
+	if (!std::isnan(fc.get_reqdfuel()))
+		os << std::endl << "    requiredfuel = " << convert_fuel(get_fuelunit(), fuelunit, fc.get_reqdfuel()) << ',';
+	{
+		double loadedfuel(0);
+		for (WeightBalance::elementvalues_t::size_type i(wbv.size()); i > 0; ) {
+			--i;
+			const WeightBalance::Element& wel(wb.get_element(i));
+			if (!(wel.get_flags() & WeightBalance::Element::flag_fuel))
+				continue;
+			if (wbv[i].get_unit() >= wel.get_nrunits())
+				continue;
+			const WeightBalance::Element::Unit& u(wel.get_unit(wbv[i].get_unit()));
+			double mass(wbv[i].get_value() * u.get_factor() + u.get_offset());
+			if (mass < wel.get_massmin())
+				continue;
+			loadedfuel += convert(wb.get_massunit(), get_fuelunit(), mass - wel.get_massmin(), wel.get_flags());
+		}
+		os << std::endl << "    blockfuel = " << convert_fuel(get_fuelunit(), fuelunit, loadedfuel);
+	}
+	if (!noaltn && !altn.empty()) {
+		for (std::vector<FPlanAlternate>::const_iterator ai(altn.begin()), ae(altn.end()); ai != ae; ++ai) {
+			if (ai->get_coord().is_invalid())
+				continue;
+			os << ',' << std::endl << "    { ";
+			time_t deptime(0);
+			time_t t(ai->get_flighttime());
+			double f(ai->get_fuel_usg());
+			if (fplan.get_nrwpt() >= 2) {
+				t -= fplan[fplan.get_nrwpt()-1].get_flighttime();
+				f -= fplan[fplan.get_nrwpt()-1].get_fuel_usg();
+				deptime = fplan[fplan.get_nrwpt() - 1].get_time_unix();
+			}
+			if (t < 0)
+				t = 0;
+			if (f < 0)
+				f = 0;
+			write_lua_alternate(os, "      ", fuelunit, *ai, deptime, f,
+					    std::numeric_limits<double>::quiet_NaN(), ai->get_dist_nmi(), std::numeric_limits<double>::quiet_NaN());
+			os << std::endl << "      alternatetime = " << t
+			   << ',' << std::endl << "      alternatefuel = " << convert_fuel(get_fuelunit(), fuelunit, f);
+			if (ai->get_holdtime() > 0)
+				os << ',' << std::endl << "      holdfuelflow = "
+				   << convert_fuel(get_fuelunit(), fuelunit, ai->get_holdfuel_usg() / ai->get_holdtime() * 3600);
+			os << " }";
+		}
+	}
+	os << " }";
+	if (tomass)
+		*tomass = masses[mass_to];
+	return os << std::endl;
 }
 
 std::ostream& Aircraft::distances_latex(std::ostream& os, double tomass,
@@ -5688,7 +6301,8 @@ std::ostream& Aircraft::distances_latex(std::ostream& os, double tomass,
 	return os;
 }
 
-std::ostream& Aircraft::climbdescent_latex(const ClimbDescent& cd, bool rev, std::ostream& os, double xmass, double isaoffs, double qnh, unit_t fuelunit, const FPlanWaypoint& wpt) const
+std::ostream& Aircraft::climbdescent_latex(const ClimbDescent& cd, cdltxmode_t cdltxmode, std::ostream& os, double xmass, double isaoffs, double qnh,
+					   unit_t fuelunit, const FPlanWaypoint& wpt) const
 {
 	if (!((1 << fuelunit) & (unitmask_mass | unitmask_volume))) {
 		fuelunit = get_fuelunit();
@@ -5701,7 +6315,10 @@ std::ostream& Aircraft::climbdescent_latex(const ClimbDescent& cd, bool rev, std
 	double dgnd(cd.time_to_distance(tgnd));
 	double fgnd(cd.time_to_fuel(tgnd));
 	if (false)
-		std::cerr << (rev ? "Descent" : "Climb") << ": ground: pa " << pagnd << " a " << agnd << " t " << tgnd << " d " << dgnd << " f " << fgnd
+		std::cerr << (cdltxmode == cdltxmode_climb ? "Climb" :
+			      cdltxmode == cdltxmode_descent ? "Descent" :
+			      cdltxmode == cdltxmode_glide ? "Glide" : "??")
+			  << ": ground: pa " << pagnd << " a " << agnd << " t " << tgnd << " d " << dgnd << " f " << fgnd
 			  << " qff " << wpt.get_qff_hpa() << " tempoffs " << wpt.get_isaoffset_kelvin() << std::endl;
 	if (false)
 		cd.print(std::cerr << "climbdescent:", "  ");
@@ -5722,7 +6339,10 @@ std::ostream& Aircraft::climbdescent_latex(const ClimbDescent& cd, bool rev, std
                 double tas(cd.time_to_tas(t));
                 double ff(cd.time_to_fuelflow(t));
 		if (false)
-			std::cerr << (rev ? "Descent" : "Climb") << ": alt " << alt << " pa " << pa << " t " << t << " d " << d << " f " << f
+			std::cerr << (cdltxmode == cdltxmode_climb ? "Climb" :
+				      cdltxmode == cdltxmode_descent ? "Descent" :
+				      cdltxmode == cdltxmode_glide ? "Glide" : "??")
+				  << ": alt " << alt << " pa " << pa << " t " << t << " d " << d << " f " << f
 				  << " cr " << cr << " tas " << tas << " ff " << ff << std::endl;
 		t -= tgnd;
 		d -= dgnd;
@@ -5731,18 +6351,25 @@ std::ostream& Aircraft::climbdescent_latex(const ClimbDescent& cd, bool rev, std
 			continue;
 		double cgrad((100 * Point::ft_to_m_dbl * 1e-3 * Point::km_to_nmi_dbl) * (alt - agnd) / d);
 		if (mode < 0) {
-			os << "\\subsection{" << (rev ? "Descent" : "Climb") << "}\n\n"
+			os << "\\subsection{" << (cdltxmode == cdltxmode_climb ? "Climb" :
+						  cdltxmode == cdltxmode_descent ? "Descent" :
+						  cdltxmode == cdltxmode_glide ? "Glide" : "??") << "}\n\n"
 			   << "\\noindent{}DA " << Glib::ustring::format(std::fixed, std::setprecision(0), wpt.get_density_altitude())
 			   << "ft, QFF " << Glib::ustring::format(std::fixed, std::setprecision(1), wpt.get_qff_hpa())
 			   << "hPa, ISA" << Glib::ustring::format(std::fixed, std::setprecision(0), std::showpos, wpt.get_isaoffset_kelvin())
-			   << "$^\\circ$C, " << (rev ? "Ldg" : "TO") << " Mass " << Glib::ustring::format(std::fixed, std::setprecision(0), xmass)
+			   << "$^\\circ$C, " << (cdltxmode == cdltxmode_climb ? "TO " :
+						 cdltxmode == cdltxmode_descent ? "Ldg " : "")
+			   << "Mass " << Glib::ustring::format(std::fixed, std::setprecision(0), xmass)
 			   << get_wb().get_massunitname();
 			if (get_wb().get_massunit() != unit_kg)
 				os << " (" << Glib::ustring::format(std::fixed, std::setprecision(0), convert(get_wb().get_massunit(), unit_kg, xmass)) << "kg)";
-			os << "\n\n\\noindent\\begin{longtable}{|r|r|r|r|r|r|r|r|r|r|}\n"
+			os << "\n\n\\noindent\\begin{longtable}{|r|r|r|r|r|r|" << (cdltxmode != cdltxmode_glide ? "r|r|" : "") << "r|r|}\n"
 			   << "  \\hline\n"
-			   << "  \\rowcolor[gray]{0.8}True Alt & PA & DA & Rate & Track & Time & Fuel & FF & TAS & Gradient \\\\\n"
-			   << "  \\rowcolor[gray]{0.8}ft & FL & ft & ft/min & nmi & & " << to_str(fuelunit) << " & " << to_str(fuelunit) << "/h & kts & \\% \\endhead\n"
+			   << "  \\rowcolor[gray]{0.8}True Alt & PA & DA & Rate & Track & Time & " << (cdltxmode != cdltxmode_glide ? "Fuel & FF & " : "") << "TAS & Gradient \\\\\n"
+			   << "  \\rowcolor[gray]{0.8}ft & FL & ft & ft/min & nmi & & ";
+			if (cdltxmode != cdltxmode_glide)
+				os << to_str(fuelunit) << " & " << to_str(fuelunit) << "/h & ";
+			os << "kts & \\% \\endhead\n"
 			   << "  \\hline\n";
 			mode = 0;
 		}
@@ -5788,19 +6415,21 @@ std::ostream& Aircraft::climbdescent_latex(const ClimbDescent& cd, bool rev, std
 			oss << std::setw(2) << std::setfill('0') << (tm / 60) << ':' << std::setw(2) << std::setfill('0') << (tm % 60);
 			os << oss.str();
 		}
-		os << " & ";
-		{
-			unsigned int prec(fuelunit == unit_usgal);
-			std::ostringstream oss;
-			oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, f);
-			os << oss.str();
-		}
-		os << " & ";
-		{
-			unsigned int prec(fuelunit == unit_usgal);
-			std::ostringstream oss;
-			oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, ff);
-			os << oss.str();
+		if (cdltxmode != cdltxmode_glide) {
+			os << " & ";
+			{
+				unsigned int prec(fuelunit == unit_usgal);
+				std::ostringstream oss;
+				oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, f);
+				os << oss.str();
+			}
+			os << " & ";
+			{
+				unsigned int prec(fuelunit == unit_usgal);
+				std::ostringstream oss;
+				oss << std::fixed << std::setprecision(prec) << convert_fuel(get_fuelunit(), fuelunit, ff);
+				os << oss.str();
+			}
 		}
 		os << " & ";
 		{
@@ -5819,7 +6448,9 @@ std::ostream& Aircraft::climbdescent_latex(const ClimbDescent& cd, bool rev, std
 	if (mode >= 0)
 		os << "\\end{longtable}\n\n";
 	else
-		os << "\\subsection{" << (rev ? "Descent" : "Climb") << "}\n\n";
+		os << "\\subsection{" << (cdltxmode == cdltxmode_climb ? "Climb" :
+					  cdltxmode == cdltxmode_descent ? "Descent" :
+					  cdltxmode == cdltxmode_glide ? "Glide" : "??") << "}\n\n";
 	// climb performance graph
 	const int xdiv = 10;
 	const int ydiv = 8;
@@ -5871,16 +6502,20 @@ std::ostream& Aircraft::climbdescent_latex(const ClimbDescent& cd, bool rev, std
 				}
 			}
 		}
-		double maxfuel(cd.time_to_fuel(t));
-		fuelscale = pow(10, std::floor(log10(maxfuel / xdiv)));
-		if (fuelscale * xdiv < maxfuel) {
-			fuelscale *= 2;
+		if (cdltxmode == cdltxmode_glide) {
+			fuelscale = std::numeric_limits<double>::quiet_NaN();
+		} else {
+			double maxfuel(cd.time_to_fuel(t));
+			fuelscale = pow(10, std::floor(log10(maxfuel / xdiv)));
 			if (fuelscale * xdiv < maxfuel) {
 				fuelscale *= 2;
 				if (fuelscale * xdiv < maxfuel) {
+					fuelscale *= 2;
+					if (fuelscale * xdiv < maxfuel) {
 					fuelscale *= 1.25;
 					if (fuelscale * xdiv < maxfuel)
 						fuelscale *= 2;
+					}
 				}
 			}
 		}
@@ -5888,7 +6523,7 @@ std::ostream& Aircraft::climbdescent_latex(const ClimbDescent& cd, bool rev, std
 		{
 			AirData<float> ad;
 			ad.set_qnh_temp(); // standard atmosphere
-			for (double t1 = 0, tinc = t * 0.01; t1 <= t; t1 += tinc) {
+			for (double t1 = 0, tinc = t * 0.01; t1 <= t; ) {
 				ad.set_pressure_altitude(cd.time_to_altitude(t1));
 				ad.set_tas(cd.time_to_tas(t1));
 				double cas(ad.get_cas());
@@ -5899,6 +6534,10 @@ std::ostream& Aircraft::climbdescent_latex(const ClimbDescent& cd, bool rev, std
 					continue;
 				mincas = std::min(mincas, cas);
 				maxcas = std::max(maxcas, cas);
+				double t2(t1 + tinc);
+				if (t2 <= t1)
+					break;
+				t1 = t2;
 			}
 		}
 		double casdiff(std::max(maxcas - mincas, 10.));
@@ -5927,6 +6566,8 @@ std::ostream& Aircraft::climbdescent_latex(const ClimbDescent& cd, bool rev, std
 	}
 	if (std::isnan(distscale) && std::isnan(timescale) && std::isnan(fuelscale) && (std::isnan(casscale) || std::isnan(casmin)))
 		return os;
+	if (ymax <= 0)
+		return os;
 	os << "\n\\begin{center}\\begin{tikzpicture}[scale=1.5]\n";
 	if (false)
 		os << "  \\path[clip] (0,0) rectangle (" << xdiv << ',' << ymax << ");\n";
@@ -5953,10 +6594,10 @@ std::ostream& Aircraft::climbdescent_latex(const ClimbDescent& cd, bool rev, std
 			    << "}\\\\";
 		if (!std::isnan(casscale) && !std::isnan(casmin))
 			oss << "\\textcolor{green}{"
-			    << std::fixed << std::setprecision(0) << (rev ? ((xdiv - x) * casscale + casmin) : (x * casscale + casmin))
+			    << std::fixed << std::setprecision(0) << (cdltxmode == cdltxmode_climb ? (x * casscale + casmin) : ((xdiv - x) * casscale + casmin))
 			    << "}";
 		oss << "\\end{tabular}";
-		int xx(rev ? (xdiv - x) : x);
+		int xx(cdltxmode == cdltxmode_climb ? x : (xdiv - x));
 		os << "  \\path[draw] " << METARTAFChart::pgfcoord(xx, 0.1) << " -- " << METARTAFChart::pgfcoord(xx, -0.1)
 		   << " node[anchor=north] {" << oss.str() << "};\n";
 	}
@@ -5982,7 +6623,7 @@ std::ostream& Aircraft::climbdescent_latex(const ClimbDescent& cd, bool rev, std
 		std::string pdist, ptime, pfuel, pcas;
 		AirData<float> ad;
 		ad.set_qnh_temp(); // standard atmosphere
-		bool ndist(false), ntime(false), nfuel(false), ncas(false);
+		bool ndist(false), ntime(false), nfuel(cdltxmode == cdltxmode_glide), ncas(false);
 		for (double t(0), tinc(cd.get_climbtime() * 0.01), tmax(cd.get_climbtime()); t <= tmax; t += tinc) {
 			double alt(cd.time_to_altitude(t) / altscale);
 			double dist(cd.time_to_distance(t) / distscale);
@@ -5995,7 +6636,7 @@ std::ostream& Aircraft::climbdescent_latex(const ClimbDescent& cd, bool rev, std
 				std::cerr << "climbdescent: t " << t << " alt " << cd.time_to_altitude(t)
 					  << " tas " << cd.time_to_tas(t) << " cas " << ad.get_cas()
 					  << " scaled " << cas << std::endl;
-			if (rev) {
+			if (cdltxmode != cdltxmode_climb) {
 				dist = xdiv - dist;
 				tim = xdiv - tim;
 				fuel = xdiv - fuel;
@@ -6032,19 +6673,29 @@ std::ostream& Aircraft::climb_latex(std::ostream& os, double tomass, double isao
 		get_climb().print(std::cerr << "Climb" << std::endl, "  ");
 	if (false)
 		climb.print(std::cerr << "Climb Profile for mass " << tomass << " isaoffs " << isaoffs << " qnh " << qnh << std::endl, "  ");
-	return climbdescent_latex(climb, false, os, tomass, isaoffs, qnh, fuelunit, wpt);
+	return climbdescent_latex(climb, cdltxmode_climb, os, tomass, isaoffs, qnh, fuelunit, wpt);
 }
 
 std::ostream& Aircraft::descent_latex(std::ostream& os, double dmass, double isaoffs, double qnh, unit_t fuelunit, const FPlanWaypoint& wpt) const
 {
 	if (false)
-	dmass = get_mtom();
+		dmass = get_mtom();
 	ClimbDescent descent(calculate_descent("", dmass, isaoffs, qnh));
 	if (false)
 		get_descent().print(std::cerr << "Descent" << std::endl, "  ");
 	if (false)
 		descent.print(std::cerr << "Descent Profile for mass " << dmass << " isaoffs " << isaoffs << " qnh " << qnh << std::endl, "  ");
-	return climbdescent_latex(descent, true, os, dmass, isaoffs, qnh, fuelunit, wpt);
+	return climbdescent_latex(descent, cdltxmode_descent, os, dmass, isaoffs, qnh, fuelunit, wpt);
+}
+
+std::ostream& Aircraft::glide_latex(std::ostream& os, double dmass, double isaoffs, double qnh, unit_t fuelunit, const FPlanWaypoint& wpt) const
+{
+	if (false)
+		dmass = get_mtom();
+	ClimbDescent glide(calculate_glide("", dmass, isaoffs, qnh));
+	if (false)
+		glide.print(std::cerr << "Glide Profile for mass " << dmass << " isaoffs " << isaoffs << " qnh " << qnh << std::endl, "  ");
+	return climbdescent_latex(glide, cdltxmode_glide, os, dmass, isaoffs, qnh, fuelunit, wpt);
 }
 
 void Aircraft::compute_masses(double *rampmass, double *tomass, double *tofuel, double fuel_on_board, time_t taxitime,
@@ -6118,6 +6769,8 @@ void Aircraft::compute_masses(double *rampmass, double *tomass, double *tofuel, 
 	}
 	if (rampmass)
 		*rampmass = totmass;
+	if (false)
+		std::cerr << "TO fuel mass before taxi: " << tofuelmass << " taxitime: " << taxitime << std::endl;
 	{
 		double tfmass(convert_fuel(get_fuelunit(), wb.get_massunit(), get_taxifuel()));
 		if (!std::isnan(tfmass) && tfmass > 0) {
@@ -6132,6 +6785,8 @@ void Aircraft::compute_masses(double *rampmass, double *tomass, double *tofuel, 
 			tofuelmass -= tfmass;
 		}
 	}
+	if (false)
+		std::cerr << "TO fuel mass after taxi: " << tofuelmass << std::endl;
 	if (totmass < 0)
 		totmass = 0;
 	if (tomass)

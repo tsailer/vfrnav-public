@@ -47,7 +47,10 @@ protected:
 private:
 	Glib::ustring m_outputdir;
 	bool m_trace;
-	bool m_pgsql;
+#ifdef HAVE_PQXX
+	typedef std::unique_ptr<pqxx::connection> pgconn_t;
+	pgconn_t m_pgconn;
+#endif
 	bool m_nomodify;
 	std::unique_ptr<AirportsDbQueryInterface> m_airportsdb;
 	std::unique_ptr<AirspacesDbQueryInterface> m_airspacesdb;
@@ -65,8 +68,18 @@ private:
 };
 
 DbFix::DbFix(const Glib::ustring & output_dir, bool pgsql, bool trace, bool nomodify)
-	: m_outputdir(output_dir), m_trace(trace), m_pgsql(pgsql), m_nomodify(nomodify)
+	: m_outputdir(output_dir), m_trace(trace), m_nomodify(nomodify)
 {
+#ifdef HAVE_PQXX
+	if (pgsql) {
+		m_pgconn = pgconn_t(new pqxx::connection(m_outputdir));
+		if (m_pgconn->get_variable("application_name").empty())
+			m_pgconn->set_variable("application_name", "vfrnavfixdb");
+	}
+#else
+	if (pgsql)
+		throw std::runtime_error("postgres support not compiled in");
+#endif
 }
 
 DbFix::~DbFix()
@@ -116,8 +129,8 @@ void DbFix::open_airports_db(void)
 	if (m_airportsdb)
 		return;
 #ifdef HAVE_PQXX
-	if (m_pgsql)
-		m_airportsdb.reset(new AirportsPGDb(m_outputdir));
+	if (m_pgconn)
+		m_airportsdb.reset(new AirportsPGDb(*m_pgconn));
 	else
 #endif
 		m_airportsdb.reset(new AirportsDb(m_outputdir));
@@ -130,8 +143,8 @@ void DbFix::open_airspaces_db(void)
 	if (m_airspacesdb)
 		return;
 #ifdef HAVE_PQXX
-	if (m_pgsql)
-		m_airspacesdb.reset(new AirspacesPGDb(m_outputdir));
+	if (m_pgconn)
+		m_airspacesdb.reset(new AirspacesPGDb(*m_pgconn));
 	else
 #endif
 		m_airspacesdb.reset(new AirspacesDb(m_outputdir));
@@ -144,8 +157,8 @@ void DbFix::open_navaids_db(void)
 	if (m_navaidsdb)
 		return;
 #ifdef HAVE_PQXX
-	if (m_pgsql)
-		m_navaidsdb.reset(new NavaidsPGDb(m_outputdir));
+	if (m_pgconn)
+		m_navaidsdb.reset(new NavaidsPGDb(*m_pgconn));
 	else
 #endif
 		m_navaidsdb.reset(new NavaidsDb(m_outputdir));
@@ -158,8 +171,8 @@ void DbFix::open_waypoints_db(void)
 	if (m_waypointsdb)
 		return;
 #ifdef HAVE_PQXX
-	if (m_pgsql)
-		m_waypointsdb.reset(new WaypointsPGDb(m_outputdir));
+	if (m_pgconn)
+		m_waypointsdb.reset(new WaypointsPGDb(*m_pgconn));
 	else
 #endif
 		m_waypointsdb.reset(new WaypointsDb(m_outputdir));
@@ -172,8 +185,8 @@ void DbFix::open_airways_db(void)
 	if (m_airwaysdb)
 		return;
 #ifdef HAVE_PQXX
-	if (m_pgsql)
-		m_airwaysdb.reset(new AirwaysPGDb(m_outputdir));
+	if (m_pgconn)
+		m_airwaysdb.reset(new AirwaysPGDb(*m_pgconn));
 	else
 #endif
 		m_airwaysdb.reset(new AirwaysDb(m_outputdir));
@@ -186,8 +199,8 @@ void DbFix::open_tracks_db(void)
 	if (m_tracksdb)
 		return;
 #ifdef HAVE_PQXX
-       	if (m_pgsql)
-		m_tracksdb.reset(new TracksPGDb(m_outputdir));
+       	if (m_pgconn)
+		m_tracksdb.reset(new TracksPGDb(*m_pgconn));
 	else
 #endif
 		m_tracksdb.reset(new TracksDb(m_outputdir));
@@ -376,7 +389,9 @@ int main(int argc, char *argv[])
 	} mode_t;
 	static struct option long_options[] = {
 		{ "dir", required_argument, 0, 'd' },
+#ifdef HAVE_PQXX
 		{ "pgsql", required_argument, 0, 'p' },
+#endif
 		{ "trace", no_argument, 0, 't' },
 		{ "nomodify", no_argument, 0, 'n' },
 		{ "tile", no_argument, 0, 0x400 + mode_tile },
@@ -397,12 +412,14 @@ int main(int argc, char *argv[])
 			}
 			break;
 
+#ifdef HAVE_PQXX
 		case 'p':
 			if (optarg) {
 				db_dir = optarg;
 				pgsql = true;
 			}
 			break;
+#endif
 
 		case 't':
 			trace = true;

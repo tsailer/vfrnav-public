@@ -143,9 +143,12 @@ AirwayEditor::AirwayEditor(const std::string & dir_main, Engine::auxdb_mode_t au
 	  m_airwayeditormapfromcoord(0), m_airwayeditormaptocoord(0), m_airwayeditormapzoomin(0), m_airwayeditormapzoomout(0), m_aboutdialog(0)
 {
 #ifdef HAVE_PQXX
-	if (auxdbmode == Engine::auxdb_postgres)
-		m_db.reset(new AirwaysPGDb(dir_main));
-	else
+	if (auxdbmode == Engine::auxdb_postgres) {
+		m_pgconn = std::unique_ptr<pqxx::connection>(new pqxx::connection(dir_main));
+		if (m_pgconn->get_variable("application_name").empty())
+			m_pgconn->set_variable("application_name", "airwayeditor");
+		m_db.reset(new AirwaysPGDb(*m_pgconn));
+	} else
 #endif
 	{
 		m_db.reset(new AirwaysDb(dir_main));

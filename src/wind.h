@@ -4,7 +4,7 @@
 // Description: Wind triangle related routines
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2012, 2013, 2014, 2015
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2012, 2013, 2014, 2015, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -15,11 +15,13 @@
 
 #include "sysdeps.h"
 
+#include <utility>
 #include <cmath>
 
 template <typename T> class Wind {
   public:
 	typedef T float_t;
+	typedef std::pair<float,float> gribwind_t;
 	static constexpr float_t to_rad = M_PI / 180.0;
 	static constexpr float_t from_rad = 180.0 / M_PI;
 
@@ -33,6 +35,8 @@ template <typename T> class Wind {
 	void set_wind(float_t winddir, float_t windspeed);
 	void set_wind(float_t winddir0, float_t windspeed0, float_t winddir1, float_t windspeed1);
 	void set_wind(float_t winddir0, float_t windspeed0, float_t winddir1, float_t windspeed1, float_t frac);
+	void set_wind_grib_mps(float_t wu, float_t wv);
+	void set_wind_grib_mps(const gribwind_t& w);
 	void set_hdg_tas(float_t hdg, float_t tas);
 	void set_crs_gs(float_t crs, float_t gs);
 	void set_crs_tas(float_t crs, float_t tas);

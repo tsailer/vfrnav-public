@@ -215,6 +215,9 @@ protected:
 	std::unique_ptr<AirspacesDbQueryInterface> m_airspacedb;
         TopoDb30 m_topodb;
 	Engine *m_engine;
+#ifdef HAVE_PQXX
+	std::unique_ptr<pqxx::lazyconnection> m_pgconn;
+#endif
 	ADR::Database m_adrdb;
 	ADR::RestrictionEval m_reval;
 	std::string m_dir_main;

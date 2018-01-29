@@ -14,9 +14,17 @@
 #ifndef OSM_H
 #define OSM_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <glibmm.h>
 #include <iostream>
 #include <cairomm/cairomm.h>
+
+#ifdef HAVE_PQXX
+#include <pqxx/connection.hxx>
+#endif
 
 #include "sysdeps.h"
 #include "geom.h"
@@ -31,28 +39,28 @@ public:
 
 	class OSMObject {
 	public:
-		OSMObject(int64_t id = 0, const std::string& access = "", 
-			  const std::string& addr_housename = "", const std::string& addr_housenumber = "", 
-			  const std::string& addr_interpolation = "", const std::string& admin_level = "", 
-			  const std::string& aerialway = "", const std::string& aeroway = "", 
-			  const std::string& amenity = "", const std::string& area = "", 
-			  const std::string& barrier = "", const std::string& bicycle = "", 
-			  const std::string& brand = "", const std::string& bridge = "", 
-			  const std::string& boundary = "", const std::string& building = "", 
+		OSMObject(int64_t id = 0, const std::string& access = "",
+			  const std::string& addr_housename = "", const std::string& addr_housenumber = "",
+			  const std::string& addr_interpolation = "", const std::string& admin_level = "",
+			  const std::string& aerialway = "", const std::string& aeroway = "",
+			  const std::string& amenity = "", const std::string& area = "",
+			  const std::string& barrier = "", const std::string& bicycle = "",
+			  const std::string& brand = "", const std::string& bridge = "",
+			  const std::string& boundary = "", const std::string& building = "",
 			  const std::string& construction = "", const std::string& covered = "",
 			  const std::string& culvert = "", const std::string& cutting = "",
 			  const std::string& denomination = "", const std::string& disused = "",
-			  const std::string& embankment = "", const std::string& foot = "", 
-			  const std::string& generator_source = "", const std::string& harbour = "", 
-			  const std::string& highway = "", const std::string& historic = "", 
-			  const std::string& horse = "", const std::string& intermittent = "", 
-			  const std::string& junction = "", const std::string& landuse = "", 
-			  const std::string& layer = "", const std::string& leisure = "", 
-			  const std::string& lock = "", const std::string& man_made = "", 
-			  const std::string& military = "", const std::string& motorcar = "", 
-			  const std::string& name = "", const std::string& natural = "", 
-			  const std::string& office = "", const std::string& oneway = "", 
-			  const std::string& oper = "", const std::string& place = "", 
+			  const std::string& embankment = "", const std::string& foot = "",
+			  const std::string& generator_source = "", const std::string& harbour = "",
+			  const std::string& highway = "", const std::string& historic = "",
+			  const std::string& horse = "", const std::string& intermittent = "",
+			  const std::string& junction = "", const std::string& landuse = "",
+			  const std::string& layer = "", const std::string& leisure = "",
+			  const std::string& lock = "", const std::string& man_made = "",
+			  const std::string& military = "", const std::string& motorcar = "",
+			  const std::string& name = "", const std::string& natural = "",
+			  const std::string& office = "", const std::string& oneway = "",
+			  const std::string& oper = "", const std::string& place = "",
 			  const std::string& population = "", const std::string& power = "",
 			  const std::string& power_source = "", const std::string& public_transport = "",
 			  const std::string& railway = "", const std::string& ref = "",
@@ -212,40 +220,40 @@ public:
 
 	class OSMPoint : public OSMObject {
 	public:
-		OSMPoint(int64_t id = 0, const std::string& access = "", 
-			 const std::string& addr_housename = "", const std::string& addr_housenumber = "", 
-			 const std::string& addr_interpolation = "", const std::string& admin_level = "", 
-			 const std::string& aerialway = "", const std::string& aeroway = "", 
-			 const std::string& amenity = "", const std::string& area = "", 
-			 const std::string& barrier = "", const std::string& bicycle = "", 
-			 const std::string& brand = "", const std::string& bridge = "", 
-			 const std::string& boundary = "", const std::string& building = "", 
-			 const std::string& capital = "", const std::string& construction = "", 
-			 const std::string& covered = "", const std::string& culvert = "", 
-			 const std::string& cutting = "", const std::string& denomination = "", 
-			 const std::string& disused = "", const std::string& ele = "", 
-			 const std::string& embankment = "", const std::string& foot = "", 
-			 const std::string& generator_source = "", const std::string& harbour = "", 
-			 const std::string& highway = "", const std::string& historic = "", 
-			 const std::string& horse = "", const std::string& intermittent = "", 
-			 const std::string& junction = "", const std::string& landuse = "", 
-			 const std::string& layer = "", const std::string& leisure = "", 
-			 const std::string& lock = "", const std::string& man_made = "", 
-			 const std::string& military = "", const std::string& motorcar = "", 
-			 const std::string& name = "", const std::string& natural = "", 
-			 const std::string& office = "", const std::string& oneway = "", 
-			 const std::string& oper = "", const std::string& place = "", 
-			 const std::string& poi = "", const std::string& population = "", 
-			 const std::string& power = "", const std::string& power_source = "", 
-			 const std::string& public_transport = "", const std::string& railway = "", 
-			 const std::string& ref = "", const std::string& religion = "", 
-			 const std::string& route = "", const std::string& service = "", 
-			 const std::string& shop = "", const std::string& sport = "", 
-			 const std::string& surface = "", const std::string& toll = "", 
-			 const std::string& tourism = "", const std::string& tower_type = "", 
-			 const std::string& tunnel = "", const std::string& water = "", 
-			 const std::string& waterway = "", const std::string& wetland = "", 
-			 const std::string& width = "", const std::string& wood = "", 
+		OSMPoint(int64_t id = 0, const std::string& access = "",
+			 const std::string& addr_housename = "", const std::string& addr_housenumber = "",
+			 const std::string& addr_interpolation = "", const std::string& admin_level = "",
+			 const std::string& aerialway = "", const std::string& aeroway = "",
+			 const std::string& amenity = "", const std::string& area = "",
+			 const std::string& barrier = "", const std::string& bicycle = "",
+			 const std::string& brand = "", const std::string& bridge = "",
+			 const std::string& boundary = "", const std::string& building = "",
+			 const std::string& capital = "", const std::string& construction = "",
+			 const std::string& covered = "", const std::string& culvert = "",
+			 const std::string& cutting = "", const std::string& denomination = "",
+			 const std::string& disused = "", const std::string& ele = "",
+			 const std::string& embankment = "", const std::string& foot = "",
+			 const std::string& generator_source = "", const std::string& harbour = "",
+			 const std::string& highway = "", const std::string& historic = "",
+			 const std::string& horse = "", const std::string& intermittent = "",
+			 const std::string& junction = "", const std::string& landuse = "",
+			 const std::string& layer = "", const std::string& leisure = "",
+			 const std::string& lock = "", const std::string& man_made = "",
+			 const std::string& military = "", const std::string& motorcar = "",
+			 const std::string& name = "", const std::string& natural = "",
+			 const std::string& office = "", const std::string& oneway = "",
+			 const std::string& oper = "", const std::string& place = "",
+			 const std::string& poi = "", const std::string& population = "",
+			 const std::string& power = "", const std::string& power_source = "",
+			 const std::string& public_transport = "", const std::string& railway = "",
+			 const std::string& ref = "", const std::string& religion = "",
+			 const std::string& route = "", const std::string& service = "",
+			 const std::string& shop = "", const std::string& sport = "",
+			 const std::string& surface = "", const std::string& toll = "",
+			 const std::string& tourism = "", const std::string& tower_type = "",
+			 const std::string& tunnel = "", const std::string& water = "",
+			 const std::string& waterway = "", const std::string& wetland = "",
+			 const std::string& width = "", const std::string& wood = "",
 			 int32_t z_order = 0, const Tags& tags = Tags(), const Point& pt = Point());
 
 		const std::string& get_capital(void) const { return m_capital; }
@@ -267,28 +275,28 @@ public:
 
 	class OSMObject2D : public OSMObject {
 	public:
-		OSMObject2D(int64_t id = 0, const std::string& access = "", 
-			    const std::string& addr_housename = "", const std::string& addr_housenumber = "", 
-			    const std::string& addr_interpolation = "", const std::string& admin_level = "", 
-			    const std::string& aerialway = "", const std::string& aeroway = "", 
-			    const std::string& amenity = "", const std::string& area = "", 
-			    const std::string& barrier = "", const std::string& bicycle = "", 
-			    const std::string& brand = "", const std::string& bridge = "", 
-			    const std::string& boundary = "", const std::string& building = "", 
+		OSMObject2D(int64_t id = 0, const std::string& access = "",
+			    const std::string& addr_housename = "", const std::string& addr_housenumber = "",
+			    const std::string& addr_interpolation = "", const std::string& admin_level = "",
+			    const std::string& aerialway = "", const std::string& aeroway = "",
+			    const std::string& amenity = "", const std::string& area = "",
+			    const std::string& barrier = "", const std::string& bicycle = "",
+			    const std::string& brand = "", const std::string& bridge = "",
+			    const std::string& boundary = "", const std::string& building = "",
 			    const std::string& construction = "", const std::string& covered = "",
 			    const std::string& culvert = "", const std::string& cutting = "",
 			    const std::string& denomination = "", const std::string& disused = "",
-			    const std::string& embankment = "", const std::string& foot = "", 
-			    const std::string& generator_source = "", const std::string& harbour = "", 
-			    const std::string& highway = "", const std::string& historic = "", 
-			    const std::string& horse = "", const std::string& intermittent = "", 
-			    const std::string& junction = "", const std::string& landuse = "", 
-			    const std::string& layer = "", const std::string& leisure = "", 
-			    const std::string& lock = "", const std::string& man_made = "", 
-			    const std::string& military = "", const std::string& motorcar = "", 
-			    const std::string& name = "", const std::string& natural = "", 
-			    const std::string& office = "", const std::string& oneway = "", 
-			    const std::string& oper = "", const std::string& place = "", 
+			    const std::string& embankment = "", const std::string& foot = "",
+			    const std::string& generator_source = "", const std::string& harbour = "",
+			    const std::string& highway = "", const std::string& historic = "",
+			    const std::string& horse = "", const std::string& intermittent = "",
+			    const std::string& junction = "", const std::string& landuse = "",
+			    const std::string& layer = "", const std::string& leisure = "",
+			    const std::string& lock = "", const std::string& man_made = "",
+			    const std::string& military = "", const std::string& motorcar = "",
+			    const std::string& name = "", const std::string& natural = "",
+			    const std::string& office = "", const std::string& oneway = "",
+			    const std::string& oper = "", const std::string& place = "",
 			    const std::string& population = "", const std::string& power = "",
 			    const std::string& power_source = "", const std::string& public_transport = "",
 			    const std::string& railway = "", const std::string& ref = "",
@@ -296,10 +304,10 @@ public:
 			    const std::string& service = "", const std::string& shop = "",
 			    const std::string& sport = "", const std::string& surface = "",
 			    const std::string& toll = "", const std::string& tourism = "",
-			    const std::string& tower_type = "", const std::string& tracktype = "", 
-			    const std::string& tunnel = "", const std::string& water = "", 
-			    const std::string& waterway = "", const std::string& wetland = "", 
-			    const std::string& width = "", const std::string& wood = "", 
+			    const std::string& tower_type = "", const std::string& tracktype = "",
+			    const std::string& tunnel = "", const std::string& water = "",
+			    const std::string& waterway = "", const std::string& wetland = "",
+			    const std::string& width = "", const std::string& wood = "",
 			    int32_t z_order = 0, double way_area = std::numeric_limits<double>::quiet_NaN(),
 			    const Tags& tags = Tags());
 
@@ -318,28 +326,28 @@ public:
 
 	class OSMLine : public OSMObject2D {
 	public:
-		OSMLine(int64_t id = 0, const std::string& access = "", 
-			const std::string& addr_housename = "", const std::string& addr_housenumber = "", 
-			const std::string& addr_interpolation = "", const std::string& admin_level = "", 
-			const std::string& aerialway = "", const std::string& aeroway = "", 
-			const std::string& amenity = "", const std::string& area = "", 
-			const std::string& barrier = "", const std::string& bicycle = "", 
-			const std::string& brand = "", const std::string& bridge = "", 
-			const std::string& boundary = "", const std::string& building = "", 
+		OSMLine(int64_t id = 0, const std::string& access = "",
+			const std::string& addr_housename = "", const std::string& addr_housenumber = "",
+			const std::string& addr_interpolation = "", const std::string& admin_level = "",
+			const std::string& aerialway = "", const std::string& aeroway = "",
+			const std::string& amenity = "", const std::string& area = "",
+			const std::string& barrier = "", const std::string& bicycle = "",
+			const std::string& brand = "", const std::string& bridge = "",
+			const std::string& boundary = "", const std::string& building = "",
 			const std::string& construction = "", const std::string& covered = "",
 			const std::string& culvert = "", const std::string& cutting = "",
 			const std::string& denomination = "", const std::string& disused = "",
-			const std::string& embankment = "", const std::string& foot = "", 
-			const std::string& generator_source = "", const std::string& harbour = "", 
-			const std::string& highway = "", const std::string& historic = "", 
-			const std::string& horse = "", const std::string& intermittent = "", 
-			const std::string& junction = "", const std::string& landuse = "", 
-			const std::string& layer = "", const std::string& leisure = "", 
-			const std::string& lock = "", const std::string& man_made = "", 
-			const std::string& military = "", const std::string& motorcar = "", 
-			const std::string& name = "", const std::string& natural = "", 
-			const std::string& office = "", const std::string& oneway = "", 
-			const std::string& oper = "", const std::string& place = "", 
+			const std::string& embankment = "", const std::string& foot = "",
+			const std::string& generator_source = "", const std::string& harbour = "",
+			const std::string& highway = "", const std::string& historic = "",
+			const std::string& horse = "", const std::string& intermittent = "",
+			const std::string& junction = "", const std::string& landuse = "",
+			const std::string& layer = "", const std::string& leisure = "",
+			const std::string& lock = "", const std::string& man_made = "",
+			const std::string& military = "", const std::string& motorcar = "",
+			const std::string& name = "", const std::string& natural = "",
+			const std::string& office = "", const std::string& oneway = "",
+			const std::string& oper = "", const std::string& place = "",
 			const std::string& population = "", const std::string& power = "",
 			const std::string& power_source = "", const std::string& public_transport = "",
 			const std::string& railway = "", const std::string& ref = "",
@@ -347,10 +355,10 @@ public:
 			const std::string& service = "", const std::string& shop = "",
 			const std::string& sport = "", const std::string& surface = "",
 			const std::string& toll = "", const std::string& tourism = "",
-			const std::string& tower_type = "", const std::string& tracktype = "", 
-			const std::string& tunnel = "", const std::string& water = "", 
-			const std::string& waterway = "", const std::string& wetland = "", 
-			const std::string& width = "", const std::string& wood = "", 
+			const std::string& tower_type = "", const std::string& tracktype = "",
+			const std::string& tunnel = "", const std::string& water = "",
+			const std::string& waterway = "", const std::string& wetland = "",
+			const std::string& width = "", const std::string& wood = "",
 			int32_t z_order = 0, double way_area = std::numeric_limits<double>::quiet_NaN(),
 			const Tags& tags = Tags(), const LineString& line = LineString());
 
@@ -363,28 +371,28 @@ public:
 
 	class OSMPolygon : public OSMObject2D {
 	public:
-		OSMPolygon(int64_t id = 0, const std::string& access = "", 
-			   const std::string& addr_housename = "", const std::string& addr_housenumber = "", 
-			   const std::string& addr_interpolation = "", const std::string& admin_level = "", 
-			   const std::string& aerialway = "", const std::string& aeroway = "", 
-			   const std::string& amenity = "", const std::string& area = "", 
-			   const std::string& barrier = "", const std::string& bicycle = "", 
-			   const std::string& brand = "", const std::string& bridge = "", 
-			   const std::string& boundary = "", const std::string& building = "", 
+		OSMPolygon(int64_t id = 0, const std::string& access = "",
+			   const std::string& addr_housename = "", const std::string& addr_housenumber = "",
+			   const std::string& addr_interpolation = "", const std::string& admin_level = "",
+			   const std::string& aerialway = "", const std::string& aeroway = "",
+			   const std::string& amenity = "", const std::string& area = "",
+			   const std::string& barrier = "", const std::string& bicycle = "",
+			   const std::string& brand = "", const std::string& bridge = "",
+			   const std::string& boundary = "", const std::string& building = "",
 			   const std::string& construction = "", const std::string& covered = "",
 			   const std::string& culvert = "", const std::string& cutting = "",
 			   const std::string& denomination = "", const std::string& disused = "",
-			   const std::string& embankment = "", const std::string& foot = "", 
-			   const std::string& generator_source = "", const std::string& harbour = "", 
-			   const std::string& highway = "", const std::string& historic = "", 
-			   const std::string& horse = "", const std::string& intermittent = "", 
-			   const std::string& junction = "", const std::string& landuse = "", 
-			   const std::string& layer = "", const std::string& leisure = "", 
-			   const std::string& lock = "", const std::string& man_made = "", 
-			   const std::string& military = "", const std::string& motorcar = "", 
-			   const std::string& name = "", const std::string& natural = "", 
-			   const std::string& office = "", const std::string& oneway = "", 
-			   const std::string& oper = "", const std::string& place = "", 
+			   const std::string& embankment = "", const std::string& foot = "",
+			   const std::string& generator_source = "", const std::string& harbour = "",
+			   const std::string& highway = "", const std::string& historic = "",
+			   const std::string& horse = "", const std::string& intermittent = "",
+			   const std::string& junction = "", const std::string& landuse = "",
+			   const std::string& layer = "", const std::string& leisure = "",
+			   const std::string& lock = "", const std::string& man_made = "",
+			   const std::string& military = "", const std::string& motorcar = "",
+			   const std::string& name = "", const std::string& natural = "",
+			   const std::string& office = "", const std::string& oneway = "",
+			   const std::string& oper = "", const std::string& place = "",
 			   const std::string& population = "", const std::string& power = "",
 			   const std::string& power_source = "", const std::string& public_transport = "",
 			   const std::string& railway = "", const std::string& ref = "",
@@ -392,10 +400,10 @@ public:
 			   const std::string& service = "", const std::string& shop = "",
 			   const std::string& sport = "", const std::string& surface = "",
 			   const std::string& toll = "", const std::string& tourism = "",
-			   const std::string& tower_type = "", const std::string& tracktype = "", 
-			   const std::string& tunnel = "", const std::string& water = "", 
-			   const std::string& waterway = "", const std::string& wetland = "", 
-			   const std::string& width = "", const std::string& wood = "", 
+			   const std::string& tower_type = "", const std::string& tracktype = "",
+			   const std::string& tunnel = "", const std::string& water = "",
+			   const std::string& waterway = "", const std::string& wetland = "",
+			   const std::string& width = "", const std::string& wood = "",
 			   int32_t z_order = 0, double way_area = std::numeric_limits<double>::quiet_NaN(),
 			   const Tags& tags = Tags(), const MultiPolygonHole& poly = MultiPolygonHole());
 
@@ -407,7 +415,9 @@ public:
 	};
 
 	OpenStreetMap(const Rect& bbox = Rect());
-	void load(const std::string& db);
+#ifdef HAVE_PQXX
+	void load(pqxx::connection_base& conn);
+#endif
 	bool empty(void) const;
 	const Rect& get_bbox(void) const { return m_bbox; }
 	typedef std::vector<OSMPoint> osmpoints_t;
@@ -499,7 +509,7 @@ public:
 		};
 
 		Render(void);
-		
+
 		void clear(void);
 		void add(const Object& obj);
 		const Object& get(const OSMObject& x) const;

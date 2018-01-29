@@ -1429,7 +1429,7 @@ std::string CFMUAutoroute::get_simplefpl(void) const
 	else
 		fpl << m_aircraft.get_callsign();
 	fpl << '-' << flightrules << "G -1" << m_aircraft.get_icaotype()
-	    << '/' << m_aircraft.get_wakecategory() << " -" << m_aircraft.get_equipment() << '/' << m_aircraft.get_transponder()
+	    << '/' << m_aircraft.get_wakecategory() << " -" << m_aircraft.get_equipment_string() << '/' << m_aircraft.get_transponder_string()
 	    << " -";
 	if (AirportsDb::Airport::is_fpl_zzzz(wptdep.get_icao())) {
 		fpl << "ZZZZ";

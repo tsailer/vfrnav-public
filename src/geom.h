@@ -1,10 +1,10 @@
 //
 // C++ Interface: geom
 //
-// Description: 
+// Description:
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2013, 2014, 2015, 2016
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2013, 2014, 2015, 2016, 2017, 2018
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -56,22 +56,22 @@ public:
 	static const coord_t lat_max = 0x40000000;
 	static const Point invalid;
 
-	Point(coord_t lo = 0, coord_t la = 0) : lon(lo), lat(la) {}
-	coord_t get_lon(void) const { return lon; }
-	coord_t get_lat(void) const { return lat; }
-	void set_lon(coord_t lo) { lon = lo; }
-	void set_lat(coord_t la) { lat = la; }
-	bool operator==(const Point &p) const { return lon == p.lon && lat == p.lat; }
+	Point(coord_t lo = 0, coord_t la = 0) : m_lon(lo), m_lat(la) {}
+	coord_t get_lon(void) const { return m_lon; }
+	coord_t get_lat(void) const { return m_lat; }
+	void set_lon(coord_t lo) { m_lon = lo; }
+	void set_lat(coord_t la) { m_lat = la; }
+	bool operator==(const Point &p) const { return m_lon == p.m_lon && m_lat == p.m_lat; }
 	bool operator!=(const Point &p) const { return !operator==(p); }
-	Point operator+(const Point &p) const { return Point(lon + (uint32_t)p.lon, lat + (uint32_t)p.lat); }
-	Point operator-(const Point &p) const { return Point(lon - (uint32_t)p.lon, lat - (uint32_t)p.lat); }
-	Point operator-() const { return Point(-lon, -lat); }
-	Point& operator+=(const Point &p) { lon += (uint32_t)p.lon; lat += (uint32_t)p.lat; return *this; }
-	Point& operator-=(const Point &p) { lon -= (uint32_t)p.lon; lat -= (uint32_t)p.lat; return *this; }
-	bool operator<(const Point &p) const { return lon < p.lon && lat < p.lat; }
-	bool operator<=(const Point &p) const { return lon <= p.lon && lat <= p.lat; }
-	bool operator>(const Point &p) const { return lon > p.lon && lat > p.lat; }
-	bool operator>=(const Point &p) const { return lon >= p.lon && lat >= p.lat; }
+	Point operator+(const Point &p) const { return Point(m_lon + (uint32_t)p.m_lon, m_lat + (uint32_t)p.m_lat); }
+	Point operator-(const Point &p) const { return Point(m_lon - (uint32_t)p.m_lon, m_lat - (uint32_t)p.m_lat); }
+	Point operator-() const { return Point(-m_lon, -m_lat); }
+	Point& operator+=(const Point &p) { m_lon += (uint32_t)p.m_lon; m_lat += (uint32_t)p.m_lat; return *this; }
+	Point& operator-=(const Point &p) { m_lon -= (uint32_t)p.m_lon; m_lat -= (uint32_t)p.m_lat; return *this; }
+	bool operator<(const Point &p) const { return m_lon < p.m_lon && m_lat < p.m_lat; }
+	bool operator<=(const Point &p) const { return m_lon <= p.m_lon && m_lat <= p.m_lat; }
+	bool operator>(const Point &p) const { return m_lon > p.m_lon && m_lat > p.m_lat; }
+	bool operator>=(const Point &p) const { return m_lon >= p.m_lon && m_lat >= p.m_lat; }
 	int compare(const Point& x) const;
 	uint64_t length2(void) const { return (uint64_t)(get_lon() * (int64_t)get_lon()) + (uint64_t)(get_lat() * (int64_t)get_lat()); }
 	double length(void) const { return sqrt(length2()); }
@@ -89,7 +89,7 @@ public:
 	bool is_in_cone(const Point& vprev, const Point& v, const Point& vnelont) const;
 	bool is_left_of(const Point& p0, const Point& p1) const;
 	bool in_box(const Point& p0, const Point& p1) const;
-	bool is_invalid(void) const { return lat < lat_min || lat > lat_max; }
+	bool is_invalid(void) const { return m_lat < lat_min || m_lat > lat_max; }
 	void set_invalid(void);
 	Rect get_bbox(void) const;
 
@@ -141,45 +141,45 @@ public:
 
 	template<typename I, typename F> static I round(F x) { return static_cast<I>((x < 0) ? (x - 0.5) : (x + 0.5)); }
 
-	float get_lon_rad(void) const { return lon * to_rad; }
-	float get_lat_rad(void) const { return lat * to_rad; }
-	void set_lon_rad(float lo) { lon = round<coord_t,float>(lo * from_rad); }
-	void set_lat_rad(float la) { lat = round<coord_t,float>(la * from_rad); }
+	float get_lon_rad(void) const { return m_lon * to_rad; }
+	float get_lat_rad(void) const { return m_lat * to_rad; }
+	void set_lon_rad(float lo) { m_lon = round<coord_t,float>(lo * from_rad); }
+	void set_lat_rad(float la) { m_lat = round<coord_t,float>(la * from_rad); }
 
-	double get_lon_rad_dbl(void) const { return lon * to_rad_dbl; }
-	double get_lat_rad_dbl(void) const { return lat * to_rad_dbl; }
-	void set_lon_rad_dbl(double lo) { lon = round<coord_t,double>(lo * from_rad_dbl); }
-	void set_lat_rad_dbl(double la) { lat = round<coord_t,double>(la * from_rad_dbl); }
+	double get_lon_rad_dbl(void) const { return m_lon * to_rad_dbl; }
+	double get_lat_rad_dbl(void) const { return m_lat * to_rad_dbl; }
+	void set_lon_rad_dbl(double lo) { m_lon = round<coord_t,double>(lo * from_rad_dbl); }
+	void set_lat_rad_dbl(double la) { m_lat = round<coord_t,double>(la * from_rad_dbl); }
 
-	float get_lon_deg(void) const { return lon * to_deg; }
-	float get_lat_deg(void) const { return lat * to_deg; }
-	void set_lon_deg(float lo) { lon = round<coord_t,float>(lo * from_deg); }
-	void set_lat_deg(float la) { lat = round<coord_t,float>(la * from_deg); }
+	float get_lon_deg(void) const { return m_lon * to_deg; }
+	float get_lat_deg(void) const { return m_lat * to_deg; }
+	void set_lon_deg(float lo) { m_lon = round<coord_t,float>(lo * from_deg); }
+	void set_lat_deg(float la) { m_lat = round<coord_t,float>(la * from_deg); }
 
-	double get_lon_deg_dbl(void) const { return lon * to_deg_dbl; }
-	double get_lat_deg_dbl(void) const { return lat * to_deg_dbl; }
-	void set_lon_deg_dbl(double lo) { lon = round<coord_t,double>(lo * from_deg_dbl); }
-	void set_lat_deg_dbl(double la) { lat = round<coord_t,double>(la * from_deg_dbl); }
+	double get_lon_deg_dbl(void) const { return m_lon * to_deg_dbl; }
+	double get_lat_deg_dbl(void) const { return m_lat * to_deg_dbl; }
+	void set_lon_deg_dbl(double lo) { m_lon = round<coord_t,double>(lo * from_deg_dbl); }
+	void set_lat_deg_dbl(double la) { m_lat = round<coord_t,double>(la * from_deg_dbl); }
 
-	float get_lon_min(void) const { return lon * to_min; }
-	float get_lat_min(void) const { return lat * to_min; }
-	void set_lon_min(float lo) { lon = round<coord_t,float>(lo * from_min); }
-	void set_lat_min(float la) { lat = round<coord_t,float>(la * from_min); }
+	float get_lon_min(void) const { return m_lon * to_min; }
+	float get_lat_min(void) const { return m_lat * to_min; }
+	void set_lon_min(float lo) { m_lon = round<coord_t,float>(lo * from_min); }
+	void set_lat_min(float la) { m_lat = round<coord_t,float>(la * from_min); }
 
-	double get_lon_min_dbl(void) const { return lon * to_min_dbl; }
-	double get_lat_min_dbl(void) const { return lat * to_min_dbl; }
-	void set_lon_min_dbl(double lo) { lon = round<coord_t,double>(lo * from_min_dbl); }
-	void set_lat_min_dbl(double la) { lat = round<coord_t,double>(la * from_min_dbl); }
+	double get_lon_min_dbl(void) const { return m_lon * to_min_dbl; }
+	double get_lat_min_dbl(void) const { return m_lat * to_min_dbl; }
+	void set_lon_min_dbl(double lo) { m_lon = round<coord_t,double>(lo * from_min_dbl); }
+	void set_lat_min_dbl(double la) { m_lat = round<coord_t,double>(la * from_min_dbl); }
 
-	float get_lon_sec(void) const { return lon * to_sec; }
-	float get_lat_sec(void) const { return lat * to_sec; }
-	void set_lon_sec(float lo) { lon = round<coord_t,float>(lo * from_sec); }
-	void set_lat_sec(float la) { lat = round<coord_t,float>(la * from_sec); }
+	float get_lon_sec(void) const { return m_lon * to_sec; }
+	float get_lat_sec(void) const { return m_lat * to_sec; }
+	void set_lon_sec(float lo) { m_lon = round<coord_t,float>(lo * from_sec); }
+	void set_lat_sec(float la) { m_lat = round<coord_t,float>(la * from_sec); }
 
-	double get_lon_sec_dbl(void) const { return lon * to_sec_dbl; }
-	double get_lat_sec_dbl(void) const { return lat * to_sec_dbl; }
-	void set_lon_sec_dbl(double lo) { lon = round<coord_t,double>(lo * from_sec_dbl); }
-	void set_lat_sec_dbl(double la) { lat = round<coord_t,double>(la * from_sec_dbl); }
+	double get_lon_sec_dbl(void) const { return m_lon * to_sec_dbl; }
+	double get_lat_sec_dbl(void) const { return m_lat * to_sec_dbl; }
+	void set_lon_sec_dbl(double lo) { m_lon = round<coord_t,double>(lo * from_sec_dbl); }
+	void set_lat_sec_dbl(double la) { m_lat = round<coord_t,double>(la * from_sec_dbl); }
 
 	bool is_webmercator_valid(void) const;
 	int32_t get_lon_webmercator(unsigned int zoomlevel) const;
@@ -281,8 +281,8 @@ public:
 #endif
 
 	template<class Archive> void hibernate_binary(Archive& ar) {
-		ar.io(lat);
-		ar.io(lon);
+		ar.io(m_lat);
+		ar.io(m_lon);
 	}
 
 protected:
@@ -290,7 +290,7 @@ protected:
 	static const unsigned int maidenhead_max[maidenhead_maxdigits];
 	static const double maidenhead_factors[maidenhead_maxdigits];
 
-	coord_t lon, lat;
+	coord_t m_lon, m_lat;
 
 	bool is_between_helper(const Point& p0, const Point& p1) const;
 	bool is_strictly_between_helper(const Point& p0, const Point& p1) const;
@@ -311,30 +311,30 @@ protected:
 class Rect {
 public:
 	static const Rect invalid;
-	Rect(void) : southwest(Point(0, -Point::pole_lat)), northeast(Point(-1, Point::pole_lat)) {}
-	Rect(const Point& sw, const Point& ne) : southwest(sw), northeast(ne) {}
-	Point get_southwest(void) const { return southwest; }
-	Point get_northeast(void) const { return northeast; }
-	Point get_southeast(void) const { return Point(northeast.get_lon(), southwest.get_lat()); }
-	Point get_northwest(void) const { return Point(southwest.get_lon(), northeast.get_lat()); }
-	void set_southwest(const Point& p) { southwest = p; }
-	void set_northeast(const Point& p) { northeast = p; }
-	void set_southeast(const Point& p) { southwest.set_lat(p.get_lat()); northeast.set_lon(p.get_lon()); }
-	void set_northwest(const Point& p) { northeast.set_lat(p.get_lat()); southwest.set_lon(p.get_lon()); }
-	Point::coord_t get_north(void) const { return northeast.get_lat(); }
-	Point::coord_t get_south(void) const { return southwest.get_lat(); }
-	Point::coord_t get_east(void) const { return northeast.get_lon(); }
+	Rect(void) : m_southwest(Point(0, -Point::pole_lat)), m_northeast(Point(-1, Point::pole_lat)) {}
+	Rect(const Point& sw, const Point& ne) : m_southwest(sw), m_northeast(ne) {}
+	Point get_southwest(void) const { return m_southwest; }
+	Point get_northeast(void) const { return m_northeast; }
+	Point get_southeast(void) const { return Point(m_northeast.get_lon(), m_southwest.get_lat()); }
+	Point get_northwest(void) const { return Point(m_southwest.get_lon(), m_northeast.get_lat()); }
+	void set_southwest(const Point& p) { m_southwest = p; }
+	void set_northeast(const Point& p) { m_northeast = p; }
+	void set_southeast(const Point& p) { m_southwest.set_lat(p.get_lat()); m_northeast.set_lon(p.get_lon()); }
+	void set_northwest(const Point& p) { m_northeast.set_lat(p.get_lat()); m_southwest.set_lon(p.get_lon()); }
+	Point::coord_t get_north(void) const { return m_northeast.get_lat(); }
+	Point::coord_t get_south(void) const { return m_southwest.get_lat(); }
+	Point::coord_t get_east(void) const { return m_northeast.get_lon(); }
 	int64_t get_east_unwrapped(void) const;
-	Point::coord_t get_west(void) const { return southwest.get_lon(); }
-	void set_north(Point::coord_t c) { northeast.set_lat(c); }
-	void set_south(Point::coord_t c) { southwest.set_lat(c); }
-	void set_east(Point::coord_t c) { northeast.set_lon(c); }
-	void set_west(Point::coord_t c) { southwest.set_lon(c); }
+	Point::coord_t get_west(void) const { return m_southwest.get_lon(); }
+	void set_north(Point::coord_t c) { m_northeast.set_lat(c); }
+	void set_south(Point::coord_t c) { m_southwest.set_lat(c); }
+	void set_east(Point::coord_t c) { m_northeast.set_lon(c); }
+	void set_west(Point::coord_t c) { m_southwest.set_lon(c); }
 	int compare(const Rect& x) const;
 	bool operator==(const Rect &r) const { return get_southwest() == r.get_southwest() && get_northeast() == r.get_northeast(); }
 	bool operator!=(const Rect &r) const { return !operator==(r); }
-	Rect& operator+=(const Point &p) { southwest += p; northeast += p; return *this; }
-	Rect& operator-=(const Point &p) { southwest -= p; northeast -= p; return *this; }
+	Rect& operator+=(const Point &p) { m_southwest += p; m_northeast += p; return *this; }
+	Rect& operator-=(const Point &p) { m_southwest -= p; m_northeast -= p; return *this; }
 	Rect operator+(const Point &p) { Rect r(*this); r += p; return r; }
 	Rect operator-(const Point &p) { Rect r(*this); r -= p; return r; }
 	bool is_invalid(void) const { return get_northeast().is_invalid() || get_southwest().is_invalid(); }
@@ -358,7 +358,7 @@ public:
 	float simple_distance_nmi(const Rect& r) const { return simple_distance_km(r) * Point::km_to_nmi; }
 	float spheric_distance_km(const Rect& r) const;
 	float spheric_distance_nmi(const Rect& r) const { return spheric_distance_km(r) * Point::km_to_nmi; }
-	Point boxcenter(void) const { return southwest.halfway(northeast); }
+	Point boxcenter(void) const { return m_southwest.halfway(m_northeast); }
 	Rect oversize_nmi(float nmi) const;
 	Rect oversize_km(float km) const;
 	Rect add(const Point& pt) const;
@@ -381,13 +381,13 @@ public:
 	std::ostream& print(std::ostream& os) const;
 
 	template<class Archive> void hibernate_binary(Archive& ar) {
-		southwest.hibernate_binary(ar);
-		northeast.hibernate_binary(ar);
+		m_southwest.hibernate_binary(ar);
+		m_northeast.hibernate_binary(ar);
 	}
 
 protected:
-	Point southwest;
-	Point northeast;
+	Point m_southwest;
+	Point m_northeast;
 
 	std::pair<bool,bool> is_overlap_helper(const Rect& r) const;
 };
@@ -601,11 +601,16 @@ public:
 	public:
 		typedef IntervalSet<int64_t> interval_t;
 		static const bool debug = false;
+		static const int64_t bordertolerance = 1;
 
+		InsideHelper(void);
 		InsideHelper(const Point& pt0, const Point& pt1, bool enable_simd = true);
 		const Point& get_origin(void) const { return m_origin; }
 		const Point& get_vector(void) const { return m_vector; }
 		int64_t get_end(void) const { return m_end; }
+		static interval_t::Intvl get_startintvl(void) { return interval_t::Intvl(-bordertolerance, bordertolerance+1); }
+		interval_t::Intvl get_endintvl(void) const { return interval_t::Intvl(get_end()-bordertolerance, get_end()+bordertolerance+1); }
+		interval_t::Intvl get_insideintvl(void) const { return interval_t::Intvl(bordertolerance+1, (get_end() >= 2*bordertolerance+1) ? get_end()-bordertolerance : bordertolerance+1); }
 		typedef std::pair<int64_t,int64_t> tpoint_t;
 		tpoint_t transform(const Point& pt) const;
 		Point transform(const tpoint_t& tp) const;
@@ -614,7 +619,12 @@ public:
 		bool is_simd(void) const { return m_simd != simd_none; }
 		inside_t get_result(void) const;
 		borderpoints_t get_borderpoints(void) const;
+		bool is_startinside(void) const { return is_inside(0); }
+		bool is_endinside(void) const { return is_inside(get_end()); }
+		void limit(int32_t fsmin, int32_t fsmax, int32_t min, int32_t max, bool allowswap);
+		void limit(int64_t min, int64_t max);
 		void clear(void);
+		void invert(void);
 		using interval_t::operator|=;
 		using interval_t::operator&=;
 		using interval_t::operator-=;
@@ -631,6 +641,7 @@ public:
 		InsideHelper& operator=(const PolygonSimple& poly) { *this = compute_winding(poly); return *this; }
 		InsideHelper& operator=(const PolygonHole& poly) { *this = compute_winding(poly); return *this; }
 		InsideHelper& operator=(const MultiPolygonHole& poly) { *this = compute_winding(poly); return *this; }
+		std::string to_str(void) const;
 
 	protected:
 		Point m_origin;
@@ -654,7 +665,7 @@ public:
 					uint32_t cond, unsigned int cnt, unsigned int i) const __attribute__((always_inline));
 		inline void avx2_downward(winding_t& wind, int dir, __m256i vptprevlat, __m256i vptprevlon, __m256i vptlat, __m256i vptlon,
 					  uint32_t cond, unsigned int cnt, unsigned int i) const __attribute__((always_inline));
-#endif		
+#endif
 	};
 
 	reference operator[](size_type x);
@@ -921,6 +932,89 @@ protected:
 	static uint8_t const *blobdecode(PolygonHole& p, uint8_t const *data, uint8_t const *end);
 };
 
+class Point3D : public Point {
+public:
+	typedef int32_t alt_t;
+	static const alt_t invalid_alt;
+
+	Point3D(coord_t lo = 0, coord_t la = 0, alt_t alt = invalid_alt) : Point(lo, la), m_alt(alt) {}
+	Point3D(const Point& pt, alt_t alt = invalid_alt) : Point(pt), m_alt(alt) {}
+	void set_invalid(void);
+	bool is_alt_valid(void) const { return get_alt() != invalid_alt; }
+	alt_t get_alt(void) const { return m_alt; }
+	void set_alt(alt_t a) { m_alt = a; }
+	void unset_alt(void) { m_alt = invalid_alt; }
+	bool is_valid_3d(void) const { return !is_invalid() && is_alt_valid(); }
+
+	std::ostream& print(std::ostream& os) const;
+
+	std::ostream& to_wktpt(std::ostream& os) const;
+	std::ostream& to_wkt(std::ostream& os) const;
+
+	// GeoJSON
+#ifdef HAVE_JSONCPP
+	Json::Value to_json(void) const;
+	void from_json(const Json::Value& g);
+#endif
+
+	template<class Archive> void hibernate_binary(Archive& ar) {
+		Point::hibernate_binary(ar);
+		ar.io(m_alt);
+	}
+
+protected:
+	alt_t m_alt;
+};
+
+class LineString3D : public std::vector<Point3D> {
+public:
+	LineString3D(void);
+	LineString3D(const LineString& ls);
+	Rect get_bbox(void) const;
+	operator LineString(void) const;
+
+	std::ostream& print(std::ostream& os) const;
+
+	std::ostream& to_wktlst(std::ostream& os) const;
+	std::ostream& to_wkt(std::ostream& os) const;
+
+	// GeoJSON
+#ifdef HAVE_JSONCPP
+	Json::Value to_json(void) const;
+	void from_json(const Json::Value& g);
+#endif
+
+	template<class Archive> void hibernate_binary(Archive& ar) {
+		uint32_t sz(size());
+		ar.io(sz);
+		if (ar.is_load())
+			resize(sz);
+		for (iterator i(begin()), e(end()); i != e; ++i)
+			i->hibernate_binary(ar);
+	}
+};
+
+class PolygonSimple3D : public LineString3D {
+public:
+	typedef LineString3D base_t;
+
+	PolygonSimple3D(void);
+	PolygonSimple3D(const PolygonSimple& ps);
+
+	reference operator[](size_type x);
+	const_reference operator[](size_type x) const;
+	operator PolygonSimple(void) const;
+
+	std::ostream& to_wktpoly(std::ostream& os) const;
+	std::ostream& to_wkt(std::ostream& os) const;
+
+	// GeoJSON
+#ifdef HAVE_JSONCPP
+	Json::Value to_json(void) const;
+	void from_json(const Json::Value& g);
+#endif
+};
+
 class IntervalBoundingBox {
 public:
 	IntervalBoundingBox(void);
@@ -1134,7 +1228,7 @@ public:
 	static constexpr float_t to_deg       = 180.0 / M_PI;
 
 	PolarVector3D(float_t lat = 0, float_t lon = 0, float_t r = 0) : m_lat(lat), m_lon(lon), m_r(r) {}
-	PolarVector3D(const Point& pt, int16_t altft = 0);
+	PolarVector3D(const Point& pt, int32_t altft = 0);
 	float_t getlat(void) const { return m_lat; }
 	float_t getlatdeg(void) const { return m_lat * to_deg; }
 	float_t getlon(void) const { return m_lon; }
@@ -1169,6 +1263,9 @@ typedef CartesianVector3D<float> CartesianVector3Df;
 typedef PolarVector3D<float> PolarVector3Df;
 typedef CartesianVector3D<double> CartesianVector3Dd;
 typedef PolarVector3D<double> PolarVector3Dd;
+
+
+
 
 std::ostream& operator<<(std::ostream& os, const Point& p);
 std::ostream& operator<<(std::ostream& os, const Rect& r);

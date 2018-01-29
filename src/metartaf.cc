@@ -346,7 +346,7 @@ void MetarTafSet::SIGMET::compute_poly(const MultiPolygonHole& firpoly)
 			} else if (tok[i] == "NW") {
 				p.push_back(bbox.get_southwest());
 				p.push_back(bbox.get_northwest());
-				p.push_back(bbox.get_northeast());				
+				p.push_back(bbox.get_northeast());
 			}
 			if (p.is_self_intersecting())
 				std::swap(p[0], p[1]);
@@ -501,7 +501,7 @@ std::string MetarTafSet::PGTransactor::get_querycoord(transaction_t& tran) const
 	y -= (1LL << 32);
 	if (y >= Point::lon_min)
 		coordselect += " or (longitude between " +
-			tran.quote(static_cast<Point::coord_t>(std::max(x, static_cast<int64_t>(Point::lon_min)))) + 
+			tran.quote(static_cast<Point::coord_t>(std::max(x, static_cast<int64_t>(Point::lon_min)))) +
 			" and " + tran.quote(y) + ")";
 	coordselect += ")";
 	return coordselect;
@@ -690,12 +690,12 @@ void MetarTafSet::loadstn_sqlite(const std::string& dbpath, const Rect& bbox,
 	}
 }
 
-void MetarTafSet::loadstn_pg(const std::string& dbpath, const Rect& bbox, time_t tmin, time_t tmax,
+#ifdef HAVE_PQXX
+
+void MetarTafSet::loadstn_pg(pqxx::connection_base& conn, const Rect& bbox, time_t tmin, time_t tmax,
 			     unsigned int metarhistory, unsigned int tafhistory)
 {
-#ifdef HAVE_PQXX
 	try {
-		pqxx::connection conn(dbpath);
 		{
 			PGTransactor metartaf(*this, bbox, metarhistory, tafhistory);
 			conn.perform(metartaf);
@@ -708,8 +708,9 @@ void MetarTafSet::loadstn_pg(const std::string& dbpath, const Rect& bbox, time_t
 	} catch (const pqxx::pqxx_exception& e) {
 		std::cerr << "pqxx exception: " << e.base().what() << std::endl;
 	}
-#endif
 }
+
+#endif
 
 void MetarTafSet::compute_poly(void)
 {

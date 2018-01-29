@@ -1,7 +1,7 @@
 //
 // C++ Interface: palm
 //
-// Description: 
+// Description:
 //
 //
 // Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2012
@@ -641,7 +641,7 @@ class PalmGtopo : protected PalmDbBase {
                                 operator Point(void) const;
                                 std::ostream& print(std::ostream& os) const;
 				static Point get_pointsize(void) { return (Point)GtopoCoord(1, 1) - (Point)GtopoCoord(0, 0); }
- 
+
                         private:
                                 uint16_t lon;
                                 uint16_t lat;

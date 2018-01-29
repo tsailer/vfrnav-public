@@ -3,7 +3,7 @@
 /*
  *      aircraft.cc  --  Aircraft Model.
  *
- *      Copyright (C) 2012, 2013, 2014, 2015, 2016  Thomas Sailer (t.sailer@alumni.ethz.ch)
+ *      Copyright (C) 2012, 2013, 2014, 2015, 2016, 2017  Thomas Sailer (t.sailer@alumni.ethz.ch)
  *
  *      This program is free software; you can redistribute it and/or modify
  *      it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #include "baro.h"
 #include "geom.h"
 #include "fplan.h"
+#include "modes.h"
 
 #include <cmath>
 #include <stdexcept>
@@ -51,6 +52,14 @@
 
 #ifdef HAVE_JSONCPP
 #include <json/json.h>
+#endif
+
+#ifdef HAVE_PQXX
+#include <pqxx/connection.hxx>
+#include <pqxx/transaction.hxx>
+#include <pqxx/transactor.hxx>
+#include <pqxx/result.hxx>
+#include <pqxx/except.hxx>
 #endif
 
 template <typename T> T Aircraft::Poly1D<T>::eval(T x) const
@@ -518,9 +527,9 @@ void Aircraft::WeightBalance::Element::Unit::load_xml(const xmlpp::Element *el)
 	xmlpp::Attribute *attr;
  	if ((attr = el->get_attribute("name")))
 		m_name = attr->get_value();
-	if ((attr = el->get_attribute("factor")))
+	if ((attr = el->get_attribute("factor")) && attr->get_value() != "")
 		m_factor = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("offset")))
+	if ((attr = el->get_attribute("offset")) && attr->get_value() != "")
 		m_offset = Glib::Ascii::strtod(attr->get_value());
 }
 
@@ -581,11 +590,11 @@ void Aircraft::WeightBalance::Element::load_xml(const xmlpp::Element *el)
 	xmlpp::Attribute *attr;
  	if ((attr = el->get_attribute("name")))
 		m_name = attr->get_value();
-	if ((attr = el->get_attribute("massmin")))
+	if ((attr = el->get_attribute("massmin")) && attr->get_value() != "")
 		m_massmin = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("massmax")))
+	if ((attr = el->get_attribute("massmax")) && attr->get_value() != "")
 		m_massmax = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("arm")))
+	if ((attr = el->get_attribute("arm")) && attr->get_value() != "")
 		m_arms[0.0] = Glib::Ascii::strtod(attr->get_value());
 	if ((attr = el->get_attribute("flags"))) {
 		Glib::ustring val(attr->get_value());
@@ -619,9 +628,9 @@ void Aircraft::WeightBalance::Element::load_xml(const xmlpp::Element *el)
 		for (xmlpp::Node::NodeList::const_iterator ni(nl.begin()), ne(nl.end()); ni != ne; ++ni) {
 			const xmlpp::Element *el2(static_cast<xmlpp::Element *>(*ni));
 			double m(std::numeric_limits<double>::quiet_NaN()), a(std::numeric_limits<double>::quiet_NaN());
-			if ((attr = el2->get_attribute("mass")))
+			if ((attr = el2->get_attribute("mass")) && attr->get_value() != "")
 				m = Glib::Ascii::strtod(attr->get_value());
-			if ((attr = el2->get_attribute("arm")))
+			if ((attr = el2->get_attribute("arm")) && attr->get_value() != "")
 				a = Glib::Ascii::strtod(attr->get_value());
 			if (!std::isnan(m) && !std::isnan(a))
 				m_arms[m] = a;
@@ -815,6 +824,17 @@ double Aircraft::WeightBalance::Envelope::Point::area2(const Point& p0, const Po
         return p0x * (p1y - p0y) - p0y * (p1x - p0x);
 }
 
+double Aircraft::WeightBalance::Envelope::Point::length2(const Point& p0, const Point& p1)
+{
+	Point p(p1 - p0);
+	return p.get_arm() * p.get_arm() + p.get_mass() * p.get_mass();
+}
+
+double Aircraft::WeightBalance::Envelope::Point::interpolate_arm(const Point& p0, const Point& p1, double mass)
+{
+	return p0.get_arm() + (p1.get_arm() - p0.get_arm()) * (mass - p0.get_mass()) / (p1.get_mass() - p0.get_mass());
+}
+
 void Aircraft::WeightBalance::Envelope::Point::load_xml(const xmlpp::Element *el)
 {
 	if (!el)
@@ -822,9 +842,9 @@ void Aircraft::WeightBalance::Envelope::Point::load_xml(const xmlpp::Element *el
 	m_arm = 0;
 	m_mass = 0;
 	xmlpp::Attribute *attr;
- 	if ((attr = el->get_attribute("arm")))
+ 	if ((attr = el->get_attribute("arm")) && attr->get_value() != "")
 		m_arm = Glib::Ascii::strtod(attr->get_value());
- 	if ((attr = el->get_attribute("mass")))
+ 	if ((attr = el->get_attribute("mass")) && attr->get_value() != "")
 		m_mass = Glib::Ascii::strtod(attr->get_value());
 }
 
@@ -855,30 +875,30 @@ Aircraft::WeightBalance::Envelope::Envelope(const Glib::ustring& name)
 
 int Aircraft::WeightBalance::Envelope::windingnumber(const Point& pt) const
 {
-        int wn = 0; /* the winding number counter */
+	int wn = 0; /* the winding number counter */
 
-        /* loop through all edges of the polygon */
-        unsigned int j = size() - 1;
-        for (unsigned int i = 0; i < size(); j = i, i++) {
+	/* loop through all edges of the polygon */
+	unsigned int j = size() - 1;
+	for (unsigned int i = 0; i < size(); j = i, i++) {
 		const Point& pj(operator[](j));
- 		const Point& pi(operator[](i));
-                double lon = pt.area2(pj, pi);
+		const Point& pi(operator[](i));
+		double lon = pt.area2(pj, pi);
 		/* edge from V[j] to V[i] */
-                if (pj.get_mass() <= pt.get_mass()) {
-                        if (pi.get_mass() > pt.get_mass())
-                                /* an upward crossing */
-                                if (lon > 0)
-                                        /* P left of edge: have a valid up intersect */
-                                        wn++;
-                } else {
-                        if (pi.get_mass() <= pt.get_mass())
-                                /* a downward crossing */
-                                if (lon < 0)
-                                        /* P right of edge: have a valid down intersect */
-                                        wn--;
-                }
-        }
-        return wn;
+		if (pj.get_mass() <= pt.get_mass()) {
+			if (pi.get_mass() > pt.get_mass())
+				/* an upward crossing */
+				if (lon > 0)
+					/* P left of edge: have a valid up intersect */
+					wn++;
+		} else {
+			if (pi.get_mass() <= pt.get_mass())
+				/* a downward crossing */
+				if (lon < 0)
+					/* P right of edge: have a valid down intersect */
+					wn--;
+		}
+	}
+	return wn;
 }
 
 void Aircraft::WeightBalance::Envelope::get_bounds(double& minarm, double& maxarm, double& minmass, double& maxmass) const
@@ -938,6 +958,64 @@ void Aircraft::WeightBalance::Envelope::add_point(const Point& pt)
 void Aircraft::WeightBalance::Envelope::add_point(double arm, double mass)
 {
 	add_point(Point(arm, mass));
+}
+
+Aircraft::WeightBalance::Envelope::masses_t Aircraft::WeightBalance::Envelope::get_masses(void) const
+{
+	masses_t m;
+	for (env_t::const_iterator ei(m_env.begin()), ee(m_env.end()); ei != ee; ++ei)
+		m.insert(ei->get_mass());
+	return m;
+}
+
+Aircraft::WeightBalance::Envelope::armintervals_t Aircraft::WeightBalance::Envelope::get_armintervals(double mass) const
+{
+	armintervals_t intv;
+	typedef std::map<double, int> wn_t;
+	wn_t wn;
+/* loop through all edges of the polygon */
+	unsigned int j = size() - 1;
+	for (unsigned int i = 0; i < size(); j = i, i++) {
+		const Point& pj(operator[](j));
+		const Point& pi(operator[](i));
+		/* edge from V[j] to V[i] */
+		if (pj.get_mass() <= mass) {
+			if (pi.get_mass() > mass) {
+				/* an upward crossing */
+				double arm(pj.get_arm() + (pi.get_arm() - pj.get_arm()) * (mass - pj.get_mass()) / (pi.get_mass() - pj.get_mass()));
+				wn_t::iterator it(wn.insert(wn_t::value_type(arm, 0)).first);
+				++it->second;
+			} else if (pj.get_mass() == mass && pi.get_mass() == mass) {
+				/* a horizontal crossing on line */
+				double arm0(pj.get_arm()), arm1(pi.get_arm());
+				if (arm0 > arm1)
+					std::swap(arm0, arm1);
+				intv |= armintervals_t::Intvl(arm0, arm1);
+			}
+		} else {
+			if (pi.get_mass() <= mass) {
+				/* a downward crossing */
+				double arm(pj.get_arm() + (pi.get_arm() - pj.get_arm()) * (mass - pj.get_mass()) / (pi.get_mass() - pj.get_mass()));
+				wn_t::iterator it(wn.insert(wn_t::value_type(arm, 0)).first);
+				--it->second;
+			}
+		}
+	}
+	double arm0(std::numeric_limits<double>::min());
+	int wn0(0);
+	for (wn_t::const_iterator wi(wn.begin()), we(wn.end()); wi != we; ++wi) {
+		int wn1(wn0 + wi->second);
+		if (!wn0 && wn1) {
+			arm0 = wi->first;
+		} else if (wn0 && !wn1) {
+			intv |= armintervals_t::Intvl(arm0, wi->first);
+			arm0 = wi->first;
+		}
+		wn0 = wn1;
+	}
+	if (wn0)
+		intv |= armintervals_t::Intvl(arm0, std::numeric_limits<double>::max());
+	return intv;
 }
 
 Aircraft::WeightBalance::WeightBalance(void)
@@ -1023,6 +1101,419 @@ void Aircraft::WeightBalance::save_xml(xmlpp::Element *el) const
 	for (envelopes_t::const_iterator ei(m_envelopes.begin()), ee(m_envelopes.end()); ei != ee; ++ei)
 		ei->save_xml(el->add_child("envelope"));
 }
+
+#ifdef HAVE_JSONCPP
+
+namespace {
+	class EnvelopePointMassSorter {
+	public:
+		bool operator()(const Aircraft::WeightBalance::Envelope::Point& a,
+				const Aircraft::WeightBalance::Envelope::Point& b) const {
+			return a.get_mass() < b.get_mass();
+		}
+	};
+};
+
+bool Aircraft::WeightBalance::load_garminpilot(const Json::Value& root, Element::flags_t fueltype, double fullfuel)
+{
+	m_armunit = unit_in;
+	m_massunit = unit_lb;
+	if (root.isMember("unitSystem")) {
+		const Json::Value& sys(root["unitSystem"]);
+		if (sys.isIntegral()) {
+			switch (sys.asInt()) {
+			default:
+			case 0:
+				m_armunit = unit_in;
+				m_massunit = unit_lb;
+				break;
+
+			case 1:
+				m_armunit = unit_cm;
+				m_massunit = unit_kg;
+				break;
+			}
+		}
+	}
+	if (root.isMember("cargoStations")) {
+		const Json::Value& cstn(root["cargoStations"]);
+		if (cstn.isArray()) {
+			for (Json::ArrayIndex i = 0; i < cstn.size(); ++i) {
+				const Json::Value& cstn1(cstn[i]);
+				if (!cstn1.isObject())
+					continue;
+				Element::flags_t flags(Element::flag_none);
+				Glib::ustring name;
+				double massmax(std::numeric_limits<double>::quiet_NaN());
+				double arm(std::numeric_limits<double>::quiet_NaN());
+				if (cstn1.isMember("name")) {
+					const Json::Value& x(cstn1["name"]);
+					if (x.isString())
+						name = x.asString();
+				}
+				if (cstn1.isMember("defaultArm")) {
+					const Json::Value& x(cstn1["defaultArm"]);
+					if (x.isNumeric())
+						arm = x.asDouble();
+				}
+				if (cstn1.isMember("type")) {
+					const Json::Value& typ(cstn1["type"]);
+					if (typ.isIntegral()) {
+						switch (typ.asInt()) {
+						case 0:
+							if (cstn1.isMember("numberOfSeats")) {
+								const Json::Value& x(cstn1["numberOfSeats"]);
+								if (x.isIntegral())
+									massmax = convert(unit_kg, m_massunit, 200.0 * x.asInt());
+							}
+							break;
+
+						case 1:
+							if (cstn1.isMember("maximumWeight")) {
+								const Json::Value& x(cstn1["maximumWeight"]);
+								if (x.isNumeric())
+									massmax = x.asDouble();
+							}
+							break;
+
+						default:
+							break;
+						}
+					}
+				}
+				if (std::isnan(massmax) || std::isnan(arm) || massmax < 0.0)
+					continue;
+				add_element(Element(name, 0.0, massmax, arm, flags));
+			}
+		}
+	}
+	if (root.isMember("fuelStations")) {
+		const Json::Value& fstn(root["fuelStations"]);
+		if (fstn.isArray()) {
+			for (Json::ArrayIndex i = 0; i < fstn.size(); ++i) {
+				const Json::Value& fstn1(fstn[i]);
+				if (!fstn1.isObject())
+					continue;
+				Glib::ustring name;
+				double massmax(std::numeric_limits<double>::quiet_NaN());
+				double arm(std::numeric_limits<double>::quiet_NaN());
+				if (fstn1.isMember("name")) {
+					const Json::Value& x(fstn1["name"]);
+					if (x.isString())
+						name = x.asString();
+				}
+				if (fstn1.isMember("fixedArm")) {
+					const Json::Value& x(fstn1["fixedArm"]);
+					if (x.isNumeric())
+						arm = x.asDouble();
+				}
+				if (fstn1.isMember("fixedMaximumWeight")) {
+					const Json::Value& x(fstn1["fixedMaximumWeight"]);
+					if (x.isNumeric())
+						massmax = x.asDouble();
+				}
+				if (std::isnan(massmax) || std::isnan(arm) || massmax < 0.0)
+					continue;
+				add_element(Element(name, 0.0, massmax, arm, fueltype));
+			}
+		}
+	}
+	if (root.isMember("optionalEquipment")) {
+		const Json::Value& oeqpt(root["optionalEquipment"]);
+		if (oeqpt.isArray()) {
+			for (Json::ArrayIndex i = 0; i < oeqpt.size(); ++i) {
+				const Json::Value& oeqpt1(oeqpt[i]);
+				if (!oeqpt1.isObject())
+					continue;
+				Element::flags_t flags(Element::flag_none);
+				Glib::ustring name;
+				double massmax(std::numeric_limits<double>::quiet_NaN());
+				double arm(std::numeric_limits<double>::quiet_NaN());
+				if (oeqpt1.isMember("name")) {
+					const Json::Value& x(oeqpt1["name"]);
+					if (x.isString())
+						name = x.asString();
+				}
+				if (oeqpt1.isMember("fixedArm")) {
+					const Json::Value& x(oeqpt1["fixedArm"]);
+					if (x.isNumeric())
+						arm = x.asDouble();
+				}
+				if (oeqpt1.isMember("fixedMaximumWeight")) {
+					const Json::Value& x(oeqpt1["fixedMaximumWeight"]);
+					if (x.isNumeric())
+						massmax = x.asDouble();
+				}
+				if (std::isnan(massmax) || std::isnan(arm) || massmax < 0.0)
+					continue;
+				add_element(Element(name, 0.0, massmax, arm, flags));
+			}
+		}
+	}
+	if (root.isMember("variableWeightEquipment")) {
+		const Json::Value& veqpt(root["variableWeightEquipment"]);
+		if (veqpt.isArray()) {
+			for (Json::ArrayIndex i = 0; i < veqpt.size(); ++i) {
+				const Json::Value& veqpt1(veqpt[i]);
+				if (!veqpt1.isObject())
+					continue;
+				Element::flags_t flags(Element::flag_none);
+				Glib::ustring name;
+				double massmax(std::numeric_limits<double>::quiet_NaN());
+				double arm(std::numeric_limits<double>::quiet_NaN());
+				if (veqpt1.isMember("name")) {
+					const Json::Value& x(veqpt1["name"]);
+					if (x.isString())
+						name = x.asString();
+				}
+				if (veqpt1.isMember("fixedArm")) {
+					const Json::Value& x(veqpt1["fixedArm"]);
+					if (x.isNumeric())
+						arm = x.asDouble();
+				}
+				if (veqpt1.isMember("fixedMaximumWeight")) {
+					const Json::Value& x(veqpt1["fixedMaximumWeight"]);
+					if (x.isNumeric())
+						massmax = x.asDouble();
+				}
+				if (std::isnan(massmax) || std::isnan(arm) || massmax < 0.0)
+					continue;
+				add_element(Element(name, 0.0, massmax, arm, flags));
+			}
+		}
+	}
+	if (root.isMember("emptyWeight") && root.isMember("emptyCG")) {
+		const Json::Value& ew(root["emptyWeight"]);
+		const Json::Value& ea(root["emptyCG"]);
+		double mass(std::numeric_limits<double>::quiet_NaN());
+		double arm(std::numeric_limits<double>::quiet_NaN());
+		if (ew.isNumeric())
+			mass = ew.asDouble();
+  		if (ea.isNumeric())
+			arm = ea.asDouble();
+		if (!std::isnan(mass) && !std::isnan(arm) && mass > 0.0)
+			add_element(Element("Basic Empty Mass", mass, mass, arm, Element::flag_fixed));
+	}
+	if (root.isMember("momentChangeDueToGearRetraction")) {
+		const Json::Value& mom(root["momentChangeDueToGearRetraction"]);
+		double moment(std::numeric_limits<double>::quiet_NaN());
+		if (mom.isNumeric())
+			moment = mom.asDouble();
+		if (!std::isnan(moment) && moment != 0.0) {
+			static const double arm(0.1);
+			Element el("Gear", 0.0, moment * (1.0 / arm), arm, Element::flag_fixed | Element::flag_gear);
+			el.add_unit("Extended", 0.0, 0.0);
+			el.add_unit("Retracted", 0.0, arm);
+			add_element(el);
+		}
+	}
+	static const char * const envelopes[] = {
+		"normalCategoryEnvelope",
+		"utilityCategoryEnvelope",
+		"acrobaticCategoryEnvelope"
+	};
+	static const char * const envelopenames[] = {
+		"Normal Category",
+		"Utility Category",
+		"Acrobatic Category"
+	};
+	for (int envidx = 0; envidx < sizeof(envelopes)/sizeof(envelopes[0]); ++envidx) {
+		if (!root.isMember(envelopes[envidx]))
+			continue;
+		const Json::Value& envelope(root[envelopes[envidx]]);
+		if (!envelope.isObject())
+			continue;
+		static const char * const limitnames[] = {
+			"forwardLimits",
+			"aftLimits"
+		};
+		typedef std::vector<Envelope::Point> env_t;
+		env_t limits[sizeof(limitnames)/sizeof(limitnames[0])];
+		for (int limidx = 0; limidx < sizeof(limitnames)/sizeof(limitnames[0]); ++limidx) {
+			if (!envelope.isMember(limitnames[limidx]))
+				continue;
+			const Json::Value& limita(envelope[limitnames[limidx]]);
+			if (!limita.isArray())
+				continue;
+			for (Json::ArrayIndex i = 0; i < limita.size(); ++i) {
+				const Json::Value& limitp(limita[i]);
+				if (!limitp.isObject() || !limitp.isMember("weight") || !limitp.isMember("limit"))
+					continue;
+				const Json::Value& ew(root["weight"]);
+				const Json::Value& ea(root["limit"]);
+				double mass(std::numeric_limits<double>::quiet_NaN());
+				double arm(std::numeric_limits<double>::quiet_NaN());
+				if (ew.isNumeric())
+					mass = ew.asDouble();
+				if (ea.isNumeric())
+					arm = ea.asDouble();
+				if (!std::isnan(mass) && !std::isnan(arm))
+					limits[limidx].push_back(Envelope::Point(arm, mass));
+			}
+			std::sort(limits[limidx].begin(), limits[limidx].end(), EnvelopePointMassSorter());
+		}
+		if (limits[0].empty() || limits[1].empty())
+			continue;
+		Envelope ev(envelopenames[envidx]);
+		for (env_t::const_iterator i(limits[0].begin()), e(limits[0].end()); i != e; ++i)
+			ev.add_point(*i);
+		for (env_t::const_reverse_iterator i(limits[0].rbegin()), e(limits[0].rend()); i != e; ++i)
+			ev.add_point(*i);
+		add_envelope(ev);
+	}
+	return true;
+}
+
+void Aircraft::WeightBalance::save_garminpilot(Json::Value& root)
+{
+	root["showEquipmentOnChart"] = false;
+	root["envelopeLimitType"] = 0;
+	root["fuelBurnStrategy"] = 0;
+	root["showMaximumWeightLinesOnChart"] = false;
+	root["divideMoment"] = true;
+	root["sourceTemplateUUID"] = Json::Value(Json::nullValue);
+	unit_t armunit, massunit;
+	if (m_massunit == unit_kg) {
+		root["unitSystem"] = 1;
+		armunit = unit_cm;
+		massunit = unit_kg;
+	} else {
+		root["unitSystem"] = 0;
+		armunit = unit_in;
+		massunit = unit_lb;
+	}
+	Json::Value *stns[4] = { &root["cargoStations"], &root["fuelStations"], &root["optionalEquipment"], &root["variableWeightEquipment"] };
+	for (unsigned int i = 0; i < sizeof(stns)/sizeof(stns[0]); ++i)
+		*stns[i] = Json::Value(Json::arrayValue);
+	double bemass(0), bemoment(0), gearmom(0);
+ 	for (elements_t::const_iterator ei(m_elements.begin()), ee(m_elements.end()); ei != ee; ++ei) {
+		const Element& el(*ei);
+		if (el.get_flags() & Element::flag_fixed) {
+			if (el.get_flags() & Element::flag_gear) {
+				gearmom += el.get_moment(el.get_massmax());
+			} else {
+				bemass += el.get_massmax();
+				bemoment += el.get_moment(el.get_massmax());
+			}
+			continue;
+		}
+		typedef std::set<double> armpoints_t;
+		armpoints_t armpoints;
+		{
+			double massmin(el.get_massmin());
+                        double mass1(el.get_massmax());
+                        for (;;) {
+                                std::pair<double,double> lim(el.get_piecelimits(mass1, true));
+                                if (std::isnan(lim.first) || lim.first <= massmin)
+                                        break;
+				if (lim.first >= mass1)
+                                        break;
+                                mass1 = lim.first;
+				armpoints.insert(mass1);
+                        }
+		}
+		bool fixedarm(armpoints.empty());
+		armpoints.insert(el.get_massmin());
+		armpoints.insert(el.get_massmax());
+		if (el.get_flags() & Element::flag_fuel) {
+			Json::Value x;
+			x["name"] = (std::string)el.get_name();
+			if (fixedarm) {
+				x["variableArmPoints"] = Json::Value(Json::nullValue);
+				x["fixedArm"] = convert(m_armunit, armunit, el.get_arm(el.get_massmax()));
+			}
+			x["fixedMaximumWeight"] = convert(m_massunit, massunit, el.get_massmax());
+			stns[1]->append(x);
+			continue;
+		}
+		if (el.get_flags() & Element::flag_oil) {
+			Json::Value x;
+			x["name"] = (std::string)el.get_name();
+			if (fixedarm) {
+				x["variableArmPoints"] = Json::Value(Json::nullValue);
+				x["fixedArm"] = convert(m_armunit, armunit, el.get_arm(el.get_massmax()));
+			}
+			x["fixedMaximumWeight"] = convert(m_massunit, massunit, el.get_massmax());
+			stns[3]->append(x);
+			continue;
+		}
+		if (true) {
+			Json::Value x;
+			x["name"] = (std::string)el.get_name();
+			if (fixedarm) {
+				x["defaultArm"] = convert(m_armunit, armunit, el.get_arm(el.get_massmax()));
+				x["minimumArm"] = Json::Value(Json::nullValue);
+				x["maximumArm"] = Json::Value(Json::nullValue);
+			}
+			x["numberOfSeats"] = Json::Value(Json::nullValue);
+			x["maximumWeight"] = convert(m_massunit, massunit, el.get_massmax());
+			x["type"] = 1;
+			stns[0]->append(x);
+		}
+	}
+	if (bemass > 0.0) {
+		root["emptyWeight"] = convert(m_massunit, massunit, bemass);
+		root["emptyCG"] = convert(m_armunit, armunit, bemoment / bemass);
+	} else {
+		root["emptyWeight"] = Json::Value(Json::nullValue);
+		root["emptyCG"] = Json::Value(Json::nullValue);
+	}
+	if (gearmom != 0.0)
+		root["momentChangeDueToGearRetraction"] = convert(m_massunit, massunit, convert(m_armunit, armunit, gearmom));
+ 	else
+		root["momentChangeDueToGearRetraction"] = Json::Value(Json::nullValue);
+	static const char * const envelope_names[] = { "normalCategoryEnvelope", "utilityCategoryEnvelope", "acrobaticCategoryEnvelope" };
+	unsigned int envidx(0);
+	for (envelopes_t::const_iterator ei(m_envelopes.begin()), ee(m_envelopes.end()); ei != ee; ++ei, ++envidx) {
+		if (envidx >= sizeof(envelope_names)/sizeof(envelope_names[0]))
+			break;
+		Json::Value& env(root[envelope_names[envidx]]);
+		env = Json::Value(Json::objectValue);
+		typedef std::vector<Envelope::Point> limits_t;
+		limits_t lim[2];
+		{
+			Envelope::masses_t masses(ei->get_masses());
+			for (Envelope::masses_t::const_iterator mi(masses.begin()), me(masses.end()); mi != me; ++mi) {
+				Envelope::armintervals_t intv(ei->get_armintervals(*mi));
+				if (intv.is_empty())
+					continue;
+				lim[0].push_back(Envelope::Point(intv.begin()->get_lower(), *mi));
+				lim[1].push_back(Envelope::Point(intv.rbegin()->get_upper(), *mi));
+			}
+		}
+		static const char * const limnames[2] = { "forwardLimits", "aftLimits" };
+		for (unsigned int li = 0; li < sizeof(lim)/sizeof(lim[0]); ++li) {
+			Json::Value& limv(env[limnames[li]]);
+			limv = Json::Value(Json::arrayValue);
+			// remove congruent points
+			for (limits_t::size_type i(2); i < lim[li].size(); ) {
+				const Envelope::Point& p0(lim[li][i-2]);
+				const Envelope::Point& p1(lim[li][i-1]);
+				const Envelope::Point& p2(lim[li][i]);
+				if (p2.get_mass() == p0.get_mass()) {
+					++i;
+					continue;
+				}
+				double arm1(Envelope::Point::interpolate_arm(p0, p2, p1.get_mass()));
+				if (fabs(arm1 - p1.get_arm()) > 1e-6) {
+					++i;
+					continue;
+				}
+				lim[li].erase(lim[li].begin() + (i - 1));
+			}
+			for (limits_t::const_iterator i(lim[li].begin()), e(lim[li].end()); i != e; ++i) {
+				Json::Value x;
+				x["weight"] = convert(m_massunit, massunit, i->get_mass());
+				x["limit"] = convert(m_armunit, armunit, i->get_arm());
+				limv.append(x);
+			}
+		}
+	}
+	for (; envidx < sizeof(envelope_names)/sizeof(envelope_names[0]); ++envidx)
+		root[envelope_names[envidx]] = Json::Value(Json::nullValue);
+}
+
+#endif
 
 void Aircraft::WeightBalance::clear_elements(void)
 {
@@ -1193,15 +1684,15 @@ void Aircraft::Distances::Distance::Point::load_xml(const xmlpp::Element *el, do
 		return;
 	m_da = m_pa = m_temp = m_gnddist = m_obstdist = std::numeric_limits<double>::quiet_NaN();
 	xmlpp::Attribute *attr;
-	if ((attr = el->get_attribute("da")))
+	if ((attr = el->get_attribute("da")) && attr->get_value() != "")
 		m_da = Glib::Ascii::strtod(attr->get_value()) * altfactor;
-	if ((attr = el->get_attribute("pa")))
+	if ((attr = el->get_attribute("pa")) && attr->get_value() != "")
 		m_pa = Glib::Ascii::strtod(attr->get_value()) * altfactor;
-	if ((attr = el->get_attribute("temp")))
+	if ((attr = el->get_attribute("temp")) && attr->get_value() != "")
 		m_temp = Glib::Ascii::strtod(attr->get_value()) * tempfactor + tempoffset;
-	if ((attr = el->get_attribute("gnddist")))
+	if ((attr = el->get_attribute("gnddist")) && attr->get_value() != "")
 		m_gnddist = Glib::Ascii::strtod(attr->get_value()) * distfactor;
-	if ((attr = el->get_attribute("obstdist")))
+	if ((attr = el->get_attribute("obstdist")) && attr->get_value() != "")
 		m_obstdist = Glib::Ascii::strtod(attr->get_value()) * distfactor;
 
 }
@@ -1390,9 +1881,9 @@ void Aircraft::Distances::Distance::load_xml(const xmlpp::Element *el, double al
 	xmlpp::Attribute *attr;
  	if ((attr = el->get_attribute("name")))
 		m_name = attr->get_value();
- 	if ((attr = el->get_attribute("vrotate")))
+ 	if ((attr = el->get_attribute("vrotate")) && attr->get_value() != "")
 		m_vrotate = Glib::Ascii::strtod(attr->get_value());
- 	if ((attr = el->get_attribute("mass")))
+ 	if ((attr = el->get_attribute("mass")) && attr->get_value() != "")
 		m_mass = Glib::Ascii::strtod(attr->get_value());
 	{
 		xmlpp::Node::NodeList nl(el->get_children("point"));
@@ -1579,13 +2070,13 @@ void Aircraft::Distances::load_xml(const xmlpp::Element *el)
 	m_distfactor = std::numeric_limits<double>::quiet_NaN();
 	m_distunit = unit_m;
 	xmlpp::Attribute *attr;
- 	if ((attr = el->get_attribute("altfactor")))
+ 	if ((attr = el->get_attribute("altfactor")) && attr->get_value() != "")
 		m_altfactor = Glib::Ascii::strtod(attr->get_value());
- 	if ((attr = el->get_attribute("tempfactor")))
+ 	if ((attr = el->get_attribute("tempfactor")) && attr->get_value() != "")
 		m_tempfactor = Glib::Ascii::strtod(attr->get_value());
- 	if ((attr = el->get_attribute("tempoffset")))
+ 	if ((attr = el->get_attribute("tempoffset")) && attr->get_value() != "")
 		m_tempoffset = Glib::Ascii::strtod(attr->get_value());
- 	if ((attr = el->get_attribute("distfactor")))
+ 	if ((attr = el->get_attribute("distfactor")) && attr->get_value() != "")
 		m_distfactor = Glib::Ascii::strtod(attr->get_value());
 	if ((attr = el->get_attribute("unitname")))
 		m_distunit = parse_unit(attr->get_value());
@@ -1609,7 +2100,7 @@ void Aircraft::Distances::load_xml(const xmlpp::Element *el)
 			m_ldgdist.back().load_xml(static_cast<xmlpp::Element *>(*ni), m_altfactor, m_tempfactor, m_tempoffset, m_distfactor);
 		}
 	}
-	if ((attr = el->get_attribute("vrotate"))) {
+	if ((attr = el->get_attribute("vrotate")) && attr->get_value() != "") {
 		double vrot(Glib::Ascii::strtod(attr->get_value()));
 		if (!std::isnan(vrot) && vrot > 0) {
 			for (distances_t::iterator i(m_takeoffdist.begin()), e(m_takeoffdist.end()); i != e; ++i)
@@ -1620,7 +2111,7 @@ void Aircraft::Distances::load_xml(const xmlpp::Element *el)
 					i->set_vrotate(vrot);
 		}
 	}
-	if ((attr = el->get_attribute("mass"))) {
+	if ((attr = el->get_attribute("mass")) && attr->get_value() != "") {
 		double m(Glib::Ascii::strtod(attr->get_value()));
 		if (!std::isnan(m) && m > 0) {
 			for (distances_t::iterator i(m_takeoffdist.begin()), e(m_takeoffdist.end()); i != e; ++i)
@@ -1690,7 +2181,7 @@ Aircraft::ClimbDescent::Point::Point(double pa, double rate, double fuelflow, do
 	: m_pa(pa), m_rate(rate), m_fuelflow(fuelflow), m_cas(cas)
 {
 }
-			
+
 void Aircraft::ClimbDescent::Point::load_xml(const xmlpp::Element *el, mode_t& mode, double altfactor,
 					     double ratefactor, double fuelflowfactor, double casfactor,
 					     double timefactor, double fuelfactor, double distfactor)
@@ -1699,35 +2190,35 @@ void Aircraft::ClimbDescent::Point::load_xml(const xmlpp::Element *el, mode_t& m
 		return;
 	m_pa = m_rate = m_fuelflow = std::numeric_limits<double>::quiet_NaN();
 	xmlpp::Attribute *attr;
-	if ((attr = el->get_attribute("pa")) || (attr = el->get_attribute("da")))
+	if (((attr = el->get_attribute("pa")) || (attr = el->get_attribute("da"))) && attr->get_value() != "")
 		m_pa = Glib::Ascii::strtod(attr->get_value()) * altfactor;
 	if (mode == mode_rateofclimb || mode == mode_invalid) {
-		if ((attr = el->get_attribute("rate"))) {
+		if ((attr = el->get_attribute("rate")) && attr->get_value() != "") {
 			m_rate = Glib::Ascii::strtod(attr->get_value()) * ratefactor;
 			mode = mode_rateofclimb;
 		}
-		if ((attr = el->get_attribute("fuelflow"))) {
+		if ((attr = el->get_attribute("fuelflow")) && attr->get_value() != "") {
 			m_fuelflow = Glib::Ascii::strtod(attr->get_value()) * fuelflowfactor;
 			mode = mode_rateofclimb;
 		}
-		if ((attr = el->get_attribute("cas"))) {
+		if ((attr = el->get_attribute("cas")) && attr->get_value() != "") {
 			m_cas = Glib::Ascii::strtod(attr->get_value()) * casfactor;
 			mode = mode_rateofclimb;
 		}
 	}
 	if (mode == mode_timetoaltitude || mode == mode_invalid) {
-		if ((attr = el->get_attribute("time"))) {
+		if ((attr = el->get_attribute("time")) && attr->get_value() != "") {
 			m_rate = Glib::Ascii::strtod(attr->get_value()) * timefactor;
 			mode = mode_timetoaltitude;
 		}
-		if ((attr = el->get_attribute("fuel"))) {
+		if ((attr = el->get_attribute("fuel")) && attr->get_value() != "") {
 			m_fuelflow = Glib::Ascii::strtod(attr->get_value()) * fuelfactor;
 			mode = mode_timetoaltitude;
 		}
-		if ((attr = el->get_attribute("dist"))) {
+		if ((attr = el->get_attribute("dist")) && attr->get_value() != "") {
 			m_cas = Glib::Ascii::strtod(attr->get_value()) * distfactor;
 			mode = mode_timetoaltitude;
-		} else if ((attr = el->get_attribute("distance"))) {
+		} else if ((attr = el->get_attribute("distance")) && attr->get_value() != "") {
 			m_cas = Glib::Ascii::strtod(attr->get_value()) * distfactor;
 			mode = mode_timetoaltitude;
 		}
@@ -1749,21 +2240,21 @@ void Aircraft::ClimbDescent::Point::save_xml(xmlpp::Element *el, mode_t mode, do
 	}
 	switch (mode) {
 	case mode_rateofclimb:
-		if (std::isnan(m_rate) || ratefactor == 0) {
+		if (std::isnan(m_rate) || std::isnan(ratefactor) || ratefactor == 0) {
 			el->remove_attribute("rate");
 		} else {
 			std::ostringstream oss;
 			oss << (m_rate / ratefactor);
 			el->set_attribute("rate", oss.str());
 		}
-		if (std::isnan(m_fuelflow) || fuelflowfactor == 0) {
+		if (std::isnan(m_fuelflow) || std::isnan(fuelflowfactor) || fuelflowfactor == 0) {
 			el->remove_attribute("fuelflow");
 		} else {
 			std::ostringstream oss;
 			oss << (m_fuelflow / fuelflowfactor);
 			el->set_attribute("fuelflow", oss.str());
 		}
-		if (std::isnan(m_cas) || casfactor == 0) {
+		if (std::isnan(m_cas) || std::isnan(casfactor) || casfactor == 0) {
 			el->remove_attribute("cas");
 		} else {
 			std::ostringstream oss;
@@ -1773,21 +2264,21 @@ void Aircraft::ClimbDescent::Point::save_xml(xmlpp::Element *el, mode_t mode, do
 		break;
 
 	case mode_timetoaltitude:
-		if (std::isnan(m_rate) || timefactor == 0) {
+		if (std::isnan(m_rate) || std::isnan(timefactor) || timefactor == 0) {
 			el->remove_attribute("time");
 		} else {
 			std::ostringstream oss;
 			oss << (m_rate / timefactor);
 			el->set_attribute("time", oss.str());
 		}
-		if (std::isnan(m_fuelflow) || fuelfactor == 0) {
+		if (std::isnan(m_fuelflow) || std::isnan(fuelfactor) || fuelfactor == 0) {
 			el->remove_attribute("fuel");
 		} else {
 			std::ostringstream oss;
 			oss << (m_fuelflow / fuelfactor);
 			el->set_attribute("fuel", oss.str());
 		}
-		if (std::isnan(m_cas) || distfactor == 0) {
+		if (std::isnan(m_cas) || std::isnan(distfactor) || distfactor == 0) {
 			el->remove_attribute("dist");
 		} else {
 			std::ostringstream oss;
@@ -2289,7 +2780,7 @@ bool Aircraft::ClimbDescent::recalculatetoclimbpoly(bool force)
 					ins.first->second = (ins.first->second + d) * 0.5;
 				}
 			}
-			d = pi->get_fuel();	
+			d = pi->get_fuel();
 			if (!std::isnan(d)) {
 				std::pair<dmap_t::iterator,bool> ins(fmap.insert(dmap_t::value_type(tm, d)));
 				if (!ins.second) {
@@ -2492,7 +2983,7 @@ bool Aircraft::ClimbDescent::recalculatepoly(bool force)
 
 	default:
 		if (!recalculateratepoly(force))
-			return false;	
+			return false;
 		recalculateclimbpoly(0);
 		break;
 	}
@@ -2575,6 +3066,34 @@ void Aircraft::ClimbDescent::recalculateforatmo(double isaoffs, double qnh)
 		if (false)
 			m_climbaltpoly.print(std::cerr << "recalculateforatmo: climbaltpoly: ") << std::endl;
 	}
+	{
+		double ct(2 * m_climbtime);
+		if (std::isnan(ct) || ct < 1 || ct > 3600)
+			ct = 3600;
+		ct = m_climbaltpoly.boundedinveval(m_ceiling, 0, ct);
+		if (m_climbaltpoly.evalderiv(0) > 0 && m_climbaltpoly.evalderiv(ct) < 0) {
+			double ct1(m_climbaltpoly.differentiate().boundedinveval(0, 0, ct));
+			if (m_climbaltpoly.eval(ct1) > m_ceiling)
+				ct1 = m_climbaltpoly.boundedinveval(m_ceiling, 0, ct1);
+			if (false)
+				std::cerr << "recalculateforatmo: isaoffs " << m_isaoffset << " -> " << isaoffs << " qnh "
+					  << IcaoAtmosphere<double>::std_sealevel_pressure << " -> " << qnh
+					  << " ceil " << m_ceiling << '/' << m_climbaltpoly.eval(ct1)
+					  << " climbtime " << ct << " -> " << ct1 << " (climbratelimit)" << std::endl;
+			ct = ct1;
+		}
+		if (false)
+			std::cerr << "recalculateforatmo: isaoffs " << m_isaoffset << " -> " << isaoffs << " qnh "
+				  << IcaoAtmosphere<double>::std_sealevel_pressure << " -> " << qnh
+				  << " ceil " << m_ceiling << '/' << m_climbaltpoly.eval(ct)
+				  << " climbtime " << m_climbtime << " -> " << ct << std::endl;
+		m_climbtime = ct;
+		{
+			double newceil(m_climbaltpoly.eval(m_climbtime));
+			if (newceil < m_ceiling)
+				m_ceiling = newceil;
+		}
+	}
 	m_isaoffset = isaoffs;
 #endif
 	clear_points();
@@ -2636,13 +3155,15 @@ void Aircraft::ClimbDescent::load_xml(const xmlpp::Element *el, double altfactor
 	xmlpp::Attribute *attr;
 	if ((attr = el->get_attribute("name")))
 		m_name = attr->get_value();
-	if ((attr = el->get_attribute("mass")))
+	if ((attr = el->get_attribute("mass")) && attr->get_value() != "")
 		m_mass = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("isaoffset")))
+	if ((attr = el->get_attribute("isaoffset")) && attr->get_value() != "")
 		m_isaoffset = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("ceiling")))
+	else if ((attr = el->get_attribute("isaoffs")) && attr->get_value() != "")
+		m_isaoffset = Glib::Ascii::strtod(attr->get_value());
+	if ((attr = el->get_attribute("ceiling")) && attr->get_value() != "")
 		m_ceiling = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("climbtime")))
+	if ((attr = el->get_attribute("climbtime")) && attr->get_value() != "")
 		m_climbtime = Glib::Ascii::strtod(attr->get_value());
 	if ((attr = el->get_attribute("mode"))) {
 		if (attr->get_value() == "rateofdescent") {
@@ -2791,6 +3312,103 @@ void Aircraft::ClimbDescent::save_xml(xmlpp::Element *el, double altfactor, doub
 		m_climbfuelpoly.save_xml(el->add_child("climbfuelpoly"));
 }
 
+#ifdef HAVE_JSONCPP
+
+bool Aircraft::ClimbDescent::load_garminpilot(const Json::Value& root)
+{
+	if (root.isMember("fuelMeasureType")) {
+		const Json::Value& fmt(root["fuelMeasureType"]);
+		if (fmt.isString()) {
+			if (fmt.asString() == "volume") {
+				// ??
+			} else if (fmt.asString() == "weight") {
+				// ??
+			}
+		}
+	}
+	if (root.isMember("samples")) {
+		const Json::Value& samp(root["samples"]);
+		if (samp.isArray()) {
+			for (Json::ArrayIndex i = 0; i < samp.size(); ++i) {
+				const Json::Value& samp1(samp[i]);
+				if (!samp1.isObject())
+					continue;
+				double pa(std::numeric_limits<double>::quiet_NaN());
+				double rate(std::numeric_limits<double>::quiet_NaN());
+				double fuelflow(std::numeric_limits<double>::quiet_NaN());
+				double cas(std::numeric_limits<double>::quiet_NaN());
+				if (samp1.isMember("iasInput")) {
+					const Json::Value& x(root["iasInput"]);
+					if (x.isNumeric())
+						cas = x.asDouble();
+				}
+				if (samp1.isMember("outputRate")) {
+					const Json::Value& x(root["outputRate"]);
+					if (x.isNumeric())
+						rate = x.asDouble();
+				}
+				if (samp1.isMember("fuelFlow")) {
+					const Json::Value& x(root["fuelFlow"]);
+					if (x.isNumeric())
+						fuelflow = x.asDouble();
+				}
+				if (samp1.isMember("altitude")) {
+					const Json::Value& x(root["altitude"]);
+					if (x.isNumeric())
+						pa = x.asDouble();
+				}
+				if (!std::isnan(pa) && !std::isnan(rate))
+					m_points.push_back(Point(pa, rate, fuelflow, cas));
+			}
+		}
+	}
+	m_mode = mode_rateofclimb;
+	return !m_points.empty();
+}
+
+void Aircraft::ClimbDescent::save_garminpilot(Json::Value& root)
+{
+	{
+		Json::Value& pdu(root["parameterDisplayUnits"]);
+		pdu["temperature"] = "Degrees Celsius";
+	}
+	root["tempType"] = "isa";
+	{
+		Json::Value& pd(root["parameterDefaults"]);
+		pd = Json::Value(Json::objectValue);
+	}
+	{
+		Json::Value& par(root["inputParameters"]);
+		par.append(Json::Value("altitude"));
+		par.append(Json::Value("iasInput"));
+	}
+	root["powerSettingType"] = "percentPower";
+	Json::Value& samp(root["samples"]);
+	samp = Json::Value(Json::arrayValue);
+	double ceil(get_ceiling());
+	if (ceil < 0)
+		return;
+	for (double pa = 0;; ) {
+		double rate(std::numeric_limits<double>::quiet_NaN());
+		double fuelflow(std::numeric_limits<double>::quiet_NaN());
+		double cas(std::numeric_limits<double>::quiet_NaN());
+		calculate(rate, fuelflow, cas, pa);
+		Json::Value x;
+		x["iasInput"] = cas;
+		x["outputRate"] = rate;
+		x["fuelFlow"] = fuelflow;
+		x["altitude"] = pa;
+		samp.append(x);
+		if (pa >= ceil)
+			break;
+		pa += 2000;
+		if (pa > ceil)
+			pa = ceil;
+	}
+}
+
+#endif
+
 void Aircraft::ClimbDescent::add_point(const Point& pt)
 {
 	m_points.push_back(pt);
@@ -2906,6 +3524,55 @@ void Aircraft::ClimbDescent::set_descent_rate(double rate)
 	m_ratepoly.push_back(rate);
 	m_fuelflowpoly.push_back(0);
 	m_caspoly.push_back(0);
+}
+
+double Aircraft::ClimbDescent::get_constant_cas(void) const
+{
+	if (get_caspoly().size() != 1)
+		return std::numeric_limits<double>::quiet_NaN();
+	return get_caspoly().front();
+}
+
+double Aircraft::ClimbDescent::get_constant_rate(void) const
+{
+	if (get_ratepoly().size() != 1)
+		return std::numeric_limits<double>::quiet_NaN();
+	return get_ratepoly().front();
+}
+
+double Aircraft::ClimbDescent::get_constant_slope(void) const
+{
+	if (std::isnan(get_ceiling()) || get_ceiling() <= 0 || get_ceiling() > 1000000)
+		return std::numeric_limits<double>::quiet_NaN();
+	const double knots_to_ftpm = 1.e3 / ::Point::km_to_nmi_dbl * ::Point::m_to_ft_dbl / 60.0;
+	const double tolerance = 0.05;
+	std::vector<double> ratios;
+	for (double alt = 0;; alt += 1000) {
+		bool last(alt >= get_ceiling());
+		if (last)
+			alt = get_ceiling();
+		AirData<double> ad;
+		ad.set_qnh_tempoffs(IcaoAtmosphere<double>::std_sealevel_pressure, get_isaoffset());
+		ad.set_pressure_altitude(alt);
+		ad.set_cas(get_caspoly().eval(alt));
+		double ratio(ad.get_tas() / get_ratepoly().eval(alt));
+		if (std::isnan(ratio) || ratio <= 0.0)
+			return std::numeric_limits<double>::quiet_NaN();
+		ratios.push_back(ratio);
+		if (last)
+			break;
+	}
+	if (ratios.size() < 1)
+		return std::numeric_limits<double>::quiet_NaN();
+	std::sort(ratios.begin(), ratios.end());
+	double s(ratios[ratios.size() / 2]);
+	if (!(ratios.size() & 1)) {
+		s += ratios[ratios.size() / 2 - 1];
+		s *= 0.5;
+	}
+	if (ratios[0] < s * (1 - tolerance) || ratios[ratios.size() - 1] > s * (1 + tolerance))
+		return std::numeric_limits<double>::quiet_NaN();
+	return s * knots_to_ftpm;
 }
 
 Aircraft::CheckErrors Aircraft::ClimbDescent::check(double minmass, double maxmass, bool descent) const
@@ -3155,19 +3822,19 @@ void Aircraft::Climb::load_xml(const xmlpp::Element *el)
 	m_fuelfactor = 1;
 	m_distfactor = 1;
 	xmlpp::Attribute *attr;
-	if ((attr = el->get_attribute("altfactor")))
+	if ((attr = el->get_attribute("altfactor")) && attr->get_value() != "")
 		m_altfactor = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("ratefactor")))
+	if ((attr = el->get_attribute("ratefactor")) && attr->get_value() != "")
 		m_ratefactor = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("fuelfactor")))
+	if ((attr = el->get_attribute("fuelfactor")) && attr->get_value() != "")
 		m_fuelflowfactor = m_fuelfactor = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("fuelflowfactor")))
+	if ((attr = el->get_attribute("fuelflowfactor")) && attr->get_value() != "")
 		m_fuelflowfactor = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("casfactor")))
+	if ((attr = el->get_attribute("casfactor")) && attr->get_value() != "")
 		m_casfactor = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("timefactor")))
+	if ((attr = el->get_attribute("timefactor")) && attr->get_value() != "")
 		m_timefactor = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("distfactor")))
+	if ((attr = el->get_attribute("distfactor")) && attr->get_value() != "")
 		m_distfactor = Glib::Ascii::strtod(attr->get_value());
 	if ((attr = el->get_attribute("remark")))
 		m_remark = attr->get_value();
@@ -3354,7 +4021,7 @@ std::ostream& Aircraft::Climb::print(std::ostream& os, const std::string& indent
 			for (isamap_t::const_iterator ii(mi->second.begin()), ie(mi->second.end()); ii != ie; ++ii)
 				ii->second.print(os << indent << "Profile Name \"" << ci->first << "\" mass " << mi->first
 						 << " isaoffs " << ii->first << std::endl, indent + "  ");
-	return os;	
+	return os;
 }
 
 Aircraft::Descent::Descent(double altfactor, double ratefactor, double fuelflowfactor, double casfactor,
@@ -3376,7 +4043,7 @@ void Aircraft::Descent::load_xml(const xmlpp::Element *el)
 		return;
 	Climb::load_xml(el);
 	xmlpp::Attribute *attr;
-	if ((attr = el->get_attribute("rate"))) {
+	if ((attr = el->get_attribute("rate")) && attr->get_value() != "") {
 		double rate(Glib::Ascii::strtod(attr->get_value()));
 		std::set<std::string> cn(get_curves());
 		if (cn.empty() && !std::isnan(rate) && (rate >= 100)) {
@@ -3483,6 +4150,76 @@ void Aircraft::Descent::set_default(propulsion_t prop, const Cruise& cruise, con
 	}
 }
 
+bool Aircraft::Descent::limit_static_descent_by_opsperf(propulsion_t prop, const Cruise& cruise, const Climb& climb, double mtom,
+							const OperationsPerformance::Aircraft& opsperfacft)
+{
+	double ceiling(climb.get_ceiling());
+	if (std::isnan(ceiling) || ceiling < 1000)
+		return false;
+	double rate(get_rate());
+	if (std::isnan(rate) || rate <= 0)
+		return false;
+	if (!opsperfacft.is_valid())
+		return false;
+	Descent desc(*this);
+	desc.clear();
+	// modified version of Aircraft::Descent::set_default
+	const double mass(mtom);
+	const double isaoffs(0);
+	std::set<std::string> cn(cruise.get_curves());
+	if (cn.empty())
+		return false;
+	AirData<float> ad;
+	ad.set_qnh_temp();
+	bool first(true);
+	for (std::set<std::string>::const_iterator ci(cn.begin()), ce(cn.end()); ci != ce; ++ci) {
+		if (cruise.get_curve_flags(*ci) & Cruise::Curve::flags_hold)
+			continue;
+		ClimbDescent cd(*ci, mass, isaoffs);
+		cd.clear_points();
+		cd.set_ceiling(ceiling);
+		typedef std::set<double> alts_t;
+		alts_t alts;
+		for (double pa = 0;; pa += 1000) {
+			bool last(pa >= ceiling);
+			if (last)
+				pa = ceiling;
+			double tas(0), fuelflow(0), pa1(pa), mass1(mass), isaoffs1(isaoffs), rate1(rate);
+			Cruise::CruiseEngineParams ep(*ci);
+			cruise.calculate(prop, tas, fuelflow, pa1, mass1, isaoffs1, ep);
+			if (pa >= 4000) {
+				OperationsPerformance::Aircraft::ComputeResult res(opsperfacft.get_massref());
+				res.set_qnh_temp(); // ISA
+				res.set_pressure_altitude(pa);
+				if (opsperfacft.compute(res, OperationsPerformance::Aircraft::compute_descent)) {
+					if (res.get_rocd() < -300)
+						rate1 = std::min(rate1, -res.get_rocd());
+					if (false)
+						std::cerr << "Descent: OpsPerf: rate " << -res.get_rocd() << std::endl;
+				}
+			}
+			if (false)
+				std::cerr << "Descent: " << *ci << " tas " << tas << " ff " << fuelflow << " pa " << pa1 << " rate " << rate1 << std::endl;
+			if (!std::isnan(tas) && !std::isnan(fuelflow) && !std::isnan(pa1) && tas >= 1 && pa1 >= 0) {
+				if (alts.insert(pa1).second) {
+					ad.set_pressure_altitude(pa1);
+					ad.set_tas(tas);
+					cd.add_point(ClimbDescent::Point(pa1, rate1, fuelflow, ad.get_cas()));
+				}
+			}
+			if (last)
+				break;
+		}
+		cd.recalculatepoly(true);
+		first = false;
+		desc.add(cd);
+	}
+	if (!first)
+		*this = desc;
+	return !first;
+
+}
+
 Aircraft::ClimbDescent Aircraft::Descent::calculate(const std::string& name, double mass, double isaoffs, double qnh) const
 {
 	curves_t::const_iterator ci(m_curves.find(name));
@@ -3542,6 +4279,243 @@ Aircraft::ClimbDescent Aircraft::Descent::calculate(const massmap_t& ci, double 
 	return calculate(miu->second, isaoffs, qnh).interpolate(t, calculate(mil->second, isaoffs, qnh));
 }
 
+Aircraft::Glide::Glide(double altfactor, double ratefactor, double casfactor, double timefactor, double distfactor)
+	: Climb(altfactor, ratefactor, std::numeric_limits<double>::quiet_NaN(), casfactor,
+		timefactor, std::numeric_limits<double>::quiet_NaN(), distfactor)
+{
+	set_default(2600, 17000, 105 * 0.86897624, 8.1086);
+}
+
+void Aircraft::Glide::load_xml(const xmlpp::Element *el, double ceiling)
+{
+	if (!el)
+		return;
+	m_curves.clear();
+	m_remark.clear();
+	m_altfactor = 1;
+	m_ratefactor = 1;
+	m_fuelflowfactor = std::numeric_limits<double>::quiet_NaN();
+	m_casfactor = 1;
+	m_timefactor = 1;
+	m_fuelfactor = std::numeric_limits<double>::quiet_NaN();
+	m_distfactor = 1;
+	xmlpp::Attribute *attr;
+	if ((attr = el->get_attribute("altfactor")) && attr->get_value() != "")
+		m_altfactor = Glib::Ascii::strtod(attr->get_value());
+	if ((attr = el->get_attribute("ratefactor")) && attr->get_value() != "")
+		m_ratefactor = Glib::Ascii::strtod(attr->get_value());
+	if ((attr = el->get_attribute("casfactor")) && attr->get_value() != "")
+		m_casfactor = Glib::Ascii::strtod(attr->get_value());
+	if ((attr = el->get_attribute("timefactor")) && attr->get_value() != "")
+		m_timefactor = Glib::Ascii::strtod(attr->get_value());
+	if ((attr = el->get_attribute("distfactor")) && attr->get_value() != "")
+		m_distfactor = Glib::Ascii::strtod(attr->get_value());
+	if ((attr = el->get_attribute("remark")))
+		m_remark = attr->get_value();
+	{
+		xmlpp::Node::NodeList nl(el->get_children("curve"));
+		for (xmlpp::Node::NodeList::const_iterator ni(nl.begin()), ne(nl.end()); ni != ne; ++ni) {
+			xmlpp::Element *el(static_cast<xmlpp::Element *>(*ni));
+			ClimbDescent cd;
+			cd.load_xml(el, m_altfactor, m_ratefactor, m_fuelflowfactor, m_casfactor,
+				    m_timefactor, m_fuelfactor, m_distfactor);
+			{
+				double vbestglide(std::numeric_limits<double>::quiet_NaN());
+				double glideslope(std::numeric_limits<double>::quiet_NaN());
+				if ((attr = el->get_attribute("vbestglide")) && attr->get_value() != "")
+					vbestglide = Glib::Ascii::strtod(attr->get_value());
+				if ((attr = el->get_attribute("glideslope")) && attr->get_value() != "")
+					glideslope = Glib::Ascii::strtod(attr->get_value());
+				set_default(cd, ceiling, vbestglide, glideslope);
+			}
+			add(cd);
+		}
+		if (nl.empty()) {
+			ClimbDescent cd;
+			cd.load_xml(el, m_altfactor, m_ratefactor, m_fuelflowfactor, m_casfactor,
+				    m_timefactor, m_fuelfactor, m_distfactor);
+			{
+				double vbestglide(std::numeric_limits<double>::quiet_NaN());
+				double glideslope(std::numeric_limits<double>::quiet_NaN());
+				if ((attr = el->get_attribute("vbestglide")) && attr->get_value() != "")
+					vbestglide = Glib::Ascii::strtod(attr->get_value());
+				if ((attr = el->get_attribute("glideslope")) && attr->get_value() != "")
+					glideslope = Glib::Ascii::strtod(attr->get_value());
+				set_default(cd, ceiling, vbestglide, glideslope);
+			}
+			if (cd.has_points()) {
+				add(cd);
+			}
+		}
+	}
+}
+
+void Aircraft::Glide::save_xml(xmlpp::Element *el) const
+{
+	if (m_altfactor == 1) {
+		el->remove_attribute("altfactor");
+	} else {
+		std::ostringstream oss;
+		oss << m_altfactor;
+		el->set_attribute("altfactor", oss.str());
+	}
+	if (m_ratefactor == 1) {
+		el->remove_attribute("ratefactor");
+	} else {
+		std::ostringstream oss;
+		oss << m_ratefactor;
+		el->set_attribute("ratefactor", oss.str());
+	}
+	if (m_casfactor == 1) {
+		el->remove_attribute("casfactor");
+	} else {
+		std::ostringstream oss;
+		oss << m_casfactor;
+		el->set_attribute("casfactor", oss.str());
+	}
+	if (m_timefactor == 1) {
+		el->remove_attribute("timefactor");
+	} else {
+		std::ostringstream oss;
+		oss << m_timefactor;
+		el->set_attribute("timefactor", oss.str());
+	}
+	if (m_distfactor == 1) {
+		el->remove_attribute("distfactor");
+	} else {
+		std::ostringstream oss;
+		oss << m_distfactor;
+		el->set_attribute("distfactor", oss.str());
+	}
+	if (m_remark.empty())
+		el->remove_attribute("remark");
+	else
+		el->set_attribute("remark", m_remark);
+	for (curves_t::const_iterator ci(m_curves.begin()), ce(m_curves.end()); ci != ce; ++ci)
+		for (massmap_t::const_iterator mi(ci->second.begin()), me(ci->second.end()); mi != me; ++mi)
+			for (isamap_t::const_iterator ii(mi->second.begin()), ie(mi->second.end()); ii != ie; ++ii) {
+				xmlpp::Element *el2(el->add_child("curve"));
+				ii->second.save_xml(el2, m_altfactor, m_ratefactor, m_fuelflowfactor, m_casfactor,
+						    m_timefactor, m_fuelfactor, m_distfactor);
+				{
+					double vbestglide(ii->second.get_constant_cas());
+					if (std::isnan(vbestglide)) {
+						el2->remove_attribute("vbestglide");
+					} else {
+						std::ostringstream oss;
+						oss << vbestglide;
+						el2->set_attribute("vbestglide", oss.str());
+					}
+				}
+				{
+					double glideslope(ii->second.get_constant_slope());
+					if (std::isnan(glideslope)) {
+						el2->remove_attribute("glideslope");
+					} else {
+						std::ostringstream oss;
+						oss << glideslope;
+						el2->set_attribute("glideslope", oss.str());
+					}
+				}
+			}
+}
+
+bool Aircraft::Glide::set_default(ClimbDescent& cd, double ceiling, double vbg, double glideslope)
+{
+	if (std::isnan(ceiling) || std::isnan(vbg) || std::isnan(glideslope) ||
+	    ceiling <= 0 || vbg <= 0 || glideslope <= 0)
+		return false;
+	if (cd.has_points() || std::isnan(cd.get_mass()) || cd.get_mass() <= 0 || std::isnan(cd.get_isaoffset()))
+		return false;
+	cd.set_ceiling(ceiling);
+	for (double alt = 0;; alt += 1000) {
+		const double knots_to_ftpm = 1.e3 / Point::km_to_nmi_dbl * Point::m_to_ft_dbl / 60.0;
+		bool last(alt >= ceiling);
+		if (last)
+			alt = ceiling;
+		AirData<double> ad;
+		ad.set_qnh_tempoffs(IcaoAtmosphere<double>::std_sealevel_pressure, cd.get_isaoffset());
+		ad.set_pressure_altitude(alt);
+		ad.set_cas(vbg);
+		double tas(ad.get_tas());
+		cd.add_point(ClimbDescent::Point(alt, tas * knots_to_ftpm / glideslope, 0, vbg));
+		if (false)
+			std::cerr << "Glide Point: alt " << alt << " rod " << (tas * knots_to_ftpm / get_glideslope())
+				  << " cas " << vbg << std::endl;
+		if (last)
+			break;
+	}
+	cd.recalculatepoly(true);
+	return true;
+}
+
+void Aircraft::Glide::set_default(double mass, double ceiling, double vbg, double glideslope)
+{
+	if (std::isnan(ceiling) || std::isnan(vbg) || std::isnan(glideslope) ||
+	    ceiling <= 0 || vbg <= 0 || glideslope <= 0)
+		return;
+	m_curves.clear();
+	{
+		ClimbDescent cd("", mass);
+		cd.clear_points();
+		add(cd);
+	}
+	for (curves_t::iterator ci(m_curves.begin()), ce(m_curves.end()); ci != ce; ++ci)
+		for (massmap_t::iterator mi(ci->second.begin()), me(ci->second.end()); mi != me; ++mi)
+			for (isamap_t::iterator ii(mi->second.begin()), ie(mi->second.end()); ii != ie; ++ii)
+				set_default(ii->second, ceiling, vbg, glideslope);
+}
+
+double Aircraft::Glide::get_vbestglide(void) const
+{
+	const double tolerance = 0.05;
+	std::vector<double> x;
+	for (curves_t::const_iterator ci(m_curves.begin()), ce(m_curves.end()); ci != ce; ++ci)
+		for (massmap_t::const_iterator mi(ci->second.begin()), me(ci->second.end()); mi != me; ++mi)
+			for (isamap_t::const_iterator ii(mi->second.begin()), ie(mi->second.end()); ii != ie; ++ii) {
+				double xx(ii->second.get_constant_cas());
+				if (std::isnan(xx) || xx <= 0)
+					return std::numeric_limits<double>::quiet_NaN();
+				x.push_back(xx);
+			}
+	if (x.size() < 1)
+		return std::numeric_limits<double>::quiet_NaN();
+	std::sort(x.begin(), x.end());
+	double s(x[x.size() / 2]);
+	if (!(x.size() & 1)) {
+		s += x[x.size() / 2 - 1];
+		s *= 0.5;
+	}
+	if (x[0] < s * (1 - tolerance) || x[x.size() - 1] > s * (1 + tolerance))
+		return std::numeric_limits<double>::quiet_NaN();
+	return s;
+}
+
+double Aircraft::Glide::get_glideslope(void) const
+{
+	const double tolerance = 0.05;
+	std::vector<double> x;
+	for (curves_t::const_iterator ci(m_curves.begin()), ce(m_curves.end()); ci != ce; ++ci)
+		for (massmap_t::const_iterator mi(ci->second.begin()), me(ci->second.end()); mi != me; ++mi)
+			for (isamap_t::const_iterator ii(mi->second.begin()), ie(mi->second.end()); ii != ie; ++ii) {
+				double xx(ii->second.get_constant_slope());
+				if (std::isnan(xx) || xx <= 0)
+					return std::numeric_limits<double>::quiet_NaN();
+				x.push_back(xx);
+			}
+	if (x.size() < 1)
+		return std::numeric_limits<double>::quiet_NaN();
+	std::sort(x.begin(), x.end());
+	double s(x[x.size() / 2]);
+	if (!(x.size() & 1)) {
+		s += x[x.size() / 2 - 1];
+		s *= 0.5;
+	}
+	if (x[0] < s * (1 - tolerance) || x[x.size() - 1] > s * (1 + tolerance))
+		return std::numeric_limits<double>::quiet_NaN();
+	return s;
+}
+
 Aircraft::Cruise::Point::Point(double pa, double bhp, double tas, double fuelflow)
 	: m_pa(pa), m_bhp(bhp), m_tas(tas), m_fuelflow(fuelflow)
 {
@@ -3555,19 +4529,19 @@ void Aircraft::Cruise::Point::load_xml(const xmlpp::Element *el, PistonPower& pp
 	double rpm(std::numeric_limits<double>::quiet_NaN());
 	double mp(std::numeric_limits<double>::quiet_NaN());
 	xmlpp::Attribute *attr;
-	if ((attr = el->get_attribute("pa")))
+	if ((attr = el->get_attribute("pa")) && attr->get_value() != "")
 		m_pa = Glib::Ascii::strtod(attr->get_value()) * altfactor;
-	else if ((attr = el->get_attribute("da")))
+	else if ((attr = el->get_attribute("da")) && attr->get_value() != "")
 		m_pa = Glib::Ascii::strtod(attr->get_value()) * altfactor;
-	if ((attr = el->get_attribute("rpm")))
+	if ((attr = el->get_attribute("rpm")) && attr->get_value() != "")
 		rpm = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("mp")))
+	if ((attr = el->get_attribute("mp")) && attr->get_value() != "")
 		mp = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("bhp")))
+	if ((attr = el->get_attribute("bhp")) && attr->get_value() != "")
 		m_bhp = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("tas")))
+	if ((attr = el->get_attribute("tas")) && attr->get_value() != "")
 		m_tas = Glib::Ascii::strtod(attr->get_value()) * tasfactor;
-	if ((attr = el->get_attribute("fuelflow")))
+	if ((attr = el->get_attribute("fuelflow")) && attr->get_value() != "")
 		m_fuelflow = Glib::Ascii::strtod(attr->get_value()) * fuelfactor;
 	pp.add(m_pa, isaoffs, m_bhp, rpm, mp);
 }
@@ -3626,19 +4600,19 @@ void Aircraft::Cruise::PointRPMMP::load_xml(const xmlpp::Element *el, PistonPowe
 		return;
 	m_pa = m_bhp = m_tas = m_fuelflow = m_rpm = m_mp = std::numeric_limits<double>::quiet_NaN();
 	xmlpp::Attribute *attr;
-	if ((attr = el->get_attribute("pa")))
+	if ((attr = el->get_attribute("pa")) && attr->get_value() != "")
 		m_pa = Glib::Ascii::strtod(attr->get_value()) * altfactor;
-	else if ((attr = el->get_attribute("da")))
+	else if ((attr = el->get_attribute("da")) && attr->get_value() != "")
 		m_pa = Glib::Ascii::strtod(attr->get_value()) * altfactor;
-	if ((attr = el->get_attribute("rpm")))
+	if ((attr = el->get_attribute("rpm")) && attr->get_value() != "")
 		m_rpm = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("mp")))
+	if ((attr = el->get_attribute("mp")) && attr->get_value() != "")
 		m_mp = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("bhp")))
+	if ((attr = el->get_attribute("bhp")) && attr->get_value() != "")
 		m_bhp = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("tas")))
+	if ((attr = el->get_attribute("tas")) && attr->get_value() != "")
 		m_tas = Glib::Ascii::strtod(attr->get_value()) * tasfactor;
-	if ((attr = el->get_attribute("fuelflow")))
+	if ((attr = el->get_attribute("fuelflow")) && attr->get_value() != "")
 		m_fuelflow = Glib::Ascii::strtod(attr->get_value()) * fuelfactor;
 	pp.add(m_pa, isaoffs, m_bhp, m_rpm, m_mp);
 }
@@ -3724,13 +4698,13 @@ void Aircraft::Cruise::Curve::load_xml(const xmlpp::Element *el, PistonPower& pp
 	xmlpp::Attribute *attr;
 	if ((attr = el->get_attribute("name")))
 		m_name = attr->get_value();
-	if ((attr = el->get_attribute("mass")))
+	if ((attr = el->get_attribute("mass")) && attr->get_value() != "")
 		m_mass = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("isaoffset")))
+	if ((attr = el->get_attribute("isaoffset")) && attr->get_value() != "")
 		m_isaoffset = Glib::Ascii::strtod(attr->get_value());
-	else if ((attr = el->get_attribute("isaoffs")))
+	else if ((attr = el->get_attribute("isaoffs")) && attr->get_value() != "")
 		m_isaoffset = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("rpm")))
+	if ((attr = el->get_attribute("rpm")) && attr->get_value() != "")
 		m_rpm = Glib::Ascii::strtod(attr->get_value());
 	if ((attr = el->get_attribute("flags"))) {
 		Glib::ustring val(attr->get_value());
@@ -3849,6 +4823,70 @@ void Aircraft::Cruise::Curve::save_xml(xmlpp::Element *el, double altfactor, dou
 	for (const_iterator pi(begin()), pe(end()); pi != pe; ++pi)
 		pi->save_xml(el->add_child("point"));
 }
+
+#ifdef HAVE_JSONCPP
+
+bool Aircraft::Cruise::Curve::load_garminpilot(const Json::Value& root, double maxbhp)
+{
+	if (root.isMember("fuelMeasureType")) {
+		const Json::Value& fmt(root["fuelMeasureType"]);
+		if (fmt.isString()) {
+			if (fmt.asString() == "volume") {
+				// ??
+			} else if (fmt.asString() == "weight") {
+				// ??
+			}
+		}
+	}
+	double pwrmul(1);
+	if (root.isMember("powerSettingType")) {
+		const Json::Value& pst(root["powerSettingType"]);
+		if (pst.isString()) {
+			if (pst.asString() == "percentPower") {
+				pwrmul = maxbhp;
+			}
+		}
+	}
+	if (root.isMember("samples")) {
+		const Json::Value& samp(root["samples"]);
+		if (samp.isArray()) {
+			for (Json::ArrayIndex i = 0; i < samp.size(); ++i) {
+				const Json::Value& samp1(samp[i]);
+				if (!samp1.isObject())
+					continue;
+				double pa(std::numeric_limits<double>::quiet_NaN());
+				double bhp(std::numeric_limits<double>::quiet_NaN());
+				double tas(std::numeric_limits<double>::quiet_NaN());
+				double fuelflow(std::numeric_limits<double>::quiet_NaN());
+				if (samp1.isMember("altitude")) {
+					const Json::Value& x(root["altitude"]);
+					if (x.isNumeric())
+						pa = x.asDouble();
+				}
+				if (samp1.isMember("trueAirspeed")) {
+					const Json::Value& x(root["trueAirspeed"]);
+					if (x.isNumeric())
+						tas = x.asDouble();
+				}
+				if (samp1.isMember("fuelFlow")) {
+					const Json::Value& x(root["fuelFlow"]);
+					if (x.isNumeric())
+						fuelflow = x.asDouble();
+				}
+				if (samp1.isMember("powerSetting")) {
+					const Json::Value& x(root["powerSetting"]);
+					if (x.isNumeric())
+						bhp = x.asDouble() * pwrmul;
+				}
+				if (!std::isnan(pa) && !std::isnan(tas))
+					insert(Point(pa, bhp, tas, fuelflow));
+			}
+		}
+	}
+	return !empty();
+}
+
+#endif
 
 int Aircraft::Cruise::Curve::compare(const Curve& x) const
 {
@@ -4052,6 +5090,225 @@ Aircraft::Cruise::CurveRPMMP::operator Curve(void) const
 	return c;
 }
 
+Aircraft::Cruise::OptimalAltitudePoint::OptimalAltitudePoint(double mass, double isaoffs, double pa)
+	: m_pa(pa), m_mass(mass), m_isaoffs(isaoffs)
+{
+}
+
+void Aircraft::Cruise::OptimalAltitudePoint::load_xml(const xmlpp::Element *el, double altfactor, double massfactor)
+{
+	if (!el)
+		return;
+	m_pa = m_mass = m_isaoffs = std::numeric_limits<double>::quiet_NaN();
+	xmlpp::Attribute *attr;
+	if ((attr = el->get_attribute("pa")) && attr->get_value() != "")
+		m_pa = Glib::Ascii::strtod(attr->get_value()) * altfactor;
+	if ((attr = el->get_attribute("mass")) && attr->get_value() != "")
+		m_mass = Glib::Ascii::strtod(attr->get_value()) * massfactor;
+	if ((attr = el->get_attribute("isaoffset")) && attr->get_value() != "")
+		m_isaoffs = Glib::Ascii::strtod(attr->get_value());
+}
+
+void Aircraft::Cruise::OptimalAltitudePoint::save_xml(xmlpp::Element *el, double altfactor, double massfactor) const
+{
+	if (!el)
+		return;
+	if (std::isnan(m_pa) || altfactor == 0) {
+		el->remove_attribute("pa");
+	} else {
+		std::ostringstream oss;
+		oss << (m_pa / altfactor);
+		el->set_attribute("pa", oss.str());
+	}
+	if (std::isnan(m_mass) || massfactor == 0) {
+		el->remove_attribute("mass");
+	} else {
+		std::ostringstream oss;
+		oss << (m_mass / massfactor);
+		el->set_attribute("mass", oss.str());
+	}
+	if (std::isnan(m_isaoffs)) {
+		el->remove_attribute("isaoffset");
+	} else {
+		std::ostringstream oss;
+		oss << m_isaoffs;
+		el->set_attribute("isaoffset", oss.str());
+	}
+}
+
+int Aircraft::Cruise::OptimalAltitudePoint::compare(const OptimalAltitudePoint& x) const
+{
+	if (get_mass() < x.get_mass())
+		return -1;
+	if (x.get_mass() < get_mass())
+		return 1;
+	if (get_isaoffs() < x.get_isaoffs())
+		return -1;
+	if (x.get_isaoffs() < get_isaoffs())
+		return 1;
+	return 0;
+}
+
+Aircraft::Cruise::OptimalAltitude::OptimalAltitude(void)
+{
+}
+
+#ifdef __WIN32__
+__attribute__((force_align_arg_pointer))
+#endif
+bool Aircraft::Cruise::OptimalAltitude::recalculatepoly(bool force)
+{
+#ifdef HAVE_EIGEN3
+	if (!force && !m_isaoffspoly.empty())
+		return false;
+	if (empty()) {
+		m_isaoffspoly.clear();
+		return false;
+	}
+	std::set<double> isaoffs;
+	for (const_iterator i(begin()), e(end()); i != e; ++i) {
+		if (std::isnan(i->get_isaoffs()) || std::isnan(i->get_mass()) || std::isnan(i->get_pressurealt()))
+			continue;
+		isaoffs.insert(i->get_isaoffs());
+	}
+	for (std::set<double>::const_iterator ioi(isaoffs.begin()), ioe(isaoffs.end()); ioi != ioe; ++ioi) {
+		unsigned int polyorder(4);
+		unsigned int pt(0);
+		Eigen::MatrixXd m(size(), polyorder);
+		Eigen::VectorXd v(size());
+		for (const_iterator i(begin()), e(end()); i != e; ++i) {
+			if (i->get_isaoffs() != *ioi || std::isnan(i->get_mass()) || std::isnan(i->get_pressurealt()))
+				continue;
+			double mass(i->get_mass()), mass1(1);
+			for (unsigned int i = 0; i < polyorder; ++i, mass1 *= mass)
+				m(pt, i) = mass1;
+			v(pt) = i->get_pressurealt();
+                        ++pt;
+		}
+		if (!pt)
+			continue;
+		m.conservativeResize(pt, std::min(pt, polyorder));
+		v.conservativeResize(pt);
+		Eigen::VectorXd x(least_squares_solution(m, v));
+		poly_t p(x.data(), x.data() + x.size());
+		m_isaoffspoly.insert(isaoffspoly_t::value_type(*ioi, p));
+	}
+	return true;
+#else
+	return false;
+#endif
+}
+
+Aircraft::CheckErrors Aircraft::Cruise::OptimalAltitude::check(double minmass, double maxmass) const
+{
+	CheckErrors r;
+	for (const_iterator di(begin()), de(end()); di != de; ++di) {
+		if (di->get_mass() < minmass * 0.9)
+			r.add(*di, CheckError::severity_warning) << "mass less than empty mass - 10%";
+		if (di->get_mass() > maxmass)
+			r.add(*di, CheckError::severity_warning) << "mass greater than maximum takeoff mass";
+	}
+	for (isaoffspoly_t::const_iterator pi(m_isaoffspoly.begin()), pe(m_isaoffspoly.end()); pi != pe; ++pi) {
+		poly_t pderiv(pi->second.differentiate());
+		double maltlmin(std::numeric_limits<double>::max()), maltlmax(std::numeric_limits<double>::min());
+		double malthmin(maltlmin), malthmax(maltlmax), mderivmin(maltlmin), mderivmax(maltlmax);
+		for (double mass(minmass), minc(0.001 * 0.5 * (minmass + maxmass)); mass <= maxmass; mass += minc) {
+			if (pi->second.eval(mass) < 2000) {
+				maltlmin = std::min(maltlmin, mass);
+				maltlmax = std::max(maltlmax, mass);
+			}
+			if (pi->second.eval(mass) > 99900) {
+				malthmin = std::min(malthmin, mass);
+				malthmax = std::max(malthmax, mass);
+			}
+			if (pderiv.eval(mass) > 0) {
+				mderivmin = std::min(mderivmin, mass);
+				mderivmax = std::min(mderivmax, mass);
+			}
+		}
+		if (maltlmin <= maltlmax)
+			r.add(*this, pi->first, CheckError::severity_error) << "optimal altitude less than FL020, mass "
+			<< maltlmin << "..." << maltlmax;
+		if (malthmin <= malthmax)
+			r.add(*this, pi->first, CheckError::severity_error) << "optimal altitude less than FL020, mass "
+			<< malthmin << "..." << malthmax;
+		if (mderivmin <= mderivmax)
+			r.add(*this, pi->first, CheckError::severity_error) << "optimal altitude derivative positive, mass "
+			<< mderivmin << "..." << mderivmax;
+	}
+	return r;
+}
+
+Aircraft::Cruise::OptimalAltitude::poly_t Aircraft::Cruise::OptimalAltitude::calculate(double isaoffs) const
+{
+	if (std::isnan(isaoffs) || m_isaoffspoly.empty())
+		return poly_t();
+	isaoffspoly_t::const_iterator iu(m_isaoffspoly.lower_bound(isaoffs));
+	if (iu == m_isaoffspoly.begin())
+		return iu->second;
+	isaoffspoly_t::const_iterator il(iu);
+	--il;
+	if (iu == m_isaoffspoly.end())
+		return il->second;
+	double t(isaoffs - il->first);
+	t /= (iu->first - il->first);
+	return iu->second * t + il->second * (1 - t);
+}
+
+void Aircraft::Cruise::OptimalAltitude::load_xml(const xmlpp::Element *el, double altfactor, double massfactor)
+{
+	if (!el)
+		return;
+	m_isaoffspoly.clear();
+	clear();
+	{
+		xmlpp::Node::NodeList nl(el->get_children("point"));
+		for (xmlpp::Node::NodeList::const_iterator ni(nl.begin()), ne(nl.end()); ni != ne; ++ni) {
+			OptimalAltitudePoint p;
+			p.load_xml(static_cast<xmlpp::Element *>(*ni), altfactor, massfactor);
+			insert(p);
+		}
+	}
+	{
+		xmlpp::Node::NodeList nl(el->get_children("poly"));
+		for (xmlpp::Node::NodeList::const_iterator ni(nl.begin()), ne(nl.end()); ni != ne; ++ni) {
+			xmlpp::Element *el(static_cast<xmlpp::Element *>(*ni));
+			double isaoffs(std::numeric_limits<double>::quiet_NaN());
+			xmlpp::Attribute *attr;
+			if ((attr = el->get_attribute("isaoffset")))
+				isaoffs = Glib::Ascii::strtod(attr->get_value());
+			poly_t p;
+			p.load_xml(el);
+			if (!std::isnan(isaoffs))
+				m_isaoffspoly.insert(isaoffspoly_t::value_type(isaoffs, p));
+		}
+ 	}
+}
+
+void Aircraft::Cruise::OptimalAltitude::save_xml(xmlpp::Element *el, double altfactor, double massfactor) const
+{
+	if (!el)
+		return;
+	for (const_iterator di(begin()), de(end()); di != de; ++di)
+		di->save_xml(el->add_child("point"), altfactor, massfactor);
+	{
+		xmlpp::Node::NodeList nl(el->get_children("poly"));
+		for (xmlpp::Node::NodeList::const_iterator ni(nl.begin()), ne(nl.end()); ni != ne; ++ni)
+			el->remove_child(*ni);
+	}
+	for (isaoffspoly_t::const_iterator pi(m_isaoffspoly.begin()), pe(m_isaoffspoly.end()); pi != pe; ++pi) {
+		if (std::isnan(pi->first) || pi->second.empty())
+			continue;
+		xmlpp::Element *el2(el->add_child("poly"));
+		{
+			std::ostringstream oss;
+			oss << pi->first;
+			el->set_attribute("isaoffset", oss.str());
+		}
+		pi->second.save_xml(el2);
+	}
+}
+
 Aircraft::Cruise::CruiseEngineParams::CruiseEngineParams(double bhp, double rpm, double mp, const std::string& name, Curve::flags_t flags)
 	: m_name(name), m_bhp(bhp), m_rpm(rpm), m_mp(mp), m_flags(flags)
 {
@@ -4062,7 +5319,7 @@ Aircraft::Cruise::CruiseEngineParams::CruiseEngineParams(const std::string& name
 	  m_mp(std::numeric_limits<double>::quiet_NaN()), m_flags(flags)
 {
 }
-	     
+
 bool Aircraft::Cruise::CruiseEngineParams::is_unset(void) const
 {
 	return std::isnan(get_bhp()) && std::isnan(get_rpm()) && std::isnan(get_mp()) &&
@@ -4148,7 +5405,17 @@ std::ostream& Aircraft::Cruise::CruiseEngineParams::print(std::ostream& os) cons
 	return os;
 }
 
-
+std::string Aircraft::Cruise::CruiseEngineParams::to_lua(void) const
+{
+	std::ostringstream oss;
+	oss << "bhp = " << to_luastring(get_bhp())
+	    << ", rpm = " << to_luastring(get_rpm())
+	    << ", mp = " << to_luastring(get_mp())
+	    << ", name = " << to_luastring(get_name())
+	    << ", interpolate = " << to_luastring((bool)(get_flags() & Curve::flags_interpolate))
+	    << ", hold = " << to_luastring((bool)(get_flags() & Curve::flags_hold));
+	return oss.str();
+}
 
 Aircraft::Cruise::EngineParams::EngineParams(double bhp, double rpm, double mp, const std::string& name, Curve::flags_t flags,
 					     const std::string& climbname, const std::string& descentname)
@@ -4161,7 +5428,7 @@ Aircraft::Cruise::EngineParams::EngineParams(const std::string& name, Curve::fla
 	: CruiseEngineParams(name, flags), m_climbname(climbname), m_descentname(descentname)
 {
 }
-	     
+
 bool Aircraft::Cruise::EngineParams::is_unset(void) const
 {
 	return get_climbname().empty() && get_descentname().empty() && CruiseEngineParams::is_unset();
@@ -4264,6 +5531,14 @@ std::ostream& Aircraft::Cruise::EngineParams::print(std::ostream& os) const
 	return os;
 }
 
+std::string Aircraft::Cruise::EngineParams::to_lua(void) const
+{
+	std::ostringstream oss;
+	oss << CruiseEngineParams::to_lua()
+	    << ", climbname = " << to_luastring(get_climbname())
+	    << ", descentname = " << to_luastring(get_descentname());
+	return oss.str();
+}
 
 Aircraft::Cruise::PistonPowerBHPRPM::PistonPowerBHPRPM(double bhp, double rpm)
 	: m_bhp(bhp), m_rpm(rpm)
@@ -4556,7 +5831,7 @@ void Aircraft::Cruise::PistonPowerTemp::calculate(double& bhp, double& rpm, doub
 		bhp = xbhp;
 		rpm = xrpm;
 		mp = xmp;
-		return;	
+		return;
 	}
 	mp = std::numeric_limits<double>::quiet_NaN();
 	if (get_fixedpitch().empty()) {
@@ -4757,7 +6032,7 @@ void Aircraft::Cruise::PistonPower::add(double pa, double isaoffs, double bhp, d
 	} else {
 		PistonPowerTemp::variablepitch_t::iterator ir(const_cast<PistonPowerTemp::variablepitch_t&>(it->get_variablepitch()).insert(PistonPowerRPM(rpm)).first);
 		const_cast<PistonPowerRPM&>(*ir).insert(PistonPowerBHPMP(bhp, mp));
-	}	
+	}
 }
 
 void Aircraft::Cruise::PistonPower::calculate(double& pa, double& isaoffs, double& bhp, double& rpm, double& mp) const
@@ -4817,15 +6092,15 @@ void Aircraft::Cruise::PistonPower::load_xml(const xmlpp::Element *el, double al
 		double rpm(std::numeric_limits<double>::quiet_NaN());
 		double mp(std::numeric_limits<double>::quiet_NaN());
 		xmlpp::Attribute *attr;
-		if ((attr = el2->get_attribute("pa")))
+		if ((attr = el2->get_attribute("pa")) && attr->get_value() != "")
 			pa = Glib::Ascii::strtod(attr->get_value()) * altfactor;
-		if ((attr = el2->get_attribute("isaoffs")))
+		if ((attr = el2->get_attribute("isaoffs")) && attr->get_value() != "")
 			isaoffs = Glib::Ascii::strtod(attr->get_value()) * tempfactor;
-		if ((attr = el2->get_attribute("bhp")))
+		if ((attr = el2->get_attribute("bhp")) && attr->get_value() != "")
 			bhp = Glib::Ascii::strtod(attr->get_value()) * bhpfactor;
-		if ((attr = el2->get_attribute("rpm")))
+		if ((attr = el2->get_attribute("rpm")) && attr->get_value() != "")
 			rpm = Glib::Ascii::strtod(attr->get_value());
-		if ((attr = el2->get_attribute("mp")))
+		if ((attr = el2->get_attribute("mp")) && attr->get_value() != "")
 			mp = Glib::Ascii::strtod(attr->get_value());
 		add(pa, isaoffs, bhp, rpm, mp);
 	}
@@ -4934,8 +6209,8 @@ bool Aircraft::Cruise::PistonPower::has_variablepitch(void) const
 	return false;
 }
 
-Aircraft::Cruise::Cruise(double altfactor, double tasfactor, double fuelfactor, double tempfactor, double bhpfactor)
-	: m_altfactor(altfactor), m_tasfactor(tasfactor), m_fuelfactor(fuelfactor), m_tempfactor(tempfactor), m_bhpfactor(bhpfactor)
+Aircraft::Cruise::Cruise(double altfactor, double tasfactor, double fuelfactor, double tempfactor, double bhpfactor, double massfactor)
+	: m_altfactor(altfactor), m_tasfactor(tasfactor), m_fuelfactor(fuelfactor), m_tempfactor(tempfactor), m_bhpfactor(bhpfactor), m_massfactor(massfactor)
 {
 	// PA28R-200
 	{
@@ -5158,19 +6433,26 @@ void Aircraft::Cruise::load_xml(const xmlpp::Element *el, double maxbhp)
 	m_altfactor = 1;
 	m_tasfactor = 1;
 	m_fuelfactor = 1;
+	m_tempfactor = 1;
+	m_bhpfactor = 1;
+	m_massfactor = 1;
 	clear_curves();
 	m_pistonpower.set_default();
+	m_optimalaltitude.clear();
+	m_optimalaltitude.recalculatepoly(true);
 	xmlpp::Attribute *attr;
-	if ((attr = el->get_attribute("altfactor")))
+	if ((attr = el->get_attribute("altfactor")) && attr->get_value() != "")
 		m_altfactor = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("tasfactor")))
+	if ((attr = el->get_attribute("tasfactor")) && attr->get_value() != "")
 		m_tasfactor = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("fuelfactor")))
+	if ((attr = el->get_attribute("fuelfactor")) && attr->get_value() != "")
 		m_fuelfactor = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("tempfactor")))
+	if ((attr = el->get_attribute("tempfactor")) && attr->get_value() != "")
 		m_tempfactor = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("bhpfactor")))
+	if ((attr = el->get_attribute("bhpfactor")) && attr->get_value() != "")
 		m_bhpfactor = Glib::Ascii::strtod(attr->get_value());
+	if ((attr = el->get_attribute("massfactor")) && attr->get_value() != "")
+		m_massfactor = Glib::Ascii::strtod(attr->get_value());
 	if ((attr = el->get_attribute("remark")))
 		m_remark = attr->get_value();
 	{
@@ -5206,6 +6488,11 @@ void Aircraft::Cruise::load_xml(const xmlpp::Element *el, double maxbhp)
 			}
 			m_pistonpower.swap(pp);
 		}
+	}
+	{
+		xmlpp::Node::NodeList nl(el->get_children("optimalaltitude"));
+		for (xmlpp::Node::NodeList::const_iterator ni(nl.begin()), ne(nl.end()); ni != ne; ++ni)
+			m_optimalaltitude.load_xml(static_cast<xmlpp::Element *>(*ni), m_altfactor, m_massfactor);
 	}
 }
 
@@ -5257,7 +6544,74 @@ void Aircraft::Cruise::save_xml(xmlpp::Element *el, double maxbhp) const
 			for (isamap_t::const_iterator ii(mi->second.begin()), ie(mi->second.end()); ii != ie; ++ii)
 				ii->second.save_xml(el->add_child("curve"), m_altfactor, m_tasfactor, m_fuelfactor);
 	m_pistonpower.save_xml(el->add_child("PistonPower"), m_altfactor, m_tempfactor, m_bhpfactor);
+	m_optimalaltitude.save_xml(el->add_child("optimalaltitude"), m_altfactor, m_massfactor);
 }
+
+#ifdef HAVE_JSONCPP
+
+void Aircraft::Cruise::save_garminpilot(Json::Value& root, double maxbhp)
+{
+	root["phase"] = "cruise";
+	{
+		Json::Value& pdu(root["parameterDisplayUnits"]);
+		pdu["temperature"] = "Degrees Celsius";
+	}
+	root["tempType"] = "isa";
+	{
+		Json::Value& pd(root["parameterDefaults"]);
+		pd = Json::Value(Json::objectValue);
+	}
+	{
+		Json::Value& par(root["inputParameters"]);
+		par.append(Json::Value("altitude"));
+		par.append(Json::Value("powerSetting"));
+	}
+	root["powerSettingType"] = "percentPower";
+	Json::Value& samp(root["samples"]);
+	bool first(true), interpolate(false);
+	double mass(0);
+	for (curves_t::const_iterator ci(m_curves.begin()), ce(m_curves.end()); ci != ce; ++ci) {
+		massmap_t::const_iterator mi;
+		if (first) {
+			mi = ci->second.end();
+			if (mi == ci->second.begin())
+				continue;
+			--mi;
+		} else {
+			mi = ci->second.find(mass);
+			if (mi == ci->second.end())
+				continue;
+		}
+		isamap_t::const_iterator ii(mi->second.find(0.0));
+		if (ii == mi->second.end())
+			continue;
+		const Curve& curve(ii->second);
+		if (curve.get_flags() & Curve::flags_hold)
+			continue;
+		if (curve.get_flags() & Curve::flags_interpolate) {
+			if (first)
+				interpolate = true;
+		} else {
+			if (!first)
+				continue;
+		}
+		if (first)
+			mass = mi->first;
+		for (Curve::const_iterator pi(curve.begin()), pe(curve.end()); pi != pe; ++pi) {
+			Json::Value x;
+			x["altitude"] = pi->get_pressurealt();
+			x["powerSetting"] = pi->get_bhp() / maxbhp;
+			x["trueAirspeed"] = pi->get_tas();
+			x["fuelFlow"] = pi->get_fuelflow();
+			samp.append(x);
+		}
+		first = false;
+		if (!interpolate)
+			break;
+	}
+}
+
+#endif
 
 void Aircraft::Cruise::add_curve(const Curve& c)
 {
@@ -5328,7 +6682,7 @@ void Aircraft::Cruise::build_altmap(propulsion_t prop)
 				}
 			}
 		}
-	}	
+	}
 	if (false) {
 		for (bhpmap_t::const_iterator i(m_bhpmap.begin()), e(m_bhpmap.end()); i != e; ++i) {
 			std::cout << "Mass = " << i->first << std::endl;
@@ -5588,7 +6942,7 @@ Aircraft::Cruise::Curve::flags_t Aircraft::Cruise::calculate(curves_t::const_ite
 	if (debug)
 		std::cerr << "Cruise::calculate: name " << ep.get_name() << " mass " << mass << " isaoffs " << isaoffs
 			  << " pa " << pa << " tas " << tas << " ff " << ff << " bhp " << ep.get_bhp() << " t " << t << std::endl;
-	return lflags | uflags;	
+	return lflags | uflags;
 }
 
 Aircraft::Cruise::Curve::flags_t Aircraft::Cruise::calculate(massmap_t::const_iterator it, double& tas, double& ff, double& pa, double& isaoffs, CruiseEngineParams& ep) const
@@ -5702,6 +7056,9 @@ std::pair<double,double> Aircraft::Cruise::get_bhp_range(massmap_t::const_iterat
 
 void Aircraft::Cruise::calculate(propulsion_t prop, double& tas, double& fuelflow, double& pa, double& mass, double& isaoffs, CruiseEngineParams& ep) const
 {
+	static const bool debug(false);
+	if (debug)
+		ep.print(std::cerr << "Cruise::calculate: prop " << prop << " pa " << pa << " mass " << mass << " isaoffs " << isaoffs << " ep ") << std::endl;
 	if (std::isnan(pa) || std::isnan(mass) || std::isnan(isaoffs)) {
 		tas = fuelflow = pa = mass = isaoffs = std::numeric_limits<double>::quiet_NaN();
 		return;
@@ -5790,7 +7147,10 @@ void Aircraft::Cruise::calculate(propulsion_t prop, double& tas, double& fuelflo
 			break;
 		}
 		if (ci != ce) {
-			if (!std::isnan(pa2) && fabs(pa2 - pax) < 1) {
+			if (debug)
+				ep2.print(std::cerr << "Cruise::calculate: named calc: pa2 " << pa2 << " tas2 " << tas2
+					  << " fuelflow2 " << fuelflow2 << " mass2 " << mass2 << " isaoffs2 " << isaoffs2 << " ep ") << std::endl;
+			if (!std::isnan(pa2) && (fabs(pa2 - pax) <= 50 || (false && pa2 < 2050 && pax < 2050))) {
 				tas = tas2;
 				fuelflow = fuelflow2;
 				pa = pa2;
@@ -5815,6 +7175,7 @@ void Aircraft::Cruise::calculate(propulsion_t prop, double& tas, double& fuelflo
 				cbhp = 0.5 * (br.first + br.second);
 		}
 	}
+	ep1.set_name("");
 	for (curves_t::const_iterator ci(m_curves.begin()), ce(m_curves.end()); ci != ce; ++ci) {
 		double tas2, fuelflow2, pa2(pax), mass2(mass), isaoffs2(isaoffs);
 		CruiseEngineParams ep2(ep);
@@ -5822,8 +7183,10 @@ void Aircraft::Cruise::calculate(propulsion_t prop, double& tas, double& fuelflo
 			continue;
 		if (std::isnan(pa2))
 			continue;
-		if (std::isnan(pa1) || (fabs(pa1 - pax) > 1 && fabs(pa2 - pax) < fabs(pa1 - pax)) ||
-		    (!std::isnan(cbhp) && fabs(pa2 - pax) <= 1 && fabs(ep1.get_bhp() - cbhp) > cbhp * 0.01 &&
+		if (std::isnan(pa1) ||
+		    (ep1.get_name() != ep.get_name() && ep2.get_name() == ep.get_name() && fabs(pa2 - pa1) <= 50) ||
+		    (fabs(pa1 - pax) > 50 && fabs(pa2 - pax) < fabs(pa1 - pax)) ||
+		    (!std::isnan(cbhp) && fabs(pa2 - pax) <= 50 && fabs(ep1.get_bhp() - cbhp) > cbhp * 0.01 &&
 		     fabs(ep2.get_bhp() - cbhp) < fabs(ep1.get_bhp() - cbhp))) {
 			tas1 = tas2;
 			fuelflow1 = fuelflow2;
@@ -5886,6 +7249,11 @@ Aircraft::CheckErrors Aircraft::Cruise::check(double minmass, double maxmass) co
 					hold = true;
 					continue;
 				}
+				if (ii->second.empty()) {
+					r.add(CheckError::type_cruise, CheckError::severity_warning, ci->first, mi->first, ii->first)
+						<< "curve has no defining points";
+					continue;
+				}
 				std::pair<cmassmap_t::iterator, bool> ins(((ii->second.get_flags() & Curve::flags_interpolate) ? ceilingsg : ceilings)[ii->second.get_isaoffset()].
 									 insert(cmassmap_t::value_type(ii->second.get_mass(), ii->second.rbegin()->get_pressurealt())));
 				if (!ins.second)
@@ -5925,6 +7293,10 @@ Aircraft::CheckErrors Aircraft::Cruise::check(double minmass, double maxmass) co
 			r.add(CheckError::type_cruise, CheckError::severity_warning, "*interpolated*", mi2->first, ii->first)
 				<< "curve has lower ceiling than higher mass " << mi->first;
 		}
+	}
+	{
+		CheckErrors r2(m_optimalaltitude.check(minmass, maxmass));
+		r.add(r2);
 	}
 	return r;
 }
@@ -5997,6 +7369,20 @@ Aircraft::CheckError::CheckError(const ClimbDescent& cd, bool descent, severity_
 
 Aircraft::CheckError::CheckError(const Cruise::Curve& c, severity_t sev)
 	: m_name(c.get_name()), m_message(""), m_mass(c.get_mass()), m_isaoffset(c.get_isaoffset()),
+	  m_timeinterval(timeinterval_t(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN())),
+	  m_type(type_cruise), m_severity(sev)
+{
+}
+
+Aircraft::CheckError::CheckError(const Cruise::OptimalAltitude& oa, double isaoffs, severity_t sev)
+	: m_name("Optimal Altitude"), m_message(""), m_mass(std::numeric_limits<double>::quiet_NaN()), m_isaoffset(isaoffs),
+	  m_timeinterval(timeinterval_t(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN())),
+	  m_type(type_cruise), m_severity(sev)
+{
+}
+
+Aircraft::CheckError::CheckError(const Cruise::OptimalAltitudePoint& oap, severity_t sev)
+	: m_name("Optimal Altitude Point"), m_message(""), m_mass(oap.get_mass()), m_isaoffset(oap.get_isaoffs()),
 	  m_timeinterval(timeinterval_t(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN())),
 	  m_type(type_cruise), m_severity(sev)
 {
@@ -6302,15 +7688,18 @@ const std::string& to_str(Aircraft::opsrules_t r)
 
 Aircraft::Aircraft(void)
 	: m_callsign("ZZZZZ"), m_manufacturer("Piper"), m_model("PA28R-200"), m_year("1971"), m_icaotype("P28R"),
-	  m_equipment("SDFGBRY"), m_transponder("S"), m_colormarking("WHITE BLUE STRIPES"), m_emergencyradio("E"),
-	  m_survival(""), m_lifejackets(""), m_dinghies(""), m_picname(""), m_crewcontact(""), m_homebase(""),
+	  m_dinghiescolor(), m_colormarking("WHITE BLUE STRIPES"),
+	  m_picname(""), m_crewcontact(""), m_homebase(""),
 	  m_mrm(2600), m_mtom(2600), m_mlm(2600), m_mzfm(2600),
 	  m_vr0(62 * 0.86897624), m_vr1(68 * 0.86897624), m_vx0(80 * 0.86897624), m_vx1(80 * 0.86897624),
 	  m_vy(95 * 0.86897624), m_vs0(64 * 0.86897624), m_vs1(70 * 0.86897624), m_vno(170 * 0.86897624), m_vne(214 * 0.86897624),
 	  m_vref0(64 * 1.4 * 0.86897624), m_vref1(70 * 1.4 * 0.86897624), m_va(134 * 0.86897624), m_vfe(125 * 0.86897624),
-	  m_vgearext(150 * 0.86897624), m_vgearret(125 * 0.86897624), m_vbestglide(105 * 0.86897624), m_glideslope(8.1086),
+	  m_vgearext(150 * 0.86897624), m_vgearret(125 * 0.86897624),
 	  m_vdescent(150 * 0.86897624), m_fuelmass(usgal_to_liter * avgas_density * kg_to_lb), m_taxifuel(0.5), m_taxifuelflow(0.),
-	  m_maxbhp(200), m_contingencyfuel(5), m_pbn(pbn_b2 | pbn_d2), m_gnssflags(gnssflags_gps | gnssflags_sbas), m_fuelunit(unit_usgal),
+	  m_maxbhp(200), m_contingencyfuel(5), m_dinghiesnumber(0), m_dinghiescapacity(0),
+	  m_nav(nav_lpv | nav_dme | nav_adf | nav_gnss | nav_pbn),
+	  m_com(com_standard | com_vhf_833), m_transponder(transponder_modes_s), m_emergency(emergency_radio_elt),
+	  m_pbn(pbn_b2 | pbn_d2), m_gnssflags(gnssflags_gps | gnssflags_sbas), m_fuelunit(unit_usgal),
 	  m_propulsion(propulsion_constantspeed), m_opsrules(opsrules_auto), m_freecirculation(false)
 {
 	get_cruise().set_mass(get_mtom());
@@ -6327,21 +7716,30 @@ void Aircraft::load_xml(const xmlpp::Element *el)
 {
 	if (!el)
 		return;
+	m_wb.clear_elements();
+	m_wb.clear_envelopes();
+	m_dist.clear_takeoffdists();
+	m_dist.clear_ldgdists();
+	m_climb.clear();
+	m_descent.clear();
+	m_glide.clear();
+	m_cruise.clear_curves();
 	m_otherinfo.clear();
 	m_callsign.clear();
 	m_manufacturer.clear();
 	m_model.clear();
 	m_year.clear();
 	m_icaotype.clear();
-	m_equipment.clear();
-	m_transponder.clear();
+	m_dinghiescolor.clear();
+	m_dinghiesnumber = 0;
+	m_dinghiescapacity = 0;
+	m_nav = nav_none;
+	m_com = com_none;
+	m_transponder = transponder_none;
+	m_emergency = emergency_none;
 	m_pbn = pbn_none;
 	m_gnssflags = gnssflags_none;
 	m_colormarking.clear();
-	m_emergencyradio.clear();
-	m_survival.clear();
-	m_lifejackets.clear();
-	m_dinghies.clear();
 	m_picname.clear();
 	m_crewcontact.clear();
 	m_homebase.clear();
@@ -6350,7 +7748,7 @@ void Aircraft::load_xml(const xmlpp::Element *el)
 	m_propulsion = propulsion_fixedpitch;
 	m_opsrules = opsrules_auto;
 	m_mrm = m_mtom = m_mlm = m_mzfm = m_vr0 = m_vr1 = m_vx0 = m_vx1 = m_vy = m_vs0 = m_vs1 = m_vno = m_vne =
-		m_vref0 = m_vref1 = m_va = m_vfe = m_vgearext = m_vgearret = m_vbestglide = m_glideslope = m_vdescent =
+		m_vref0 = m_vref1 = m_va = m_vfe = m_vgearext = m_vgearret = m_vdescent =
 		m_fuelmass = m_taxifuel = m_taxifuelflow = m_maxbhp = m_contingencyfuel = std::numeric_limits<double>::quiet_NaN();
 	m_freecirculation = false;
 	bool haspbn(false), hasgnssflags(false);
@@ -6368,9 +7766,9 @@ void Aircraft::load_xml(const xmlpp::Element *el)
 	if ((attr = el->get_attribute("icaotype")))
 		m_icaotype = attr->get_value();
 	if ((attr = el->get_attribute("equipment")))
-		m_equipment = attr->get_value();
+		set_equipment(attr->get_value());
 	if ((attr = el->get_attribute("transponder")))
-		m_transponder = attr->get_value();
+		set_transponder(attr->get_value());
 	haspbn = (attr = el->get_attribute("pbn"));
 	if (haspbn)
 		set_pbn(attr->get_value());
@@ -6380,9 +7778,9 @@ void Aircraft::load_xml(const xmlpp::Element *el)
 	if ((attr = el->get_attribute("colormarking")))
 		m_colormarking = attr->get_value();
 	if ((attr = el->get_attribute("emergencyradio")))
-		m_emergencyradio = attr->get_value();
+		set_emergencyradio(attr->get_value());
 	if ((attr = el->get_attribute("survival")))
-		m_survival = attr->get_value();
+		set_survival(attr->get_value());
 	if ((attr = el->get_attribute("picname")))
 		m_picname = attr->get_value();
 	if ((attr = el->get_attribute("crewcontact")))
@@ -6390,64 +7788,60 @@ void Aircraft::load_xml(const xmlpp::Element *el)
 	if ((attr = el->get_attribute("homebase")))
 		m_homebase = attr->get_value();
 	if ((attr = el->get_attribute("lifejackets")))
-		m_lifejackets = attr->get_value();
+		set_lifejackets(attr->get_value());
 	if ((attr = el->get_attribute("dinghies")))
-		m_dinghies = attr->get_value();
-	if ((attr = el->get_attribute("mrm")))
+		set_dinghies(attr->get_value());
+	if ((attr = el->get_attribute("mrm")) && attr->get_value() != "")
 		m_mrm = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("mtom")))
+	if ((attr = el->get_attribute("mtom")) && attr->get_value() != "")
 		m_mtom = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("mlm")))
+	if ((attr = el->get_attribute("mlm")) && attr->get_value() != "")
 		m_mlm = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("mzfm")))
+	if ((attr = el->get_attribute("mzfm")) && attr->get_value() != "")
 		m_mzfm = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vr0")))
+	if ((attr = el->get_attribute("vr0")) && attr->get_value() != "")
 		m_vr0 = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vr1")))
+	if ((attr = el->get_attribute("vr1")) && attr->get_value() != "")
 		m_vr1 = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vx0")))
+	if ((attr = el->get_attribute("vx0")) && attr->get_value() != "")
 		m_vx0 = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vx1")))
+	if ((attr = el->get_attribute("vx1")) && attr->get_value() != "")
 		m_vx1 = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vy")))
+	if ((attr = el->get_attribute("vy")) && attr->get_value() != "")
 		m_vy = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vs0")))
+	if ((attr = el->get_attribute("vs0")) && attr->get_value() != "")
 		m_vs0 = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vs1")))
+	if ((attr = el->get_attribute("vs1")) && attr->get_value() != "")
 		m_vs1 = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vno")))
+	if ((attr = el->get_attribute("vno")) && attr->get_value() != "")
 		m_vno = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vne")))
+	if ((attr = el->get_attribute("vne")) && attr->get_value() != "")
 		m_vne = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vref0")))
+	if ((attr = el->get_attribute("vref0")) && attr->get_value() != "")
 		m_vref0 = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vref1")))
+	if ((attr = el->get_attribute("vref1")) && attr->get_value() != "")
 		m_vref1 = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("va")))
+	if ((attr = el->get_attribute("va")) && attr->get_value() != "")
 		m_va = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vfe")))
+	if ((attr = el->get_attribute("vfe")) && attr->get_value() != "")
 		m_vfe = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vgearext")))
+	if ((attr = el->get_attribute("vgearext")) && attr->get_value() != "")
 		m_vgearext = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vgearret")))
+	if ((attr = el->get_attribute("vgearret")) && attr->get_value() != "")
 		m_vgearret = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vbestglide")))
-		m_vbestglide = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("glideslope")))
-		m_glideslope = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("vdescent")))
+	if ((attr = el->get_attribute("vdescent")) && attr->get_value() != "")
 		m_vdescent = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("fuelmass")))
+	if ((attr = el->get_attribute("fuelmass")) && attr->get_value() != "")
 		m_fuelmass = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("taxifuel")))
+	if ((attr = el->get_attribute("taxifuel")) && attr->get_value() != "")
 		m_taxifuel = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("taxifuelflow")))
+	if ((attr = el->get_attribute("taxifuelflow")) && attr->get_value() != "")
 		m_taxifuelflow = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("maxbhp")))
+	if ((attr = el->get_attribute("maxbhp")) && attr->get_value() != "")
 		m_maxbhp = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("contingencyfuel")))
+	if ((attr = el->get_attribute("contingencyfuel")) && attr->get_value() != "")
 		m_contingencyfuel = Glib::Ascii::strtod(attr->get_value());
-	if ((attr = el->get_attribute("fuelunitname")))
+	if ((attr = el->get_attribute("fuelunitname")) && attr->get_value() != "")
 		m_fuelunit = parse_unit(attr->get_value());
 	if (!((1 << m_fuelunit) & (unitmask_mass | unitmask_volume)))
 		m_fuelunit = unit_usgal;
@@ -6502,6 +7896,9 @@ void Aircraft::load_xml(const xmlpp::Element *el)
 	nl = el->get_children("descent");
 	for (xmlpp::Node::NodeList::const_iterator ni(nl.begin()), ne(nl.end()); ni != ne; ++ni)
 		m_descent.load_xml(static_cast<const xmlpp::Element *>(*ni));
+	nl = el->get_children("glide");
+	for (xmlpp::Node::NodeList::const_iterator ni(nl.begin()), ne(nl.end()); ni != ne; ++ni)
+		m_glide.load_xml(static_cast<const xmlpp::Element *>(*ni), get_climb().get_ceiling());
 	nl = el->get_children("cruise");
 	for (xmlpp::Node::NodeList::const_iterator ni(nl.begin()), ne(nl.end()); ni != ne; ++ni)
 		m_cruise.load_xml(static_cast<const xmlpp::Element *>(*ni), get_maxbhp());
@@ -6533,9 +7930,15 @@ void Aircraft::load_xml(const xmlpp::Element *el)
 	get_descent().set_point_vy(get_vdescent());
 	get_descent().set_mass(get_mtom());
 	get_descent().set_default(get_propulsion(), get_cruise(), get_climb());
-	// Fix up equipment
-	m_equipment = m_equipment.uppercase();
-	m_transponder = m_transponder.uppercase();
+	{
+		double vbestglide(std::numeric_limits<double>::quiet_NaN());
+		double glideslope(std::numeric_limits<double>::quiet_NaN());
+		if ((attr = el->get_attribute("vbestglide")) && attr->get_value() != "")
+			vbestglide = Glib::Ascii::strtod(attr->get_value());
+		if ((attr = el->get_attribute("glideslope")) && attr->get_value() != "")
+			glideslope = Glib::Ascii::strtod(attr->get_value());
+		get_glide().set_default(get_mtom(), get_climb().get_ceiling(), vbestglide, glideslope);
+	}
 	pbn_fix_equipment();
 	if (haspbn && !hasgnssflags) {
 		if (get_pbn() & pbn_gnss) {
@@ -6561,6 +7964,7 @@ void Aircraft::load_xml(const xmlpp::Element *el)
 			break;
 		}
 	}
+	autogenerate_code();
 }
 
 void Aircraft::save_xml(xmlpp::Element *el) const
@@ -6587,14 +7991,14 @@ void Aircraft::save_xml(xmlpp::Element *el) const
 		el->remove_attribute("icaotype");
 	else
 		el->set_attribute("icaotype", m_icaotype);
-	if (m_equipment.empty())
+	if (!(m_com & com_all) && !(m_nav & nav_all))
 		el->remove_attribute("equipment");
 	else
-		el->set_attribute("equipment", m_equipment);
-	if (m_transponder.empty())
+		el->set_attribute("equipment", get_equipment_string());
+	if (!(m_transponder & transponder_all))
 		el->remove_attribute("transponder");
 	else
-		el->set_attribute("transponder", m_transponder);
+		el->set_attribute("transponder", get_transponder_string());
 	if (m_pbn == pbn_none)
 		el->remove_attribute("pbn");
 	else
@@ -6607,22 +8011,22 @@ void Aircraft::save_xml(xmlpp::Element *el) const
 		el->remove_attribute("colormarking");
 	else
 		el->set_attribute("colormarking", m_colormarking);
-	if (m_emergencyradio.empty())
+	if (!(m_emergency & emergency_radio_all))
 		el->remove_attribute("emergencyradio");
 	else
-		el->set_attribute("emergencyradio", m_emergencyradio);
-	if (m_survival.empty())
+		el->set_attribute("emergencyradio", get_emergencyradio_string());
+	if (!(m_emergency & emergency_survival_all))
 		el->remove_attribute("survival");
 	else
-		el->set_attribute("survival", m_survival);
-	if (m_lifejackets.empty())
+		el->set_attribute("survival", get_survival_string());
+	if (!(m_emergency & emergency_jackets_all))
 		el->remove_attribute("lifejackets");
 	else
-		el->set_attribute("lifejackets", m_lifejackets);
-	if (m_dinghies.empty())
+		el->set_attribute("lifejackets", get_lifejackets_string());
+	if (!(m_emergency & emergency_dinghies_all))
 		el->remove_attribute("dinghies");
 	else
-		el->set_attribute("dinghies", m_dinghies);
+		el->set_attribute("dinghies", get_dinghies_string());
 	if (m_picname.empty())
 		el->remove_attribute("picname");
 	else
@@ -6768,20 +8172,6 @@ void Aircraft::save_xml(xmlpp::Element *el) const
 		oss << m_vgearret;
 		el->set_attribute("vgearret", oss.str());
 	}
-	if (std::isnan(m_vbestglide)) {
-		el->remove_attribute("vbestglide");
-	} else {
-		std::ostringstream oss;
-		oss << m_vbestglide;
-		el->set_attribute("vbestglide", oss.str());
-	}
-	if (std::isnan(m_glideslope)) {
-		el->remove_attribute("glideslope");
-	} else {
-		std::ostringstream oss;
-		oss << m_glideslope;
-		el->set_attribute("glideslope", oss.str());
-	}
 	if (std::isnan(m_vdescent)) {
 		el->remove_attribute("vdescent");
 	} else {
@@ -6839,6 +8229,7 @@ void Aircraft::save_xml(xmlpp::Element *el) const
 	m_dist.save_xml(el->add_child("distances"));
 	m_climb.save_xml(el->add_child("climb"));
 	m_descent.save_xml(el->add_child("descent"));
+	m_glide.save_xml(el->add_child("glide"));
 	m_cruise.save_xml(el->add_child("cruise"), get_maxbhp());
 	for (otherinfo_const_iterator_t oii(otherinfo_begin()), oie(otherinfo_end()); oii != oie; ++oii) {
 		if (!oii->is_valid())
@@ -6847,6 +8238,26 @@ void Aircraft::save_xml(xmlpp::Element *el) const
 		el2->set_attribute("category", oii->get_category());
 		if (!oii->get_text().empty())
 			el2->set_attribute("text", oii->get_text());
+	}
+	{
+		double vbestglide(get_glide().get_vbestglide());
+		if (std::isnan(vbestglide)) {
+			el->remove_attribute("vbestglide");
+		} else {
+			std::ostringstream oss;
+			oss << vbestglide;
+			el->set_attribute("vbestglide", oss.str());
+		}
+	}
+	{
+		double glideslope(get_glide().get_glideslope());
+		if (std::isnan(glideslope)) {
+			el->remove_attribute("glideslope");
+		} else {
+			std::ostringstream oss;
+			oss << glideslope;
+			el->set_attribute("glideslope", oss.str());
+		}
 	}
 }
 
@@ -6979,7 +8390,7 @@ void Aircraft::load_xml_fs(const xmlpp::Element *el)
 				if (txt.empty()) {
 					continue;
 				}
-				m_equipment = txt;
+				set_equipment(txt);
 			}
 			nl2 = el2->get_children("fuel_capacity");
 			for (xmlpp::Node::NodeList::const_iterator ni2(nl2.begin()), ne2(nl2.end()); ni2 != ne2; ++ni2) {
@@ -7068,11 +8479,11 @@ void Aircraft::load_xml_fs(const xmlpp::Element *el)
 					const xmlpp::Element *el4(static_cast<const xmlpp::Element *>(*ni3));
 					double w, a;
 					xmlpp::Attribute *attr;
-					if ((attr = el4->get_attribute("weight")))
+					if ((attr = el4->get_attribute("weight")) && attr->get_value() != "")
 						w = Glib::Ascii::strtod(attr->get_value());
 					else
 						continue;
-					if ((attr = el4->get_attribute("arm")))
+					if ((attr = el4->get_attribute("arm")) && attr->get_value() != "")
 						a = Glib::Ascii::strtod(attr->get_value());
 					else
 						continue;
@@ -7169,7 +8580,7 @@ void Aircraft::load_xml_fs(const xmlpp::Element *el)
 				const xmlpp::Element *el4(static_cast<const xmlpp::Element *>(*ni3));
 				double pwr;
 				xmlpp::Attribute *attr;
-				if ((attr = el4->get_attribute("power")))
+				if ((attr = el4->get_attribute("power")) && attr->get_value() != "")
 					pwr = Glib::Ascii::strtod(attr->get_value());
 				else
 					continue;
@@ -7177,11 +8588,11 @@ void Aircraft::load_xml_fs(const xmlpp::Element *el)
 				for (xmlpp::Node::NodeList::const_iterator ni4(nl4.begin()), ne4(nl4.end()); ni4 != ne4; ++ni4) {
 					const xmlpp::Element *el5(static_cast<const xmlpp::Element *>(*ni4));
 					double alt, rpm;
-					if ((attr = el5->get_attribute("altitude")))
+					if ((attr = el5->get_attribute("altitude")) && attr->get_value() != "")
 						alt = Glib::Ascii::strtod(attr->get_value());
 					else
 						continue;
-					if ((attr = el5->get_attribute("rpm")))
+					if ((attr = el5->get_attribute("rpm")) && attr->get_value() != "")
 						rpm = Glib::Ascii::strtod(attr->get_value());
 					else
 						continue;
@@ -7190,20 +8601,20 @@ void Aircraft::load_xml_fs(const xmlpp::Element *el)
 					for (xmlpp::Node::NodeList::const_iterator ni5(nl5.begin()), ne5(nl5.end()); ni5 != ne5; ++ni5) {
 						const xmlpp::Element *el6(static_cast<const xmlpp::Element *>(*ni5));
 						double mp(std::numeric_limits<double>::quiet_NaN()), fuel, tas;
-						if ((attr = el6->get_attribute("mp")))
+						if ((attr = el6->get_attribute("mp")) && attr->get_value() != "")
 							mp = Glib::Ascii::strtod(attr->get_value());
-						if ((attr = el6->get_attribute("fuel")))
+						if ((attr = el6->get_attribute("fuel")) && attr->get_value() != "")
 							fuel = Glib::Ascii::strtod(attr->get_value()) * fuelfactor;
 						else
 							continue;
-						if ((attr = el6->get_attribute("tas")))
+						if ((attr = el6->get_attribute("tas")) && attr->get_value() != "")
 							tas = Glib::Ascii::strtod(attr->get_value()) * speedfactor;
 						else
 							continue;
 						m_maxbhp = 200;
 						pts.push_back(Cruise::PointRPMMP(alt, rpm, mp, m_maxbhp * pwr * 0.01, tas, fuel));
 					}
-					m_cruise.set_points(pts, get_maxbhp());					
+					m_cruise.set_points(pts, get_maxbhp());
 				}
 			}
 		}
@@ -7216,6 +8627,27 @@ void Aircraft::load_xml_fs(const xmlpp::Element *el)
 	get_descent().set_mass(get_mtom());
 	get_descent().set_default(get_propulsion(), get_cruise(), get_climb());
 	pbn_fix_equipment();
+}
+
+void Aircraft::autogenerate_code(void)
+{
+	if (otherinfo_find("CODE").is_valid())
+		return;
+	std::string cs(get_callsign());
+	for (std::string::iterator i(cs.begin()), e(cs.end()); i != e; ) {
+		if (std::isalpha(*i) || std::isdigit(*i)) {
+			++i;
+			continue;
+		}
+		i = cs.erase(i);
+		e = cs.end();
+	}
+	uint32_t code(ModeSMessage::decode_registration(cs.begin(), cs.end()));
+	if (code == std::numeric_limits<uint32_t>::max())
+		return;
+	std::ostringstream oss;
+	oss << std::hex << std::setw(6) << std::setfill('0') << std::uppercase << code;
+	otherinfo_add("CODE", oss.str());
 }
 
 bool Aircraft::load_file(const Glib::ustring& filename)
@@ -7259,6 +8691,27 @@ Glib::ustring Aircraft::save_string(void) const
 	return doc->write_to_string_formatted();
 }
 
+#ifdef HAVE_PQXX
+
+bool Aircraft::load_pgdb(pqxx::connection_base& conn, int64_t id)
+{
+	pqxx::read_transaction w(conn);
+	pqxx::result r(w.exec("select id,xml from public.aircraft where id = " + w.quote(id) + ";"));
+	for (pqxx::result::const_iterator ri(r.begin()), re(r.end()); ri != re; ++ri) {
+		if ((*ri)[0].is_null() || (*ri)[1].is_null())
+			continue;
+		if ((*ri)[0].as<int64_t>() != id)
+			continue;
+		std::string code((*ri)[0].as<std::string>());
+		if (code.empty())
+			continue;
+		if (load_string(code))
+			return true;
+	}
+	return false;
+}
+
+#endif
 
 bool Aircraft::load_opsperf(const OperationsPerformance::Aircraft& acft)
 {
@@ -7290,6 +8743,7 @@ bool Aircraft::load_opsperf(const OperationsPerformance::Aircraft& acft)
 	get_dist() = Distances();
 	get_dist().clear_takeoffdists();
 	get_dist().clear_ldgdists();
+	get_glide().clear();
 	{
 		const OperationsPerformance::Aircraft::Config& cfg(acft.get_config("LD"));
 		set_vs0(cfg.get_vstall());
@@ -7304,7 +8758,6 @@ bool Aircraft::load_opsperf(const OperationsPerformance::Aircraft& acft)
 		set_vx1(1.25 * cfg.get_vstall());
 		set_vref1(1.4 * cfg.get_vstall());
 		set_va(1.8 * cfg.get_vstall());
-		set_vbestglide(1.8 * cfg.get_vstall());
 	}
 	{
 		const OperationsPerformance::Aircraft::Procedure& proc(acft.get_proc(1));
@@ -7315,7 +8768,6 @@ bool Aircraft::load_opsperf(const OperationsPerformance::Aircraft& acft)
 	set_vfe(acft.get_vmo());
 	set_vgearext(acft.get_vmo());
 	set_vgearret(acft.get_vmo());
-	set_glideslope(10);
 	set_fuelmass((acft.get_propulsion() == OperationsPerformance::Aircraft::propulsion_piston) ?
 		     (usgal_to_liter * avgas_density * kg_to_lb) :
 		     (usgal_to_liter * jeta_density * kg_to_lb));
@@ -7389,7 +8841,657 @@ bool Aircraft::load_opsperf(const OperationsPerformance::Aircraft& acft)
 	}
 	get_cruise().set_mass(get_mtom());
 	get_cruise().build_altmap(get_propulsion());
+	get_glide().set_default(get_mtom(), get_climb().get_ceiling(), 1.8 * get_vs0(), 10);
 	return true;
+}
+
+#ifdef HAVE_JSONCPP
+
+const Json::Value& Aircraft::find_json_uuid(const Json::Value& root, const std::string& uuid)
+{
+	static const Json::Value invalid;
+	if (!root.isArray())
+		return invalid;
+	for (Json::ArrayIndex i = 0; i < root.size(); ++i) {
+		const Json::Value& el(root[i]);
+		if (!el.isMember("uuid"))
+			continue;
+		const Json::Value& u(el["uuid"]);
+		if (u.isString() && u.asString() == uuid)
+			return el;
+	}
+	return invalid;
+}
+
+const Json::Value& Aircraft::find_json_uuid(const Json::Value& root, const Json::Value& obj, const std::string& member)
+{
+	static const Json::Value invalid;
+	if (!obj.isMember(member))
+		return invalid;
+	const Json::Value& u(obj[member]);
+	if (!u.isString())
+		return invalid;
+	return find_json_uuid(root, u.asString());
+}
+
+bool Aircraft::load_json(const Json::Value& root)
+{
+	if (load_garminpilot(root))
+		return true;
+	return false;
+}
+
+void Aircraft::trimleft(std::string::const_iterator& txti, std::string::const_iterator txte)
+{
+	std::string::const_iterator txti2(txti);
+	for (; txti2 != txte && isspace(*txti2); ++txti2);
+	txti = txti2;
+}
+
+void Aircraft::trimright(std::string::const_iterator txti, std::string::const_iterator& txte)
+{
+	std::string::const_iterator txte2(txte);
+	while (txti != txte2) {
+		std::string::const_iterator txte3(txte2);
+		--txte3;
+		if (!isspace(*txte3))
+			break;
+		txte2 = txte3;
+	}
+	txte = txte2;
+}
+
+void Aircraft::trim(std::string::const_iterator& txti, std::string::const_iterator& txte)
+{
+	trimleft(txti, txte);
+	trimright(txti, txte);
+}
+
+bool Aircraft::parsetxt(std::string& txt, unsigned int len, std::string::const_iterator& txti, std::string::const_iterator txte, bool slashsep)
+{
+	trimleft(txti, txte);
+	txt.clear();
+	while (txti != txte) {
+		if (isspace(*txti) || (slashsep && *txti == '/') || *txti == '-' || *txti == '(' || *txti == ')')
+			break;
+		txt.push_back(*txti);
+		++txti;
+		if (len && txt.size() >= len)
+			break;
+	}
+	trimleft(txti, txte);
+	return len ? txt.size() == len : !txt.empty();
+}
+
+bool Aircraft::load_garminpilot(const Json::Value& root)
+{
+	if (!root.isMember("dataModelVersion") || !root.isMember("packageTypeVersion") || !root.isMember("type") ||
+	    !root["dataModelVersion"].isIntegral() || !root["packageTypeVersion"].isIntegral() || !root["type"].isString() ||
+	    root["dataModelVersion"].asInt() != 1 || root["packageTypeVersion"].asInt() != 1 || root["type"].asString() != "aircraft")
+		return false;
+	m_otherinfo.clear();
+	m_callsign.clear();
+	m_manufacturer.clear();
+	m_model.clear();
+	m_year.clear();
+	m_icaotype.clear();
+	m_dinghiescolor.clear();
+	m_dinghiesnumber = 0;
+	m_dinghiescapacity = 0;
+	m_nav = nav_none;
+	m_com = com_none;
+	m_transponder = transponder_none;
+	m_emergency = emergency_none;
+	m_pbn = pbn_none;
+	m_gnssflags = gnssflags_none;
+	m_colormarking.clear();
+	m_picname.clear();
+	m_crewcontact.clear();
+	m_homebase.clear();
+	m_remark.clear();
+	m_fuelunit = unit_invalid;
+	m_propulsion = propulsion_fixedpitch;
+	m_opsrules = opsrules_auto;
+	m_mrm = m_mtom = m_mlm = m_mzfm = m_vr0 = m_vr1 = m_vx0 = m_vx1 = m_vy = m_vs0 = m_vs1 = m_vno = m_vne =
+		m_vref0 = m_vref1 = m_va = m_vfe = m_vgearext = m_vgearret = m_vdescent =
+		m_fuelmass = m_taxifuel = m_taxifuelflow = m_maxbhp = m_contingencyfuel = std::numeric_limits<double>::quiet_NaN();
+	m_freecirculation = false;
+	if (root.isMember("name") && root["name"].isString())
+		m_model = root["name"].asString();
+	if (!root.isMember("objects"))
+		return true;
+	const Json::Value& objs(root["objects"]);
+	if (!objs.isArray() || objs.size() < 1)
+		return true;
+	const Json::Value& obj1(objs[0]);
+	if (!obj1.isObject())
+		return true;
+	if (!obj1.isMember("aircrafts") || !obj1.isMember("tables") ||
+	    !obj1.isMember("profiles") || !obj1.isMember("weightAndBalanceProfiles"))
+		return true;
+	const Json::Value& acft(obj1["aircrafts"]);
+	const Json::Value& tables(obj1["tables"]);
+	const Json::Value& profiles(obj1["profiles"]);
+	const Json::Value& wbprof(obj1["weightAndBalanceProfiles"]);
+	if (!acft.isArray() || acft.size() < 1 || !tables.isArray() || !profiles.isArray() || !wbprof.isArray())
+		return true;
+	const Json::Value& acft1(acft[0]);
+	if (!acft1.isObject())
+		return true;
+	if (acft1.isMember("aircraftId") && acft1["aircraftId"].isString())
+		set_callsign(acft1["aircraftId"].asString());
+	if (acft1.isMember("aircraftModel") && acft1["aircraftModel"].isString())
+		set_model(acft1["aircraftModel"].asString());
+	if (acft1.isMember("aircraftType") && acft1["aircraftType"].isString())
+		set_icaotype(acft1["aircraftType"].asString());
+	if (acft1.isMember("icaoAircraftEquipment") && acft1["icaoAircraftEquipment"].isString())
+		set_equipment(acft1["icaoAircraftEquipment"].asString());
+	if (acft1.isMember("surveillanceEquipment") && acft1["surveillanceEquipment"].isString())
+		set_transponder(acft1["surveillanceEquipment"].asString());
+	if (acft1.isMember("icaoPbn") && acft1["icaoPbn"].isString())
+		set_pbn(acft1["icaoPbn"].asString());
+	if (acft1.isMember("aircraftColors")) {
+		const Json::Value& col(acft1["aircraftColors"]);
+		if (col.isArray()) {
+			std::string colmark;
+			for (Json::ArrayIndex i = 0; i < col.size(); ++i) {
+				const Json::Value& col1(col[i]);
+				if (!col1.isString() || col1.asString().empty())
+					continue;
+				if (!colmark.empty())
+					colmark.push_back(' ');
+				colmark += col1.asString();
+			}
+			set_colormarking(colmark);
+		}
+	}
+	if (acft1.isMember("emergencyRadios") && acft1["emergencyRadios"].isString())
+		set_emergencyradio(acft1["emergencyRadios"].asString());
+	if (acft1.isMember("survivalEquipment") && acft1["survivalEquipment"].isString())
+		set_survival(acft1["survivalEquipment"].asString());
+	if (acft1.isMember("lifeJackets") && acft1["lifeJackets"].isString())
+		set_lifejackets(acft1["lifeJackets"].asString());
+	if (acft1.isMember("numberOfDingies")) {
+		set_dinghies(emergency_none);
+		set_dinghiesnumber(0);
+		set_dinghiescapacity(0);
+		set_dinghiescolor("");
+		const Json::Value& nd(acft1["numberOfDingies"]);
+		if (nd.isIntegral() && nd.asInt() > 0) {
+			set_dinghies(emergency_dinghies);
+			set_dinghiesnumber(nd.asInt());
+			set_dinghiescapacity(nd.asInt());
+        		if (acft1.isMember("capacityOfDingies")) {
+				const Json::Value& cd(acft1["numberOfDingies"]);
+				if (cd.isIntegral() && cd.asInt() >= get_dinghiesnumber())
+					set_dinghiescapacity(cd.asInt());
+			}
+			if (acft1.isMember("coveredDingies") && acft1["coveredDingies"].isBool() && acft1["coveredDingies"].asBool())
+				set_dinghies(emergency_dinghies | emergency_dinghies_cover);
+			if (acft1.isMember("colorOfDingies") && acft1["colorOfDingies"].isString())
+				set_dinghiescolor(acft1["colorOfDingies"].asString());
+		}
+	}
+	if (acft1.isMember("aircraftBase") && acft1["aircraftBase"].isString())
+		set_homebase(acft1["aircraftBase"].asString());
+	if (acft1.isMember("propulsionType")) {
+		const Json::Value& pt(acft1["propulsionType"]);
+		if (pt.isString()) {
+			if (pt.asString() == "CS")
+				set_propulsion(propulsion_constantspeed);
+		}
+	}
+	if (acft1.isMember("icaoAircraftOtherInfo") && acft1["icaoAircraftOtherInfo"].isString()) {
+		std::string oi(acft1["icaoAircraftOtherInfo"].asString());
+		std::string::const_iterator txti(oi.begin()), txte(oi.end());
+                trim(txti, txte);
+                std::string cat;
+                while (txti != txte && *txti != '-' && *txti != ')') {
+                        std::string s;
+                        if (!parsetxt(s, 0, txti, txte))
+				break;
+                        if (txti != txte && *txti == '/') {
+                                cat.swap(s);
+                                ++txti;
+                                continue;
+                        }
+                        if (cat.empty())
+				break;
+                        if (cat == "PBN") {
+                                set_pbn(s);
+				continue;
+                        }
+			if (!Aircraft::OtherInfo::is_category_valid(cat))
+				continue;
+			otherinfo_add(cat, s);
+		}
+	}
+	if (acft1.isMember("fuelMeasurementType")) {
+		const Json::Value& ft(acft1["fuelMeasurementType"]);
+		if (ft.isString()) {
+			if (ft.asString() == "gal")
+				set_fuelunit(unit_usgal);
+		}
+	}
+	if (acft1.isMember("maximumTakeoffWeight") && acft1["maximumTakeoffWeight"].isNumeric()) {
+		double m(acft1["maximumTakeoffWeight"].asDouble());
+		set_mrm(m);
+		set_mtom(m);
+		set_mlm(m);
+		set_mzfm(m);
+	}
+	if (acft1.isMember("descentSpeed") && acft1["descentSpeed"].isNumeric())
+		set_vdescent(acft1["descentSpeed"].asDouble());
+	if (acft1.isMember("taxiFuel") && acft1["taxiFuel"].isNumeric())
+		set_taxifuel(acft1["taxiFuel"].asDouble());
+	if (acft1.isMember("maximumBrakeHorsepower") && acft1["maximumBrakeHorsepower"].isNumeric())
+		set_maxbhp(acft1["maximumBrakeHorsepower"].asDouble());
+	// Weight & Balance
+	{
+		const Json::Value& wbp(find_json_uuid(wbprof, acft1, "weightAndBalanceProfileUUID"));
+		if (wbp.isObject()) {
+			if (wbp.isMember("maximumTakeoffWeight") && wbp["maximumTakeoffWeight"].isNumeric())
+				m_mtom = wbp["maximumTakeoffWeight"].asDouble();
+			if (wbp.isMember("maximumLandingWeight") && wbp["maximumLandingWeight"].isNumeric())
+				m_mzfm = m_mlm = wbp["maximumLandingWeight"].asDouble();
+			if (wbp.isMember("maximumRampWeight") && wbp["maximumRampWeight"].isNumeric())
+				m_mrm = wbp["maximumRampWeight"].asDouble();
+			WeightBalance::Element::flags_t fueltype(WeightBalance::Element::flag_jeta);
+			double fullfuel(std::numeric_limits<double>::quiet_NaN());
+			if (wbp.isMember("fuelTankFullAmount") && wbp["fuelTankFullAmount"].isNumeric())
+				fullfuel = wbp["fuelTankFullAmount"].asDouble();
+			if (std::isnan(fullfuel) && wbp.isMember("fuel") && wbp["fuel"].isNumeric())
+				fullfuel = wbp["fuel"].asDouble();
+			if (wbp.isMember("fuelType")) {
+				const Json::Value& ft(wbp["fuelType"]);
+				if (ft.isString()) {
+					if (ft.asString() == "100LL")
+						fueltype = WeightBalance::Element::flag_avgas;
+				}
+			}
+			get_wb().load_garminpilot(wbp, fueltype, fullfuel);
+		}
+	}
+	// Profile (Climb/Cruise/Descent Tables)
+	{
+		const Json::Value& prof(find_json_uuid(profiles, acft1, "perfProfileUUID"));
+		if (prof.isObject()) {
+			if (prof.isMember("ownerAircraftTailNumber") && prof["ownerAircraftTailNumber"].isString())
+				m_callsign = prof["ownerAircraftTailNumber"].asString();
+			{
+				ClimbDescent x("Climb", m_mtom, 0);
+				const Json::Value& tbl(find_json_uuid(tables, prof, "climbTable"));
+				if (tbl.isObject() && x.load_garminpilot(tbl)) {
+					//
+				} else {
+					x.clear_points();
+					double speed(std::numeric_limits<double>::quiet_NaN());
+					double fuel(std::numeric_limits<double>::quiet_NaN());
+					double rate(std::numeric_limits<double>::quiet_NaN());
+					double ceil(std::numeric_limits<double>::quiet_NaN());
+					if (acft1.isMember("climbSpeed") && acft1["climbSpeed"].isNumeric())
+						speed = acft1["climbSpeed"].asDouble();
+					if (acft1.isMember("climbBurnRate") && acft1["climbBurnRate"].isNumeric())
+						fuel = acft1["climbBurnRate"].asDouble();
+					if (acft1.isMember("climbRate") && acft1["climbRate"].isNumeric())
+						rate = acft1["climbRate"].asDouble();
+					if (acft1.isMember("maximumCeiling") && acft1["maximumCeiling"].isNumeric())
+						ceil = acft1["maximumCeiling"].asDouble();
+					if (!std::isnan(speed) && !std::isnan(fuel) && !std::isnan(rate) && !std::isnan(ceil)) {
+						x.add_point(ClimbDescent::Point(0, rate, fuel, speed));
+						x.add_point(ClimbDescent::Point(ceil, rate, fuel, speed));
+					}
+				}
+				if (x.has_points()) {
+					x.recalculatepoly(true);
+					get_climb().add(x);
+				}
+			}
+			{
+				ClimbDescent x("Descent", m_mlm, 0);
+				const Json::Value& tbl(find_json_uuid(tables, prof, "descentTable"));
+				if (tbl.isObject() && x.load_garminpilot(tbl)) {
+					//
+				} else {
+					x.clear_points();
+					double speed(std::numeric_limits<double>::quiet_NaN());
+					double fuel(std::numeric_limits<double>::quiet_NaN());
+					double rate(std::numeric_limits<double>::quiet_NaN());
+					double ceil(std::numeric_limits<double>::quiet_NaN());
+					if (acft1.isMember("descentSpeed") && acft1["descentSpeed"].isNumeric())
+						speed = acft1["descentSpeed"].asDouble();
+					if (acft1.isMember("descentBurnRate") && acft1["descentBurnRate"].isNumeric())
+						fuel = acft1["descentBurnRate"].asDouble();
+					if (acft1.isMember("descentRate") && acft1["descentRate"].isNumeric())
+						rate = acft1["descentRate"].asDouble();
+					if (acft1.isMember("maximumCeiling") && acft1["maximumCeiling"].isNumeric())
+						ceil = acft1["maximumCeiling"].asDouble();
+					if (!std::isnan(speed) && !std::isnan(fuel) && !std::isnan(rate) && !std::isnan(ceil)) {
+						x.add_point(ClimbDescent::Point(0, rate, fuel, speed));
+						x.add_point(ClimbDescent::Point(ceil, rate, fuel, speed));
+					}
+				}
+				if (x.has_points()) {
+					x.recalculatepoly(true);
+					get_descent().add(x);
+				}
+			}
+			{
+				Cruise::Curve x("Cruise", Cruise::Curve::flags_none, m_mtom, 0);
+				const Json::Value& tbl(find_json_uuid(tables, prof, "cruiseTable"));
+	        		if (tbl.isObject() && x.load_garminpilot(tbl, m_maxbhp)) {
+					//
+				} else {
+					x.clear_points();
+					double speed(std::numeric_limits<double>::quiet_NaN());
+					double fuel(std::numeric_limits<double>::quiet_NaN());
+					double alt(std::numeric_limits<double>::quiet_NaN());
+					double ceil(std::numeric_limits<double>::quiet_NaN());
+					if (acft1.isMember("cruiseSpeed") && acft1["cruiseSpeed"].isNumeric())
+						speed = acft1["cruiseSpeed"].asDouble();
+					if (acft1.isMember("cruiseBurnRate") && acft1["cruiseBurnRate"].isNumeric())
+						fuel = acft1["cruiseBurnRate"].asDouble();
+					if (acft1.isMember("cruiseAltitude") && acft1["cruiseAltitude"].isNumeric())
+						alt = acft1["cruiseAltitude"].asDouble();
+					if (acft1.isMember("maximumCeiling") && acft1["maximumCeiling"].isNumeric())
+						ceil = acft1["maximumCeiling"].asDouble();
+					if (!std::isnan(ceil) && (std::isnan(alt) || ceil < alt))
+						alt = ceil;
+					if (!std::isnan(speed) && !std::isnan(fuel) && !std::isnan(alt)) {
+						x.add_point(Cruise::Point(0, m_maxbhp, speed, fuel));
+						x.add_point(Cruise::Point(alt, m_maxbhp, speed, fuel));
+					}
+				}
+				if (!x.empty()) {
+					get_cruise().add_curve(x);
+				}
+			}
+#if 0
+			"defaultPowerSetting":null,"defaultRPM":null,"defaultManifoldPressure":null
+#endif
+		}
+	}
+	if (acft1.isMember("bestGlideSpeedKnots") && acft1["bestGlideSpeedKnots"].isNumeric() &&
+	    acft1.isMember("glideRatio") && acft1["glideRatio"].isNumeric()) {
+		get_glide().set_default(get_mtom(), get_climb().get_ceiling(), acft1["bestGlideSpeedKnots"].asDouble(), acft1["glideRatio"].asDouble());
+	}
+#if 0
+	m_remark.clear();
+		m_vr0 = m_vr1 = m_vx0 = m_vx1 = m_vy = m_vs0 = m_vs1 = m_vno = m_vne =
+		m_vref0 = m_vref1 = m_va = m_vfe = m_vgearext = m_vgearret =
+		m_fuelmass =
+	m_taxifuelflow =
+	m_contingencyfuel = std::numeric_limits<double>::quiet_NaN();
+#endif
+	return true;
+}
+
+void Aircraft::save_garminpilot(Json::Value& root)
+{
+	root["dataModelVersion"] = 1;
+	root["packageTypeVersion"] = 1;
+	root["type"] = "aircraft";
+	{
+		std::string mdl(m_manufacturer);
+		if (!mdl.empty() && !m_model.empty())
+			mdl += " - ";
+		mdl += m_model;
+		if (!mdl.empty() && !m_year.empty())
+			mdl += " - ";
+		mdl += m_year;
+		root["name"] = mdl;
+	}
+	Json::Value& objs(root["objects"]);
+	objs = Json::Value(Json::arrayValue);
+	Json::Value& obj1(objs[(Json::ArrayIndex)0]);
+	obj1 = Json::Value(Json::objectValue);
+	Json::Value& tables(obj1["tables"]);
+	tables = Json::Value(Json::arrayValue);
+	Json::Value& profiles(obj1["profiles"]);
+	profiles = Json::Value(Json::arrayValue);
+	Json::Value& aircrafts(obj1["aircrafts"]);
+	aircrafts = Json::Value(Json::arrayValue);
+	Json::Value& wbs(obj1["weightAndBalanceProfiles"]);
+	wbs = Json::Value(Json::arrayValue);
+	Json::Value& acft1(aircrafts[(Json::ArrayIndex)0]);
+	acft1 = Json::Value(Json::objectValue);
+	Json::Value& profile1(profiles[(Json::ArrayIndex)0]);
+	profile1 = Json::Value(Json::objectValue);
+	profile1["uuid"] = "profiles_1";
+	acft1["perfProfileUUID"] = "profiles_1";
+	Json::Value& wb1(wbs[(Json::ArrayIndex)0]);
+	wb1 = Json::Value(Json::objectValue);
+	wb1["uuid"] = "weightAndBalanceProfiles_1";
+	acft1["weightAndBalanceProfileUUID"] = "weightAndBalanceProfiles_1";
+	acft1["uuid"] = "aircrafts_1";
+	acft1["aircraftId"] = get_callsign();
+	acft1["aircraftModel"] = (std::string)get_model();
+	acft1["aircraftType"] = get_icaotype();
+	acft1["icaoAircraftEquipment"] = get_equipment_string();
+	acft1["domesticEquipment"] = Json::Value(Json::nullValue);
+	acft1["surveillanceEquipment"] = get_transponder_string();
+	acft1["icaoPbn"] = get_pbn_string();
+	{
+		Json::Value& cols(acft1["aircraftColors"]);
+		cols = Json::Value(Json::arrayValue);
+		Glib::ustring cm(get_colormarking().casefold());
+		if (cm.find(Glib::ustring("white").casefold()) != Glib::ustring::npos)
+			cols.append(Json::Value("W"));
+	}
+	acft1["emergencyRadios"] = get_emergencyradio_string();
+	acft1["survivalEquipment"] = get_survival_string();
+	acft1["lifeJackets"] = get_lifejackets_string();
+	if (get_dinghies() & emergency_dinghies) {
+		acft1["numberOfDingies"] = Json::Value(get_dinghiesnumber());
+		acft1["capacityOfDingies"] = Json::Value(get_dinghiescapacity());
+		acft1["coveredDingies"] = Json::Value(!!(get_dinghies() & emergency_dinghies_cover));
+		acft1["colorOfDingies"] = Json::Value(get_dinghiescolor());
+	} else {
+		acft1["numberOfDingies"] = Json::Value(Json::nullValue);
+		acft1["capacityOfDingies"] = Json::Value(Json::nullValue);
+		acft1["coveredDingies"] = Json::Value(Json::nullValue);
+		acft1["colorOfDingies"] = Json::Value(Json::nullValue);
+	}
+	acft1["aircraftBase"] = (std::string)get_homebase();
+	switch (get_propulsion()) {
+	default:
+		acft1["propulsionType"] = Json::Value(Json::nullValue);
+		break;
+
+	case propulsion_fixedpitch:
+		acft1["propulsionType"] = "FP";
+		break;
+
+	case propulsion_constantspeed:
+		acft1["propulsionType"] = "CS";
+		break;
+
+	case propulsion_turboprop:
+		acft1["propulsionType"] = "TP";
+		break;
+
+	case propulsion_turbojet:
+		acft1["propulsionType"] = "TJ";
+		break;
+	}
+	{
+		std::string oi;
+		if (get_pbn() & pbn_all)
+			oi += " " + get_pbn_string();
+		for (otherinfo_const_iterator_t i(otherinfo_begin()), e(otherinfo_end()); i != e; ++i) {
+			if (!i->is_valid())
+				continue;
+			oi += " " + i->get_category() + "/" + i->get_text();
+		}
+		if (!oi.empty())
+			acft1["icaoAircraftOtherInfo"] = oi.substr(1);
+	}
+	switch (get_fuelunit()) {
+	default:
+		acft1["fuelMeasurementType"] = Json::Value(Json::nullValue);
+		break;
+
+	case unit_usgal:
+		acft1["fuelMeasurementType"] = "gal";
+		break;
+	}
+	acft1["maximumTakeoffWeight"] = get_mtom();
+	acft1["wakeTurbulenceCategory"] = std::string(1, get_wakecategory());
+	{
+		double vbg(get_glide().get_vbestglide());
+		if (!std::isnan(vbg))
+			acft1["bestGlideSpeedKnots"] = vbg;
+	}
+	{
+		double gs(get_glide().get_glideslope());
+		if (!std::isnan(gs))
+			acft1["glideRatio"] = gs;
+	}
+	acft1["descentSpeed"] = get_vdescent();
+	acft1["taxiFuel"] = get_taxifuel();
+	acft1["maximumBrakeHorsepower"] = get_maxbhp();
+	{
+		WeightBalance::Element::flags_t flags(get_wb().get_element_flags());
+		flags &= WeightBalance::Element::flag_fuel;
+		switch (flags) {
+		case WeightBalance::Element::flag_avgas:
+			acft1["fuelType"] = "100LL";
+			break;
+
+		case WeightBalance::Element::flag_jeta:
+			acft1["fuelType"] = "JetA";
+			break;
+
+		case WeightBalance::Element::flag_diesel:
+			acft1["fuelType"] = "diesel";
+			break;
+
+		default:
+			acft1["fuelType"] = Json::Value(Json::nullValue);
+			break;
+		}
+	}
+	acft1["fuel"] = convert_fuel(get_wb().get_massunit(), get_fuelunit(), get_useable_fuelmass());
+	acft1["fuelTankFullAmount"] = convert_fuel(get_wb().get_massunit(), get_fuelunit(), get_total_fuelmass());
+	acft1["fuelTankTabsAmount"] = Json::Value(Json::nullValue);
+	Cruise::EngineParams ep;
+	ClimbDescent climb(calculate_climb(ep, get_mtom(), 0, IcaoAtmosphere<double>::std_sealevel_pressure));
+	acft1["maximumCeiling"] = climb.get_ceiling();
+	{
+		double rate(std::numeric_limits<double>::quiet_NaN());
+		double fuelflow(std::numeric_limits<double>::quiet_NaN());
+		double cas(std::numeric_limits<double>::quiet_NaN());
+		climb.calculate(rate, fuelflow, cas, climb.get_ceiling() * 0.5);
+		acft1["climbSpeed"] = cas;
+		acft1["climbBurnRate"] = fuelflow;
+		acft1["climbRate"] = rate;
+	}
+	ClimbDescent descent(calculate_descent(ep, get_mlm(), 0, IcaoAtmosphere<double>::std_sealevel_pressure));
+	{
+		double rate(std::numeric_limits<double>::quiet_NaN());
+		double fuelflow(std::numeric_limits<double>::quiet_NaN());
+		double cas(std::numeric_limits<double>::quiet_NaN());
+		descent.calculate(rate, fuelflow, cas, descent.get_ceiling() * 0.5);
+		acft1["descentSpeed"] = cas;
+		acft1["descentBurnRate"] = fuelflow;
+		acft1["descentRate"] = rate;
+	}
+	{
+		double tas(std::numeric_limits<double>::quiet_NaN());
+		double fuelflow(std::numeric_limits<double>::quiet_NaN());
+		double pa(std::floor(climb.get_ceiling() * 0.0005 + 0.5) * 1000.0);
+		double mass(get_mtom());
+		double isaoffs(0);
+		double qnh(IcaoAtmosphere<double>::std_sealevel_pressure);
+		Cruise::CruiseEngineParams ep1(ep);
+		calculate_cruise(tas, fuelflow, pa, mass, isaoffs, qnh, ep1);
+		acft1["cruiseBurnRate"] = fuelflow;
+		acft1["cruiseSpeed"] = tas;
+		acft1["cruiseAltitude"] = pa;
+	}
+	acft1["defaultPowerSetting"] = Json::Value(Json::nullValue);
+	acft1["defaultRPM"] = Json::Value(Json::nullValue);
+	acft1["defaultManifoldPressure"] = Json::Value(Json::nullValue);
+	acft1["aircraftShareable"] = false;
+	profile1["ownerAircraftTailNumber"] = get_callsign();
+	profile1["name"] = Json::Value(Json::nullValue);
+	profile1["sourceTemplateUUID"] = Json::Value(Json::nullValue);
+	profile1["climbTable"] = "table_climb";
+       	Json::Value& tblclimb(tables.append(Json::Value(Json::objectValue)));
+	tblclimb["uuid"] = "table_climb";
+	tblclimb["phase"] = "climb";
+	switch (get_fuelunit()) {
+	case unit_usgal:
+		tblclimb["fuelMeasureType"] = "volume";
+		break;
+
+	case unit_lb:
+		tblclimb["fuelMeasureType"] = "weight";
+		break;
+
+	default:
+		tblclimb["fuelMeasureType"] = Json::Value(Json::nullValue);
+		break;
+	}
+	climb.save_garminpilot(tblclimb);
+	profile1["descentTable"] = "table_descent";
+       	Json::Value& tbldescent(tables.append(Json::Value(Json::objectValue)));
+	tbldescent["uuid"] = "table_descent";
+	tbldescent["phase"] = "descent";
+	switch (get_fuelunit()) {
+	case unit_usgal:
+		tbldescent["fuelMeasureType"] = "volume";
+		break;
+
+	case unit_lb:
+		tbldescent["fuelMeasureType"] = "weight";
+		break;
+
+	default:
+		tbldescent["fuelMeasureType"] = Json::Value(Json::nullValue);
+		break;
+	}
+	descent.save_garminpilot(tbldescent);
+	profile1["cruiseTable"] = "table_cruise";
+	Json::Value& tblcruise(tables.append(Json::Value(Json::objectValue)));
+	tblcruise["uuid"] = "table_cruise";
+	switch (get_fuelunit()) {
+	case unit_usgal:
+		tblcruise["fuelMeasureType"] = "volume";
+		break;
+
+	case unit_lb:
+		tblcruise["fuelMeasureType"] = "weight";
+		break;
+
+	default:
+		tblcruise["fuelMeasureType"] = Json::Value(Json::nullValue);
+		break;
+	}
+	get_cruise().save_garminpilot(tblcruise, get_maxbhp());
+	get_wb().save_garminpilot(wb1);
+	wb1["maximumRampWeight"] = get_mrm();
+	wb1["maximumTakeoffWeight"] = get_mtom();
+	wb1["maximumLandingWeight"] = get_mlm();
+	wb1["maximumZeroFuelWeight"] = get_mzfm();
+}
+
+#endif
+
+// CODE/ in item 18 is needed if:
+// - the aircraft is equipped with CPDLC
+// - the aircraft is equipped with ADS-B out (FAA international flight plan filing,
+//     https://www.faa.gov/about/office_org/headquarters_offices/ato/service_units/systemops/fs/res_links/media/icao_flight_plan_filing.pdf)
+//
+// how to handle SUR? FAA wants:
+// - SUR/260B for 1090ES ADS-B out
+// - SUR/282B for UAT ADS-B out
+// (maybe C etc. in the future, these are RTCA DO)
+bool Aircraft::is_code_needed(void) const
+{
+	if ((m_com & com_cpdlc) || (m_transponder & transponder_code))
+		return true;
+	return false;
 }
 
 Glib::ustring Aircraft::get_description(void) const
@@ -7461,110 +9563,130 @@ const Aircraft::OtherInfo& Aircraft::otherinfo_find(const Glib::ustring& categor
 
 // PBN Classification
 
-Glib::ustring Aircraft::get_pbn_string(pbn_t pbn)
+const char Aircraft::pbn_table[24][2] = {
+	'A', '1',
+	'B', '1',
+	'B', '2',
+	'B', '3',
+	'B', '4',
+	'B', '5',
+	'B', '6',
+	'C', '1',
+	'C', '2',
+	'C', '3',
+	'C', '4',
+	'D', '1',
+	'D', '2',
+	'D', '3',
+	'D', '4',
+	'L', '1',
+	'O', '1',
+	'O', '2',
+	'O', '3',
+	'O', '4',
+	'S', '1',
+	'S', '2',
+	'T', '1',
+	'T', '2'
+};
+
+std::string Aircraft::get_pbn_string(pbn_t pbn)
 {
-	static const char pbnstr[][4] = {
-		"A1",
-		"B1",
-		"B2",
-		"B3",
-		"B4",
-		"B5",
-		"B6",
-		"C1",
-		"C2",
-		"C3",
-		"C4",
-		"D1",
-		"D2",
-		"D3",
-		"D4",
-		"L1",
-		"O1",
-		"O2",
-		"O3",
-		"O4",
-		"S1",
-		"S2",
-		"T1",
-		"T2"
-	};
-	Glib::ustring ret;
-	for (unsigned int i = 0; i < sizeof(pbnstr)/sizeof(pbnstr[0]); ++i)
+	std::string ret;
+	for (unsigned int i = 0; i < sizeof(pbn_table)/sizeof(pbn_table[0]); ++i)
 		if (pbn & (pbn_t)(1U << i))
-			ret += (const char *)pbnstr[i];
+			ret += std::string(pbn_table[i], 2);
 	return ret;
 }
 
-Aircraft::pbn_t Aircraft::parse_pbn(const Glib::ustring& x)
+bool Aircraft::parse_pbn(pbn_t& pbn, const std::string& x)
 {
-	pbn_t pbn(pbn_none);
-	for (Glib::ustring::const_iterator i(x.begin()), e(x.end()); i != e;) {
+	pbn = pbn_none;
+	bool ret(true);
+	for (std::string::const_iterator i(x.begin()), e(x.end()); i != e;) {
 		char c1(*i++);
-		if (i == e)
+		if (i == e) {
+			ret = false;
 			break;
+		}
 		char c2(*i);
 		switch (c1) {
 		case 'a':
 		case 'A':
-			if (c2 != '1')
+			if (c2 != '1') {
+				ret = false;
 				break;
+			}
 			++i;
 			pbn |= pbn_a1;
 			break;
 
 		case 'l':
 		case 'L':
-			if (c2 != '1')
+			if (c2 != '1') {
+				ret = false;
 				break;
+			}
 			++i;
 			pbn |= pbn_l1;
 			break;
 
 		case 'b':
 		case 'B':
-			if (c2 < '1' || c2 > '6')
+			if (c2 < '1' || c2 > '6') {
+				ret = false;
 				break;
+			}
 			++i;
 			pbn |= (pbn_t)(pbn_b1 << (c2 - '1'));
 			break;
 
 		case 'c':
 		case 'C':
-			if (c2 < '1' || c2 > '4')
+			if (c2 < '1' || c2 > '4') {
+				ret = false;
 				break;
+			}
 			++i;
 			pbn |= (pbn_t)(pbn_c1 << (c2 - '1'));
 			break;
 
 		case 'd':
 		case 'D':
-			if (c2 < '1' || c2 > '4')
+			if (c2 < '1' || c2 > '4') {
+				ret = false;
 				break;
+			}
 			++i;
 			pbn |= (pbn_t)(pbn_d1 << (c2 - '1'));
 			break;
 
 		case 'o':
 		case 'O':
-			if (c2 < '1' || c2 > '4')
+			if (c2 < '1' || c2 > '4') {
+				ret = false;
 				break;
+			}
 			++i;
 			pbn |= (pbn_t)(pbn_o1 << (c2 - '1'));
 			break;
 
 		case 's':
 		case 'S':
-			if (c2 < '1' || c2 > '2')
+			if (c2 < '1' || c2 > '2') {
+				ret = false;
 				break;
+			}
 			++i;
 			pbn |= (pbn_t)(pbn_s1 << (c2 - '1'));
 			break;
 
 		case 't':
 		case 'T':
-			if (c2 < '1' || c2 > '2')
+			if (c2 < '1' || c2 > '2') {
+				ret = false;
 				break;
+			}
 			++i;
 			pbn |= (pbn_t)(pbn_t1 << (c2 - '1'));
 			break;
@@ -7573,7 +9695,23 @@ Aircraft::pbn_t Aircraft::parse_pbn(const Glib::ustring& x)
 			break;
 		}
 	}
-	return pbn;
+	return ret;
+}
+
+void Aircraft::pbn_fix_equipment(nav_t& nav, pbn_t pbn)
+{
+	if (pbn == pbn_none)
+		nav &= ~nav_pbn;
+	else
+		nav |= nav_pbn;
+	if (pbn & pbn_gnss)
+		nav |= nav_gnss;
+	if (pbn & pbn_dme)
+		nav |= nav_dme;
+	if (pbn & pbn_dmedmeiru)
+		nav |= nav_ins;
+	if (pbn & pbn_vordme)
+		nav |= nav_vor;
 }
 
 void Aircraft::pbn_fix_equipment(Glib::ustring& equipment, pbn_t pbn)
@@ -7618,9 +9756,9 @@ void Aircraft::pbn_fix_equipment(std::string& equipment, pbn_t pbn)
 	equipment = e;
 }
 
-Glib::ustring Aircraft::get_gnssflags_string(gnssflags_t gnssflags)
+std::string Aircraft::get_gnssflags_string(gnssflags_t gnssflags)
 {
-	static const char * const gnssflagsstr[] = {		
+	static const char * const gnssflagsstr[] = {
 		"GPS",
 		"SBAS",
 		"GLONASS",
@@ -7630,7 +9768,7 @@ Glib::ustring Aircraft::get_gnssflags_string(gnssflags_t gnssflags)
 		"BAROAID",
 		0
 	};
-	Glib::ustring ret;
+	std::string ret;
 	for (unsigned int i = 0; gnssflagsstr[i]; ++i) {
 		if (!(gnssflags & (gnssflags_t)(1U << i)))
 			continue;
@@ -7641,31 +9779,518 @@ Glib::ustring Aircraft::get_gnssflags_string(gnssflags_t gnssflags)
 	return ret;
 }
 
-Aircraft::gnssflags_t Aircraft::parse_gnssflags(const Glib::ustring& x)
+bool Aircraft::parse_gnssflags(Aircraft::gnssflags_t& gnssflags, const std::string& x)
 {
-	gnssflags_t gnssflags(gnssflags_none);
-	for (Glib::ustring::size_type i(0), n(x.size()); i < n;) {
-		Glib::ustring::size_type j(x.find(',', i));
-		if (j == Glib::ustring::npos)
+	gnssflags = gnssflags_none;
+	bool ret(true);
+	for (std::string::size_type i(0), n(x.size()); i < n;) {
+		std::string::size_type j(x.find(',', i));
+		if (j == std::string::npos)
 			j = n;
 		j -= i;
 		if (!j) {
 			++i;
 			continue;
 		}
-		Glib::ustring xs(x, i, j);
+		std::string xs(x, i, j);
 		i += j + 1;
 		for (unsigned int s = 0;; ++s) {
-			Glib::ustring gs(get_gnssflags_string((gnssflags_t)(1 << s)));
-			if (gs.empty())
+			std::string gs(get_gnssflags_string((gnssflags_t)(1 << s)));
+			if (gs.empty()) {
+				ret = false;
 				break;
+			}
 			if (gs != xs)
 				continue;
 			gnssflags |= (gnssflags_t)(1 << s);
 			break;
 		}
 	}
-	return gnssflags;
+	return ret;
+}
+
+// NAV/COM Flags (Field 10a)
+
+const char Aircraft::com_table[29][2] = {
+	{ 'N', 0 },
+	{ 'S', 0 },
+	{ 'Z', 0 },
+	{ 'E', '1' },
+	{ 'E', '2' },
+	{ 'E', '3' },
+	{ 'H', 0 },
+	{ 'J', '1' },
+	{ 'J', '2' },
+	{ 'J', '3' },
+	{ 'J', '4' },
+	{ 'J', '5' },
+	{ 'J', '6' },
+	{ 'J', '7' },
+	{ 'M', '1' },
+	{ 'M', '2' },
+	{ 'M', '3' },
+	{ 'U', 0 },
+	{ 'V', 0 },
+	{ 'Y', 0 },
+	{ 'P', '1' },
+	{ 'P', '2' },
+	{ 'P', '3' },
+	{ 'P', '4' },
+	{ 'P', '5' },
+	{ 'P', '6' },
+	{ 'P', '7' },
+	{ 'P', '8' },
+	{ 'P', '9' }
+};
+
+const char Aircraft::nav_table[14] = {
+	'A',
+	'B',
+	'K',
+	'L',
+	'C',
+	'D',
+	'F',
+	'G',
+	'I',
+	'O',
+	'R',
+	'T',
+	'W',
+	'X'
+};
+
+std::string Aircraft::get_equipment_string(nav_t nav, com_t com)
+{
+	if (!(nav & nav_all) && !(com & com_all))
+		com = com_nil;
+	std::string ret;
+	for (unsigned int i = 0; i < sizeof(com_table)/sizeof(com_table[0]); ++i) {
+		if (!(com & (com_t)(1U << i)))
+			continue;
+		const char *cp(com_table[i]);
+		ret.push_back(*cp++);
+		if (*cp)
+			ret.push_back(*cp);
+	}
+	for (unsigned int i = 0; i < sizeof(nav_table)/sizeof(nav_table[0]); ++i)
+		if (nav & (nav_t)(1U << i))
+			ret.push_back(nav_table[i]);
+	return ret;
+}
+
+bool Aircraft::parse_navcom(nav_t& nav, com_t& com, const std::string& x)
+{
+	nav = nav_none;
+	com = com_none;
+	bool ret(true);
+	for (std::string::const_iterator i(x.begin()), e(x.end()); i != e; ) {
+		char ch(std::toupper(*i));
+		++i;
+		unsigned int p = 0;
+		for (; p < sizeof(nav_table)/sizeof(nav_table[0]); ++p) {
+			if (nav_table[p] != ch)
+				continue;
+			nav |= (nav_t)(1U << p);
+			break;
+		}
+		if (p < sizeof(nav_table)/sizeof(nav_table[0]))
+			continue;
+		for (p = 0; p < sizeof(com_table)/sizeof(com_table[0]); ++p) {
+			const char *cp(com_table[p]);
+			if (ch != *cp++)
+				continue;
+			if (*cp) {
+				if (i == e || *i != *cp)
+					continue;
+				++i;
+			}
+			com |= (com_t)(1U << p);
+			break;
+		}
+		if (p < sizeof(com_table)/sizeof(com_table[0]))
+			continue;
+		ret = false;
+	}
+	return ret;
+}
+
+bool Aircraft::equipment_with_standard(nav_t& nav, com_t& com)
+{
+	if (com & Aircraft::com_standard) {
+		bool ret(false);
+		if (com & Aircraft::com_vhf_rtf) {
+			com &= ~Aircraft::com_vhf_rtf;
+			ret = true;
+		}
+		if (nav & (Aircraft::nav_vor | Aircraft::nav_ils)) {
+			nav &= ~(Aircraft::nav_vor | Aircraft::nav_ils);
+			ret = true;
+		}
+		return ret;
+	}
+	if ((Aircraft::com_vhf_rtf & ~com) || ((Aircraft::nav_vor | Aircraft::nav_ils) & ~nav))
+		return false;
+	com |= Aircraft::com_standard;
+	com &= ~Aircraft::com_vhf_rtf;
+	nav &= ~(Aircraft::nav_vor | Aircraft::nav_ils);
+	return true;
+}
+
+bool Aircraft::equipment_without_standard(nav_t& nav, com_t& com)
+{
+	if (!(com & Aircraft::com_standard))
+		return false;
+	com &= ~Aircraft::com_standard;
+	com |= Aircraft::com_vhf_rtf;
+	nav |= Aircraft::nav_vor | Aircraft::nav_ils;
+	return true;
+}
+
+void Aircraft::equipment_canonicalize(void)
+{
+	equipment_with_standard(m_nav, m_com);
+}
+
+// Transponder Flags (Field 10b)
+
+const char Aircraft::transponder_table[18][2] = {
+	{ 'N', 0 },
+	{ 'A', 0 },
+	{ 'C', 0 },
+	{ 'E', 0 },
+	{ 'H', 0 },
+	{ 'I', 0 },
+	{ 'L', 0 },
+	{ 'P', 0 },
+	{ 'S', 0 },
+	{ 'X', 0 },
+	{ 'B', '1' },
+	{ 'B', '2' },
+	{ 'U', '1' },
+	{ 'U', '2' },
+	{ 'V', '1' },
+	{ 'V', '2' },
+	{ 'D', '1' },
+	{ 'G', '1' }
+};
+
+std::string Aircraft::get_transponder_string(transponder_t transponder)
+{
+	if (!(transponder & transponder_all))
+		transponder = transponder_nil;
+	std::string ret;
+	for (unsigned int i = 0; i < sizeof(transponder_table)/sizeof(transponder_table[0]); ++i) {
+		if (!(transponder & (transponder_t)(1U << i)))
+			continue;
+		const char *cp(transponder_table[i]);
+		ret.push_back(*cp++);
+		if (*cp)
+			ret.push_back(*cp);
+	}
+	return ret;
+}
+
+bool Aircraft::parse_transponder(transponder_t& transponder, const std::string& x)
+{
+	transponder = transponder_none;
+	bool ret(true);
+	for (std::string::const_iterator i(x.begin()), e(x.end()); i != e; ) {
+		char ch(std::toupper(*i));
+		++i;
+		unsigned int p = 0;
+		for (; p < sizeof(transponder_table)/sizeof(transponder_table[0]); ++p) {
+			const char *cp(transponder_table[p]);
+			if (ch != *cp++)
+				continue;
+			if (*cp) {
+				if (i == e || *i != *cp)
+					continue;
+				++i;
+			}
+			transponder |= (transponder_t)(1U << p);
+			break;
+		}
+		if (p < sizeof(transponder_table)/sizeof(transponder_table[0]))
+			continue;
+		ret = false;
+	}
+	return ret;
+}
+
+Aircraft::emergency_t Aircraft::get_emergencyradio(void) const
+{
+	return m_emergency & emergency_radio_all;
+}
+
+void Aircraft::set_emergencyradio(emergency_t x)
+{
+	m_emergency ^= (m_emergency ^ x) & emergency_radio_all;
+}
+
+std::string Aircraft::get_emergencyradio_string(emergency_t emerg)
+{
+	std::string r;
+	if (emerg & emergency_radio_uhf)
+		r.push_back('U');
+	if (emerg & emergency_radio_vhf)
+		r.push_back('V');
+	if (emerg & emergency_radio_elt)
+		r.push_back('E');
+	return r;
+}
+
+bool Aircraft::parse_emergencyradio(emergency_t& emergency, const std::string& x)
+{
+	bool ok(true);
+	emergency_t r(emergency_none);
+	for (std::string::const_iterator i(x.begin()), e(x.end()); i != e; ++i) {
+		switch (*i) {
+		case 'E':
+		case 'e':
+			r |= emergency_radio_elt;
+			break;
+
+		case 'V':
+		case 'v':
+			r |= emergency_radio_vhf;
+			break;
+
+		case 'U':
+		case 'u':
+			r |= emergency_radio_uhf;
+			break;
+
+		default:
+			ok = false;
+			break;
+		}
+	}
+	emergency ^= (emergency ^ r) & emergency_radio_all;
+	return ok;
+}
+
+Aircraft::emergency_t Aircraft::get_survival(void) const
+{
+	return m_emergency & emergency_survival_all;
+}
+
+void Aircraft::set_survival(emergency_t x)
+{
+	m_emergency ^= (m_emergency ^ x) & emergency_survival_all;
+}
+
+std::string Aircraft::get_survival_options(emergency_t emerg)
+{
+	std::string r;
+	if (emerg & emergency_survival_polar)
+		r.push_back('P');
+	if (emerg & emergency_survival_desert)
+		r.push_back('D');
+	if (emerg & emergency_survival_maritime)
+		r.push_back('M');
+	if (emerg & emergency_survival_jungle)
+		r.push_back('J');
+	return r;
+}
+
+std::string Aircraft::get_survival_string(emergency_t emerg)
+{
+	if (!(emerg & emergency_survival))
+		return std::string();
+	std::string r(get_survival_options(emerg));
+	if (r.empty())
+		r.push_back('-');
+	return r;
+}
+
+bool Aircraft::parse_survival(emergency_t& emergency, const std::string& x)
+{
+	bool ok(true), dash(false);
+	emergency_t r(emergency_none);
+	for (std::string::const_iterator i(x.begin()), e(x.end()); i != e; ++i) {
+		switch (*i) {
+		case 'P':
+		case 'p':
+			r |= emergency_survival | emergency_survival_polar;
+			break;
+
+		case 'D':
+		case 'd':
+			r |= emergency_survival | emergency_survival_desert;
+			break;
+
+		case 'M':
+		case 'm':
+			r |= emergency_survival | emergency_survival_maritime;
+			break;
+
+		case 'J':
+		case 'j':
+			r |= emergency_survival | emergency_survival_jungle;
+			break;
+
+		case '-':
+			r |= emergency_survival;
+			dash = true;
+			break;
+
+		default:
+			ok = false;
+			break;
+		}
+	}
+	if (dash && (r & emergency_survival_options))
+		ok = false;
+	emergency ^= (emergency ^ r) & emergency_survival_all;
+	return ok;
+}
+
+Aircraft::emergency_t Aircraft::get_lifejackets(void) const
+{
+	return m_emergency & emergency_jackets_all;
+}
+
+void Aircraft::set_lifejackets(emergency_t x)
+{
+	m_emergency ^= (m_emergency ^ x) & emergency_jackets_all;
+}
+
+std::string Aircraft::get_lifejackets_options(emergency_t emerg)
+{
+	std::string r;
+	if (emerg & emergency_jackets_light)
+		r.push_back('L');
+	if (emerg & emergency_jackets_fluores)
+		r.push_back('F');
+	if (emerg & emergency_jackets_uhf)
+		r.push_back('U');
+	if (emerg & emergency_jackets_vhf)
+		r.push_back('V');
+	return r;
+}
+
+std::string Aircraft::get_lifejackets_string(emergency_t emerg)
+{
+	if (!(emerg & emergency_jackets))
+		return std::string();
+	std::string r(get_lifejackets_options(emerg));
+	if (r.empty())
+		r.push_back('-');
+	return r;
+}
+
+bool Aircraft::parse_lifejackets(emergency_t& emergency, const std::string& x)
+{
+	bool ok(true), dash(false);
+	emergency_t r(emergency_none);
+	for (std::string::const_iterator i(x.begin()), e(x.end()); i != e; ++i) {
+		switch (*i) {
+		case 'L':
+		case 'l':
+			r |= emergency_jackets | emergency_jackets_light;
+			break;
+
+		case 'F':
+		case 'f':
+			r |= emergency_jackets | emergency_jackets_fluores;
+			break;
+
+		case 'U':
+		case 'u':
+			r |= emergency_jackets | emergency_jackets_uhf;
+			break;
+
+		case 'V':
+		case 'v':
+			r |= emergency_jackets | emergency_jackets_vhf;
+			break;
+
+		case '-':
+			r |= emergency_jackets;
+			dash = true;
+			break;
+
+		default:
+			ok = false;
+			break;
+		}
+	}
+	if (dash && (r & emergency_jackets_options))
+		ok = false;
+	emergency ^= (emergency ^ r) & emergency_jackets_all;
+	return ok;
+}
+
+Aircraft::emergency_t Aircraft::get_dinghies(void) const
+{
+	return m_emergency & emergency_dinghies_all;
+}
+
+void Aircraft::set_dinghies(emergency_t x)
+{
+	m_emergency ^= (m_emergency ^ x) & emergency_dinghies_all;
+}
+
+std::string Aircraft::get_dinghies_string(emergency_t emerg, uint16_t nr, uint16_t cap, const std::string& col)
+{
+	if (!(emerg & emergency_dinghies))
+		return std::string();
+	std::ostringstream oss;
+	oss << std::setw(2) << std::setfill('0') << nr << ' ' << std::setw(3) << std::setfill('0') << cap << ' ';
+	if (emerg & emergency_dinghies_cover)
+		oss << "C ";
+	oss << col;
+	return oss.str();
+}
+
+bool Aircraft::parse_dinghies(emergency_t& emergency, uint16_t& nr, uint16_t& capacity, std::string& col, const std::string& x)
+{
+	emergency_t r(emergency_dinghies);
+	const char *cp(x.c_str());
+	while (std::isspace(*cp))
+		++cp;
+	if (!*cp) {
+		nr = 0;
+		capacity = 0;
+		col.clear();
+		emergency &= ~emergency_dinghies_all;
+		return true;
+	}
+	char *cp1;
+	unsigned int nr1(strtoul(cp, &cp1, 10));
+	if (cp == cp1 || !nr1 || nr1 > 99) {
+		nr = 0;
+		capacity = 0;
+		col.clear();
+		emergency &= ~emergency_dinghies_all;
+		return false;
+	}
+	cp = cp1;
+	while (std::isspace(*cp))
+		++cp;
+	unsigned int cap1(strtoul(cp, &cp1, 10));
+	if (cp == cp1 || !cap1 || cap1 > 999) {
+		nr = 0;
+		capacity = 0;
+		col.clear();
+		emergency &= ~emergency_dinghies_all;
+		return false;
+	}
+	cp = cp1;
+	while (std::isspace(*cp))
+		++cp;
+	if ((cp[0] == 'C' || cp[0] == 'c') && std::isspace(cp[1])) {
+		r |= emergency_dinghies_cover;
+		cp += 2;
+		while (std::isspace(*cp))
+			++cp;
+	}
+	emergency ^= (emergency ^ r) & emergency_dinghies_all;
+	nr = nr1;
+	capacity = cap1;
+	col = std::string(cp);
+	return true;
 }
 
 double Aircraft::get_useable_fuel(void) const
@@ -7953,7 +10578,7 @@ Aircraft::ClimbDescent Aircraft::calculate_climb(const std::string& name, double
 		mass = get_mtom();
 	if (std::isnan(isaoffs))
 		isaoffs = 0;
-	if (std::isnan(qnh))
+	if (std::isnan(qnh) || qnh <= 0)
 		qnh = IcaoAtmosphere<double>::std_sealevel_pressure;
 	return get_climb().calculate(name, mass, isaoffs, qnh);
 }
@@ -7967,9 +10592,20 @@ Aircraft::ClimbDescent Aircraft::calculate_descent(const std::string& name, doub
 	}
 	if (std::isnan(isaoffs))
 		isaoffs = 0;
-	if (std::isnan(qnh))
+	if (std::isnan(qnh) || qnh <= 0)
 		qnh = IcaoAtmosphere<double>::std_sealevel_pressure;
 	return get_descent().calculate(name, mass, isaoffs, qnh);
+}
+
+Aircraft::ClimbDescent Aircraft::calculate_glide(const std::string& name, double mass, double isaoffs, double qnh) const
+{
+	if (std::isnan(mass) || mass <= 0)
+		mass = get_mtom();
+	if (std::isnan(isaoffs))
+		isaoffs = 0;
+	if (std::isnan(qnh) || qnh <= 0)
+		qnh = IcaoAtmosphere<double>::std_sealevel_pressure;
+	return get_glide().calculate(name, mass, isaoffs, qnh);
 }
 
 Aircraft::ClimbDescent Aircraft::calculate_climb(Cruise::EngineParams& ep, double mass, double isaoffs, double qnh) const
@@ -7978,7 +10614,7 @@ Aircraft::ClimbDescent Aircraft::calculate_climb(Cruise::EngineParams& ep, doubl
 		mass = get_mtom();
 	if (std::isnan(isaoffs))
 		isaoffs = 0;
-	if (std::isnan(qnh))
+	if (std::isnan(qnh) || qnh <= 0)
 		qnh = IcaoAtmosphere<double>::std_sealevel_pressure;
 	ClimbDescent cd(get_climb().calculate(ep.get_climbname(), ep.get_name(), mass, isaoffs, qnh));
 	ep.set_climbname(cd.get_name());
@@ -7994,10 +10630,23 @@ Aircraft::ClimbDescent Aircraft::calculate_descent(Cruise::EngineParams& ep, dou
 	}
 	if (std::isnan(isaoffs))
 		isaoffs = 0;
-	if (std::isnan(qnh))
+	if (std::isnan(qnh) || qnh <= 0)
 		qnh = IcaoAtmosphere<double>::std_sealevel_pressure;
 	ClimbDescent cd(get_descent().calculate(ep.get_descentname(), ep.get_name(), mass, isaoffs, qnh));
 	ep.set_descentname(cd.get_name());
+	return cd;
+}
+
+Aircraft::ClimbDescent Aircraft::calculate_glide(std::string& name, double mass, double isaoffs, double qnh) const
+{
+	if (std::isnan(mass) || mass <= 0)
+		mass = get_mtom();
+	if (std::isnan(isaoffs))
+		isaoffs = 0;
+	if (std::isnan(qnh) || qnh <= 0)
+		qnh = IcaoAtmosphere<double>::std_sealevel_pressure;
+	ClimbDescent cd(get_glide().calculate(name, name, mass, isaoffs, qnh));
+	name = cd.get_name();
 	return cd;
 }
 
@@ -8019,7 +10668,7 @@ void Aircraft::calculate_cruise(double& tas, double& fuelflow, double& pa, doubl
 		mass = get_mtom();
 	if (std::isnan(isaoffs))
 		isaoffs = 0;
-	if (std::isnan(qnh))
+	if (std::isnan(qnh) || qnh <= 0)
 		qnh = IcaoAtmosphere<double>::std_sealevel_pressure;
 	get_cruise().calculate(get_propulsion(), tas, fuelflow, pa, mass, isaoffs, ep);
 	if (debug)
@@ -8144,6 +10793,79 @@ Aircraft::Endurance Aircraft::compute_endurance(double pa, const Cruise::CruiseE
 	return e;
 }
 
+std::string Aircraft::to_lua(void) const
+{
+	std::ostringstream oss;
+	oss << "otherinfo = { ";
+	{
+		bool subseq(false);
+		for (otherinfo_const_iterator_t i(otherinfo_begin()), e(otherinfo_end()); i != e; ++i) {
+			if (subseq)
+				oss << ", ";
+			subseq = true;
+			oss << i->get_category() << " = " << to_luastring(i->get_text());
+		}
+	}
+	oss << " }, callsign = " << to_luastring(get_callsign())
+	    << ", manufacturer = " << to_luastring(get_manufacturer())
+	    << ", model = " << to_luastring(get_model())
+	    << ", year = " << to_luastring(get_year())
+	    << ", description = " << to_luastring(get_description())
+	    << ", typeclass = " << to_luastring(get_aircrafttypeclass())
+	    << ", icaotype = " << to_luastring(get_icaotype())
+	    << ", equipment = " << to_luastring(get_equipment_string())
+	    << ", rvsm = " << to_luastring(is_rvsm())
+	    << ", mnps = " << to_luastring(is_mnps())
+	    << ", radio833 = " << to_luastring(is_833())
+	    << ", code_needed = " << to_luastring(is_code_needed())
+	    << ", transponder = " << to_luastring(get_transponder_string())
+	    << ", pbn = " << to_luastring(get_pbn_string())
+	    << ", gnssflags = " << to_luastring(get_gnssflags_string())
+	    << ", colormarking = " << to_luastring(get_colormarking())
+	    << ", emergencyradio = " << to_luastring(get_emergencyradio_string())
+	    << ", survival = " << to_luastring(get_survival_string())
+	    << ", lifejackets = " << to_luastring(get_lifejackets_string())
+	    << ", dinghies = " << to_luastring(get_dinghies_string())
+	    << ", picname = " << to_luastring(get_picname())
+	    << ", crewcontact = " << to_luastring(get_crewcontact())
+	    << ", homebase = " << to_luastring(get_homebase())
+	    << ", wakecategory = '" << get_wakecategory()
+	    << "', mrm = " << to_luastring(get_mrm())
+	    << ", mtom = " << to_luastring(get_mtom())
+	    << ", mlm = " << to_luastring(get_mlm())
+	    << ", mzfm = " << to_luastring(get_mzfm())
+	    << ", mrm_kg = " << to_luastring(get_mrm_kg())
+	    << ", mtom_kg = " << to_luastring(get_mtom_kg())
+	    << ", mlm_kg = " << to_luastring(get_mlm_kg())
+	    << ", mzfm_kg = " << to_luastring(get_mzfm_kg())
+	    << ", vr0 = " << to_luastring(get_vr0())
+	    << ", vr1 = " << to_luastring(get_vr1())
+	    << ", vx0 = " << to_luastring(get_vx0())
+	    << ", vx1 = " << to_luastring(get_vx1())
+	    << ", vy = " << to_luastring(get_vy())
+	    << ", vs0 = " << to_luastring(get_vs0())
+	    << ", vs1 = " << to_luastring(get_vs1())
+	    << ", vno = " << to_luastring(get_vno())
+	    << ", vne = " << to_luastring(get_vne())
+	    << ", vref0 = " << to_luastring(get_vref0())
+	    << ", vref1 = " << to_luastring(get_vref1())
+	    << ", va = " << to_luastring(get_va())
+	    << ", vfe = " << to_luastring(get_vfe())
+	    << ", vgearext = " << to_luastring(get_vgearext())
+	    << ", vgearret = " << to_luastring(get_vgearret())
+	    << ", vdescent = " << to_luastring(get_vdescent())
+	    << ", fuelmass = " << to_luastring(get_fuelmass())
+	    << ", fuelunit = " << to_luastring(to_str(get_fuelunit()))
+	    << ", taxifuel = " << to_luastring(get_taxifuel())
+	    << ", taxifuelflow = " << to_luastring(get_taxifuelflow())
+	    << ", maxbhp = " << to_luastring(get_maxbhp())
+	    << ", contingencyfuel = " << to_luastring(get_contingencyfuel())
+	    << ", remark = " << to_luastring(get_remark())
+	    << ", propulsion = " << to_luastring(to_str(get_propulsion()))
+	    << ", constantspeed = " << to_luastring(is_constantspeed())
+	    << ", freecirculation = " << to_luastring(is_freecirculation());
+	return oss.str();
+}
 
 // Aircraft Type Classification "Database", ICAO Doc 8643
 // First character:
@@ -10698,7 +13420,7 @@ const Aircraft::aircraft_type_class_t Aircraft::aircraft_type_class_db[] = {
 
 #if 0
 
-std::string Aircraft::get_aircrafttypeclass(const Glib::ustring& acfttype)
+std::string Aircraft::get_aircrafttypeclass(const std::string& acfttype)
 {
 	std::string r("L1---");
 	std::string at(acfttype);
@@ -10717,7 +13439,7 @@ std::string Aircraft::get_aircrafttypeclass(const Glib::ustring& acfttype)
 
 #else
 
-std::string Aircraft::get_aircrafttypeclass(const Glib::ustring& acfttype)
+std::string Aircraft::get_aircrafttypeclass(const std::string& acfttype)
 {
 	std::string r("L1---");
 	std::string at(acfttype);
@@ -11175,6 +13897,22 @@ std::string Aircraft::to_ascii(const Glib::ustring& x)
 		if (to_ascii_iconv(r2, x))
 			return r2;
 	}
+	return r;
+}
+
+Aircraft::recompute_t Aircraft::recompute(void)
+{
+	recompute_t r(recompute_none);
+	if (add_auto_units())
+		r |= recompute_wbunits;
+	if (get_dist().recalculatepoly(false))
+		r |= recompute_distances;
+	if (get_climb().recalculatepoly(false))
+		r |= recompute_climb;
+	if (get_descent().recalculatepoly(false))
+		r |= recompute_descent;
+	if (get_glide().recalculatepoly(false))
+		r |= recompute_glide;
 	return r;
 }
 

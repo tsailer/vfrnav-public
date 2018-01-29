@@ -1,6 +1,6 @@
-AC_INIT([vfrnav], [20160429])
+AC_INIT([vfrnav], [20180129])
 AC_CONFIG_SRCDIR([configure.ac])
-AM_INIT_AUTOMAKE([subdir-objects])
+AM_INIT_AUTOMAKE([subdir-objects tar-pax])
 AM_CONFIG_HEADER(config.h)
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -184,8 +184,11 @@ PKG_CHECK_MODULES([FTDI], [libftdi1 >= 1.0], [have_ftdi=libftdi1], [PKG_CHECK_MO
 ]])])])
 #dnl PKG_CHECK_MODULES([POPPLER], [poppler], [have_poppler=yes], [have_poppler=no])
 PKG_CHECK_MODULES([CURL], [libcurl >= 7.0.0], [have_curl=yes], [have_curl=no])
-PKG_CHECK_MODULES([OPENJPEG], [libopenjpeg], [have_openjpeg=yes], [have_openjpeg=no])
+PKG_CHECK_MODULES([OPENJPEG], [libopenjp2], [have_openjpeg=yes],
+                  [PKG_CHECK_MODULES([OPENJPEG], [libopenjpeg], [AC_DEFINE([HAVE_OPENJPEG1],[1],[Define if openjpeg version 1.x]) have_openjpeg=yes], [have_openjpeg=no])])
 PKG_CHECK_MODULES([GCONF], [gconf-2.0], [have_gconf=yes], [have_gconf=no])
+PKG_CHECK_MODULES([QRENCODE], [libqrencode], [have_qrencode=yes], [have_qrencode=no])
+PKG_CHECK_MODULES([LIBARCHIVE], [libarchive], [have_libarchive=yes], [have_libarchive=no])
 
 AC_CHECK_LIB(z,deflate)
 AC_CHECK_LIB(util,openpty,[OPENPTY_LIBS=-lutil AC_DEFINE([HAVE_LIBUTIL],[1],[Define if libutil is available])])
@@ -264,6 +267,14 @@ fi
 AC_SUBST(HAVE_MAGICKPP)
 
 AM_CONDITIONAL(HAVE_MAGICKPP, test x$have_magickpp = xyes)
+
+PKG_CHECK_MODULES([PROTOBUF], [protobuf], [have_protobuf=yes], [have_protobuf=no])
+if test "x${have_protobuf}" = "xyes"; then
+  AC_DEFINE(HAVE_PROTOBUF,[],[Google Protocol Buffers])
+fi
+AC_SUBST(HAVE_PROTOBUF)
+
+AM_CONDITIONAL(HAVE_PROTOBUF, test x$have_protobuf = xyes)
 
 AM_GNU_GETTEXT([external])
 
@@ -406,7 +417,8 @@ AC_SUBST(HAVE_JSONCPP)
 AM_CONDITIONAL(HAVE_JSONCPP, test x$have_jsoncpp = xyes)
 
 AC_CHECK_HEADERS([systemd/sd-daemon.h])
-PKG_CHECK_MODULES([SYSTEMDDAEMON], [libsystemd-daemon], [have_systemddaemon=yes], [have_systemddaemon=no])
+PKG_CHECK_MODULES([SYSTEMDDAEMON], [libsystemd-daemon], [have_systemddaemon=yes],
+  [PKG_CHECK_MODULES([SYSTEMDDAEMON], [libsystemd], [have_systemddaemon=yes], [have_systemddaemon=no])])
 if test "x${have_systemddaemon}" = "xyes"; then
   AC_DEFINE(HAVE_SYSTEMDDAEMON,[],[SystemD Daemon Libraries])
 fi
@@ -421,6 +433,14 @@ fi
 AC_SUBST(HAVE_LIBCRYPTO)
 
 AM_CONDITIONAL(HAVE_LIBCRYPTO, test x$have_libcrypto = xyes)
+
+PKG_CHECK_MODULES([RTKLIB], [rtklib], [have_rtklib=yes], [have_rtklib=no])
+if test "x${have_rtklib}" = "xyes"; then
+  AC_DEFINE(HAVE_RTKLIB,[],[RTK Library])
+fi
+AC_SUBST(HAVE_RTKLIB)
+
+AM_CONDITIONAL(HAVE_RTKLIB, test x$have_rtklib = xyes)
 
 # Hildon library dependencies
 #PKG_CHECK_MODULES([HILDON], [hildon-1 hildon-fm-2 libossohelp conbtdialogs libossoemailinterface hildon-base-lib], [have_hildon=yes], [have_hildon=no])
@@ -599,6 +619,24 @@ else
   AC_DEFINE_UNQUOTED(PACKAGE_RUN_DIR,"${prefix}/run/${PACKAGE}")
 fi
 
+dnl Set PACKAGE_CACHE_DIR in config.h.
+if test "x${prefix}" = "xNONE"; then
+  AC_DEFINE_UNQUOTED(PACKAGE_CACHE_DIR,"${ac_default_prefix}/var/cache/${PACKAGE}",[various directories])
+elif test "x${prefix}" = "x/usr"; then
+  AC_DEFINE_UNQUOTED(PACKAGE_CACHE_DIR,"/var/cache/${PACKAGE}",[various directories])
+else
+  AC_DEFINE_UNQUOTED(PACKAGE_CACHE_DIR,"${prefix}/var/cache/${PACKAGE}")
+fi
+
+dnl Set PACKAGE_HTTPDCACHE_DIR in config.h.
+if test "x${prefix}" = "xNONE"; then
+  AC_DEFINE_UNQUOTED(PACKAGE_HTTPDCACHE_DIR,"${ac_default_prefix}/var/cache/httpd/${PACKAGE}",[various directories])
+elif test "x${prefix}" = "x/usr"; then
+  AC_DEFINE_UNQUOTED(PACKAGE_HTTPDCACHE_DIR,"/var/cache/httpd/${PACKAGE}",[various directories])
+else
+  AC_DEFINE_UNQUOTED(PACKAGE_HTTPDCACHE_DIR,"${prefix}/var/cache/httpd/${PACKAGE}")
+fi
+
 if test "x${have_pilotlink}" = "xyes"; then
    AC_DEFINE(HAVE_PILOTLINK,[],[PilotLink library])
 fi
@@ -743,6 +781,18 @@ if test "x${have_gconf}" = "xyes"; then
 fi
 
 AM_CONDITIONAL(HAVE_GCONF, test x$have_gconf = xyes)
+
+if test "x${have_qrencode}" = "xyes"; then
+   AC_DEFINE(HAVE_QRENCODE,[],[qrencode library])
+fi
+
+AM_CONDITIONAL(HAVE_QRENCODE, test x$have_qrencode = xyes)
+
+if test "x${have_libarchive}" = "xyes"; then
+   AC_DEFINE(HAVE_LIBARCHIVE,[],[libarchive library])
+fi
+
+AM_CONDITIONAL(HAVE_LIBARCHIVE, test x$have_libarchive = xyes)
 
 if test "x${have_webkitgtk}" = "xyes"; then
    AC_DEFINE(HAVE_WEBKITGTK,[],[webkitgtk library])

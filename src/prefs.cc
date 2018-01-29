@@ -627,7 +627,7 @@ NewWaypointWindow::NewWaypointWindow(BaseObjectType * castitem, const Glib::RefP
         : Gtk::Window(castitem),
 #endif
           m_engine(0), m_referenced(false), m_newwaypointlon(0), m_newwaypointlat(0), m_newwaypointusage(0), m_newwaypointnamebox(0),
-          m_newwaypointname(0), m_newwaypointicao(0), m_newwaypointmodtime(0), 
+          m_newwaypointname(0), m_newwaypointicao(0), m_newwaypointmodtime(0),
           m_newwaypointbcancel(0), m_newwaypointbok(0)
 {
         get_widget(refxml, "newwaypointlon", m_newwaypointlon);

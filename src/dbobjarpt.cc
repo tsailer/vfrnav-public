@@ -4,7 +4,7 @@
 // Description: Database Objects: Airport
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2013, 2016
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2013, 2016, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -684,7 +684,7 @@ FPlanWaypoint::pathcode_t DbBaseElements::Airport::VFRRoute::VFRRoutePoint::get_
 	switch (pc) {
 	case AirportsDb::Airport::VFRRoute::VFRRoutePoint::pathcode_arrival:
 		return FPlanWaypoint::pathcode_vfrarrival;
-							
+
 	case AirportsDb::Airport::VFRRoute::VFRRoutePoint::pathcode_departure:
 		return FPlanWaypoint::pathcode_vfrdeparture;
 
@@ -1358,7 +1358,7 @@ void DbBaseElements::Airport::MinimalFAS::set_dlengthoffset_meter(double l)
 	if (std::isnan(l)) {
 		set_dlengthoffset(0xFF);
 		return;
-	}	
+	}
 	set_dlengthoffset(Point::round<uint8_t,double>(l * 0.125));
 }
 
@@ -2258,7 +2258,7 @@ void DbBaseElements::Airport::load_subtables(pqxx::basic_transaction& w, unsigne
 	}
 }
 
-void DbBaseElements::Airport::save(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Airport::save(pqxx::connection_base& conn, bool rtree)
 {
 	pqxx::work w(conn);
 	if (!m_id) {
@@ -2405,7 +2405,7 @@ void DbBaseElements::Airport::save(pqxx::connection& conn, bool rtree)
 	w.commit();
 }
 
-void DbBaseElements::Airport::erase(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Airport::erase(pqxx::connection_base& conn, bool rtree)
 {
 	if (!is_valid())
 		return;
@@ -2425,7 +2425,7 @@ void DbBaseElements::Airport::erase(pqxx::connection& conn, bool rtree)
 	m_id = 0;
 }
 
-void DbBaseElements::Airport::update_index(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Airport::update_index(pqxx::connection_base& conn, bool rtree)
 {
 	if (!m_id)
 		return;

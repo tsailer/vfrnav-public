@@ -3,7 +3,7 @@
 /*
  *      metgraph.cc  --  Meteo Graphs.
  *
- *      Copyright (C) 2014, 2015, 2016  Thomas Sailer (t.sailer@alumni.ethz.ch)
+ *      Copyright (C) 2014, 2015, 2016, 2017  Thomas Sailer (t.sailer@alumni.ethz.ch)
  *
  *      This program is free software; you can redistribute it and/or modify
  *      it under the terms of the GNU General Public License as published by
@@ -33,7 +33,9 @@
 #undef __RSVG_RSVG_H_INSIDE__
 
 #include "metgraph.h"
+#include "aircraft.h"
 #include "baro.h"
+#include "wind.h"
 
 #ifdef HAVE_PQXX
 #include <pqxx/connection.hxx>
@@ -42,6 +44,56 @@
 #include <pqxx/result.hxx>
 #include <pqxx/except.hxx>
 #endif
+
+MeteoProfile::DriftDownProfilePoint::DriftDownProfilePoint(double dist, double routedist, unsigned int routeindex,
+							   const Point& pt, gint64 efftime, int32_t alt, int32_t galt,
+							   const std::string& sitename)
+	: m_sitename(sitename), m_pt(pt), m_efftime(efftime), m_dist(dist), m_routedist(routedist), m_routeindex(routeindex),
+	  m_alt(alt), m_glidealt(galt)
+{
+}
+
+bool MeteoProfile::DriftDownProfilePoint::add_glide(int32_t alt, const std::string& sitename)
+{
+	if (alt >= m_glidealt)
+		return false;
+	m_glidealt = alt;
+	m_sitename = sitename;
+	return true;
+}
+
+std::ostream& MeteoProfile::DriftDownProfilePoint::print(std::ostream& os, unsigned int indent) const
+{
+	std::ostringstream oss;
+	oss << "R " << get_routeindex() << " RD" << std::fixed << std::setprecision(2) << get_routedist()
+	    << " D" << std::setprecision(2) << get_dist() << ' ' << get_pt().get_lat_str3() << ' ' << get_pt().get_lon_str3()
+	    << ' ' << Glib::TimeVal(get_efftime(), 0).as_iso8601().substr(11, 8) << ' ' << get_alt() << "ft";
+	if (get_glidealt() != std::numeric_limits<int32_t>::max()) {
+		oss << " G " << get_glidealt() << "ft";
+		if (!get_sitename().empty())
+			oss << ' ' << get_sitename();
+	}
+	return os << std::string(indent, ' ') << oss.str() << std::endl;
+}
+
+MeteoProfile::DriftDownProfile::DriftDownProfile(void)
+{
+}
+
+double MeteoProfile::DriftDownProfile::get_dist(void) const
+{
+	if (empty())
+		return 0;
+	return back().get_routedist();
+}
+
+std::ostream& MeteoProfile::DriftDownProfile::print(std::ostream& os, unsigned int indent) const
+{
+	os << std::string(indent, ' ') << "Drift Down Profile:" << std::endl;
+	for (const_iterator i(begin()), e(end()); i != e; ++i)
+		i->print(os, indent + 2);
+	return os;
+}
 
 int MeteoProfile::LinePoint::compare(const LinePoint& x) const
 {
@@ -379,8 +431,8 @@ MeteoProfile::StratusCloudBlueNoise::StratusCloudBlueNoise(const std::string& fi
 }
 
 MeteoProfile::MeteoProfile(const FPlanRoute& route, const TopoDb30::RouteProfile& routeprofile,
-			   const GRIB2::WeatherProfile& wxprofile)
-	: m_route(route), m_routeprofile(routeprofile), m_wxprofile(wxprofile)
+			   const GRIB2::WeatherProfile& wxprofile, const DriftDownProfile& ddprofile)
+	: m_route(route), m_routeprofile(routeprofile), m_wxprofile(wxprofile), m_ddprofile(ddprofile)
 {
 }
 
@@ -575,7 +627,7 @@ void MeteoProfile::draw_clouds(const Cairo::RefPtr<Cairo::Context>& cr, const st
 				}
 				// gaussian blur over the image surface
 				gaussian_blur(imgsfc, 15.0);
-				sfcm = imgsfc;			
+				sfcm = imgsfc;
 			}
 			if (false) {
 				std::cerr << sfcm->get_type() << " surface" << std::endl;
@@ -999,7 +1051,7 @@ void MeteoProfile::errorpage(const Cairo::RefPtr<Cairo::Context>& cr, int width,
 
 void MeteoProfile::draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int height,
 			double origindist, double scaledist, double originelev, double scaleelev,
-			yaxis_t yaxis, bool usetruealt, const std::string& servicename) const
+			yaxis_t yaxis, altflag_t altflags, const std::string& servicename) const
 {
 	cr->save();
 	// background
@@ -1119,8 +1171,7 @@ void MeteoProfile::draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int 
 			bool altchg(i + 1 < n && (m_route[i].get_altitude() != m_route[i + 1].get_altitude() ||
 						  m_route[i].is_standard() != m_route[i + 1].is_standard()));
 			bool turnpt(m_route[i].is_turnpoint());
-			bool tocbod(m_route[i].get_name() == "*TOC*" || m_route[i].get_name() == "*TOD*" ||
-				    (m_route[i].get_flags() & FPlanWaypoint::altflag_generated));
+			bool tocbod(m_route[i].get_type() >= FPlanWaypoint::type_generated_start && m_route[i].get_type() <= FPlanWaypoint::type_generated_end);
 			prio[i] = 1 + (!turnpt) + (!(routechg || rulechg || altchg)) + (4*tocbod);
 		}
 		set_color_fplan(cr);
@@ -1143,6 +1194,9 @@ void MeteoProfile::draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int 
 					if (std::isnan(dist))
 						continue;
 					x = alt_width + Point::round<int,double>((dist - origindist) * scaledist);
+					if (false)
+						std::cerr << "MeteoProfile::draw: wpt " << i << '/' << n << " dist " << dist
+							  << " x " << x << " (" << alt_width << "..." << width << ')' << std::endl;
 				}
 				if (x < alt_width || x > width)
 					continue;
@@ -1646,11 +1700,11 @@ void MeteoProfile::draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int 
 			}
 			int32_t alt(-1);
 			if (!std::isnan(pi->get_cldmidcover()) && pi->get_cldmidcover() >= 0.25 &&
-			    pi->get_cldmidbase() != GRIB2::WeatherProfilePoint::invalidalt && 
+			    pi->get_cldmidbase() != GRIB2::WeatherProfilePoint::invalidalt &&
 			    pi->get_cldmidtop() != GRIB2::WeatherProfilePoint::invalidalt)
 				alt = pi->get_cldmidbase();
 			else if (!std::isnan(pi->get_cldlowcover()) && pi->get_cldlowcover() >= 0.25 &&
-			    pi->get_cldlowbase() != GRIB2::WeatherProfilePoint::invalidalt && 
+			    pi->get_cldlowbase() != GRIB2::WeatherProfilePoint::invalidalt &&
 			    pi->get_cldlowtop() != GRIB2::WeatherProfilePoint::invalidalt)
 				alt = pi->get_cldlowbase();
 			else
@@ -1741,11 +1795,11 @@ void MeteoProfile::draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int 
 			int nr1(0), nr2(0);
 			int32_t alt1(-1), alt2(-1);
 			if (!std::isnan(pi->get_cldmidcover()) && pi->get_cldmidcover() >= 0.25 &&
-			    pi->get_cldmidbase() != GRIB2::WeatherProfilePoint::invalidalt && 
+			    pi->get_cldmidbase() != GRIB2::WeatherProfilePoint::invalidalt &&
 			    pi->get_cldmidtop() != GRIB2::WeatherProfilePoint::invalidalt)
 				alt1 = pi->get_cldmidbase();
 			else if (!std::isnan(pi->get_cldlowcover()) && pi->get_cldlowcover() >= 0.25 &&
-			    pi->get_cldlowbase() != GRIB2::WeatherProfilePoint::invalidalt && 
+			    pi->get_cldlowbase() != GRIB2::WeatherProfilePoint::invalidalt &&
 			    pi->get_cldlowtop() != GRIB2::WeatherProfilePoint::invalidalt)
 				alt1 = pi->get_cldlowbase();
 			if (!std::isnan(pi->get_cldconvcover()) && pi->get_cldconvcover() >= 0 &&
@@ -1986,6 +2040,84 @@ void MeteoProfile::draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int 
 		}
 	}
 	cr->unset_dash();
+	// draw driftdown minimum altitude
+	{
+		cr->set_line_width(1.0);
+		double labeldist(std::numeric_limits<double>::quiet_NaN()), labelalt(0);
+		for (DriftDownProfile::const_iterator pi(m_ddprofile.begin()), pe(m_ddprofile.end()); pi != pe; ) {
+			if (pi->get_glidealt() == std::numeric_limits<int32_t>::max()) {
+				++pi;
+				continue;
+			}
+			cr->begin_new_path();
+			{
+				double dist(xaxistime ? (pi->get_efftime() - m_ddprofile.front().get_efftime()) : pi->get_routedist());
+				cr->move_to(dist, yconvert(pi->get_glidealt(), yaxis));
+				if ((dist - origindist) * scaledist >= 10 &&
+				    (std::isnan(labeldist) || pi->get_routedist() < labeldist)) {
+					labeldist = dist;
+					labelalt = pi->get_glidealt();
+				}
+			}
+		        DriftDownProfile::const_iterator pi2(pi);
+			++pi2;
+			while (pi2 != pe && pi2->get_glidealt() != std::numeric_limits<int32_t>::max()) {
+				double dist(xaxistime ? (pi2->get_efftime() - m_ddprofile.front().get_efftime()) : pi2->get_routedist());
+				cr->line_to(dist, yconvert(pi2->get_glidealt(), yaxis));
+				if ((dist - origindist) * scaledist >= 10 &&
+				    (std::isnan(labeldist) || dist < labeldist)) {
+					labeldist = dist;
+					labelalt = pi2->get_glidealt();
+				}
+				++pi2;
+			}
+			if (false && (pi2 - pi) <= 1) {
+				pi = pi2;
+				continue;
+			}
+			cr->set_matrix(mnorm);
+			cr->set_source_rgb(0.0, 0.0, 0.0);
+			{
+				std::vector<double> dashes;
+				dashes.push_back(4);
+				dashes.push_back(4);
+				cr->set_dash(dashes, 0);
+			}
+			cr->stroke_preserve();
+			cr->unset_dash();
+			cr->set_source_rgb(0.5, 0.5, 0.5);
+			{
+				std::vector<double> dashes;
+				dashes.push_back(4);
+				dashes.push_back(4);
+				cr->set_dash(dashes, 4);
+			}
+			cr->stroke();
+			cr->unset_dash();
+			cr->set_matrix(mscaled);
+			pi = pi2;
+		}
+		if (!std::isnan(labeldist)) {
+			static const char label[] = "Glide";
+			cr->move_to(labeldist, yconvert(labelalt, yaxis));
+			cr->set_matrix(mnorm);
+			cr->set_font_size(8);
+			Cairo::TextExtents ext;
+			cr->get_text_extents(label, ext);
+			cr->rel_move_to(-ext.x_bearing, -ext.y_bearing - 0.5*ext.height);
+			cr->set_source_rgb(1., 1., 1.);
+			double x, y;
+			cr->get_current_point(x, y);
+			cr->set_line_width(2.0);
+			cr->text_path(label);
+			cr->stroke();
+			cr->move_to(x, y);
+			cr->set_source_rgb(0.0, 0.0, 0.0);
+			cr->show_text(label);
+			cr->set_font_size(12);
+			cr->set_matrix(mscaled);
+		}
+	}
 	// draw tropopause
 	{
 		cr->set_line_width(1.0);
@@ -2447,7 +2579,7 @@ void MeteoProfile::draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int 
 					wu *= (-1e-3f * Point::km_to_nmi * 3600);
 					wv *= (-1e-3f * Point::km_to_nmi * 3600);
 					windspeed5 = Point::round<int,double>(sqrtf(wu * wu + wv * wv) * 0.2);
-					winddirrad = M_PI - atan2f(wu, wv);
+					winddirrad = atan2f(wu, wv);
 				}
 				// draw aircraft track
 				static const double windradius = 1.5;
@@ -2853,38 +2985,47 @@ void MeteoProfile::draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int 
 	cr->restore();
 	// normalize and draw route
 	if (!xaxistime) {
-		cr->save();
-		cr->rectangle(alt_width, 0, width - alt_width, height - dist_height);
-		set_color_marking(cr);
-		cr->set_line_width(1);
-		cr->stroke_preserve();
-		cr->clip();
-		set_color_fplan(cr);
-		cr->set_line_width(2);
-		cr->set_matrix(mscaled);
-		bool first(true);
-		cr->begin_new_path();
-		for (unsigned int i = 0, j = m_route.get_nrwpt(); i < j; ++i) {
-			double dist(std::numeric_limits<double>::quiet_NaN());
-			for (TopoDb30::RouteProfile::const_iterator pi(m_routeprofile.begin()), pe(m_routeprofile.end()); pi != pe; ++pi) {
-				if (pi->get_routeindex() != i)
-					continue;
-				dist = pi->get_routedist();
-				break;
+		for (bool usetruealt(false); ; ) {
+			altflag_t curaltflags(altflags & (usetruealt ? altflag_calculated : altflag_planned));
+			if (curaltflags) {
+				cr->save();
+				cr->rectangle(alt_width, 0, width - alt_width, height - dist_height);
+				set_color_marking(cr);
+				cr->set_line_width(1);
+				cr->stroke_preserve();
+				cr->clip();
+				set_color_fplan(cr);
+				cr->set_line_width((curaltflags & altflag_fat) ? 2 : 1);
+				cr->set_matrix(mscaled);
+				bool first(true);
+				cr->begin_new_path();
+				for (unsigned int i = 0, j = m_route.get_nrwpt(); i < j; ++i) {
+					double dist(std::numeric_limits<double>::quiet_NaN());
+					for (TopoDb30::RouteProfile::const_iterator pi(m_routeprofile.begin()), pe(m_routeprofile.end()); pi != pe; ++pi) {
+						if (pi->get_routeindex() != i)
+							continue;
+						dist = pi->get_routedist();
+						break;
+					}
+					if (std::isnan(dist))
+						continue;
+					double y((usetruealt && (xaxistime || (i > 0 && i + 1 < j) || m_route[i].get_type() != FPlanWaypoint::type_airport))
+						 ? m_route[i].get_truealt() : m_route[i].get_true_altitude());
+					y = yconvert(y, yaxis);
+					if (first)
+						cr->move_to(dist, y);
+					else
+						cr->line_to(dist, y);
+					first = false;
+				}
+				cr->set_matrix(mnorm);
+				cr->stroke();
+				cr->restore();
 			}
-			if (std::isnan(dist))
-				continue;
-			double y(usetruealt ? m_route[i].get_truealt() : m_route[i].get_true_altitude());
-			y = yconvert(y, yaxis);
-			if (first)
-				cr->move_to(dist, y);
-			else
-				cr->line_to(dist, y);
-			first = false;
+			if (usetruealt)
+				break;
+			usetruealt = true;
 		}
-		cr->set_matrix(mnorm);
-		cr->stroke();
-		cr->restore();
 	}
 	// end
 }
@@ -2958,7 +3099,7 @@ constexpr float MeteoChart::AreaExtract::CloudGridPt::mincover;
 MeteoChart::AreaExtract::CloudGridPt::CloudGridPt()
 	: m_cover(0), m_base(0), m_top(200000), m_inside(false)
 {
-	m_coord.set_invalid();	
+	m_coord.set_invalid();
 }
 
 MeteoChart::AreaExtract::CloudGridPt::CloudGridPt(const Glib::RefPtr<GRIB2::LayerInterpolateResult>& laycover,
@@ -2974,7 +3115,7 @@ MeteoChart::AreaExtract::CloudGridPt::CloudGridPt(const Glib::RefPtr<GRIB2::Laye
 	float c(laycover->operator()(x, y, efftime, 0));
 	float b(laybase->operator()(x, y, efftime, 0));
 	float t(laytop->operator()(x, y, efftime, 0));
-	if (std::isnan(c) || std::isnan(b) || std::isnan(t))
+	if (std::isnan(c) || !GRIB2::WeatherProfilePoint::is_pressure_valid(b) || !GRIB2::WeatherProfilePoint::is_pressure_valid(t))
 		return;
 	m_cover = std::max(0.f, std::min(1.f, c * 0.01f));
 	m_base = b;
@@ -3050,7 +3191,7 @@ template <typename PT> void MeteoChart::AreaExtract::Grid<PT>::set_border(void)
 	operator()(0, 0).set_coord(operator()(1, 0).get_coord() - pdiff0);
 	operator()(get_width() - 1, 0).set_coord(operator()(get_width() - 2, 0).get_coord() + pdiff0);
 	operator()(0, get_height() - 1).set_coord(operator()(1, get_height() - 1).get_coord() - pdiff0);
-	operator()(get_width() - 1, get_height() - 1).set_coord(operator()(get_width() - 2, get_height() - 1).get_coord() + pdiff0);	
+	operator()(get_width() - 1, get_height() - 1).set_coord(operator()(get_width() - 2, get_height() - 1).get_coord() + pdiff0);
 }
 
 template <typename PT> unsigned int MeteoChart::AreaExtract::Grid<PT>::get_index(unsigned int x, unsigned int y) const
@@ -3682,12 +3823,12 @@ void MeteoChart::get_fullscale(int width, int height, Point& center, double& sca
 	center = bbox.boxcenter();
 	Point psz(bbox.get_northeast() - bbox.get_southwest());
 	double c(std::max(0.01, cos(center.get_lat_rad())));
-	double sc(std::min(width / c / (double)(uint32_t)psz.get_lon(), 
+	double sc(std::min(width / c / (double)(uint32_t)psz.get_lon(),
 			   height / (double)(uint32_t)psz.get_lat()));
 	scalelon = sc * c;
 	scalelat = -sc;
 	if (false)
-		std::cerr << "MeteoChart::get_fullscale: " << width << 'x' << height << ' ' 
+		std::cerr << "MeteoChart::get_fullscale: " << width << 'x' << height << ' '
 			  << center.get_lat_str2() << ' ' << center.get_lon_str2() << ' '
 			  << scalelat << ' ' << scalelon << std::endl;
 }
@@ -3951,7 +4092,9 @@ void MeteoChart::draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int he
 						float cover(m_wxcldlowcover->operator()(pt, efftime, 0));
 						float base(m_wxcldlowbase->operator()(pt, efftime, 0));
 						float top(m_wxcldlowtop->operator()(pt, efftime, 0));
-						if (!std::isnan(cover) && !std::isnan(base) && !std::isnan(top) &&
+						if (!std::isnan(cover) &&
+						    GRIB2::WeatherProfilePoint::is_pressure_valid(base) &&
+						    GRIB2::WeatherProfilePoint::is_pressure_valid(top) &&
 						    pressure <= base && pressure >= top)
 						       	alpha *= 1 - std::min(1.f, std::max(0.f, cover * 0.01f));
 					}
@@ -3959,7 +4102,9 @@ void MeteoChart::draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int he
 						float cover(m_wxcldmidcover->operator()(pt, efftime, 0));
 						float base(m_wxcldmidbase->operator()(pt, efftime, 0));
 						float top(m_wxcldmidtop->operator()(pt, efftime, 0));
-						if (!std::isnan(cover) && !std::isnan(base) && !std::isnan(top) &&
+						if (!std::isnan(cover) &&
+						    GRIB2::WeatherProfilePoint::is_pressure_valid(base) &&
+						    GRIB2::WeatherProfilePoint::is_pressure_valid(top) &&
 						    pressure <= base && pressure >= top)
 						       	alpha *= 1 - std::min(1.f, std::max(0.f, cover * 0.01f));
 					}
@@ -3967,7 +4112,9 @@ void MeteoChart::draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int he
 						float cover(m_wxcldhighcover->operator()(pt, efftime, 0));
 						float base(m_wxcldhighbase->operator()(pt, efftime, 0));
 						float top(m_wxcldhightop->operator()(pt, efftime, 0));
-						if (!std::isnan(cover) && !std::isnan(base) && !std::isnan(top) &&
+						if (!std::isnan(cover) &&
+						    GRIB2::WeatherProfilePoint::is_pressure_valid(base) &&
+						    GRIB2::WeatherProfilePoint::is_pressure_valid(top) &&
 						    pressure <= base && pressure >= top)
 						       	alpha *= 1 - std::min(1.f, std::max(0.f, cover * 0.01f));
 					}
@@ -3975,7 +4122,9 @@ void MeteoChart::draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int he
 						float cover(m_wxcldconvcover->operator()(pt, efftime, 0));
 						float base(m_wxcldconvbase->operator()(pt, efftime, 0));
 						float top(m_wxcldconvtop->operator()(pt, efftime, 0));
-						if (!std::isnan(cover) && !std::isnan(base) && !std::isnan(top) &&
+						if (!std::isnan(cover) &&
+						    GRIB2::WeatherProfilePoint::is_pressure_valid(base) &&
+						    GRIB2::WeatherProfilePoint::is_pressure_valid(top) &&
 						    pressure <= base && pressure >= top) {
 							cover = std::min(1.f, std::max(0.f, cover * 0.01f));
 						       	alpha *= 1 - cover;
@@ -3988,17 +4137,22 @@ void MeteoChart::draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int he
 				}
 				cr->save();
 				cr->translate(xc, yc);
-				cr->scale(10.0, -10.0);
+				cr->scale(10.0, 10.0);
 				double winddirrad(0);
 				int windspeed5(0);
 				if (m_wxwindu && m_wxwindv) {
 					float wu(m_wxwindu->operator()(pt, efftime, m_gndchart ? 100 : pressure));
 					float wv(m_wxwindv->operator()(pt, efftime, m_gndchart ? 100 : pressure));
+					{
+						std::pair<float,float> wnd(m_wxwindu->get_layer()->get_grid()->transform_axes(wu, wv));
+						wu = wnd.first;
+						wv = wnd.second;
+					}
 					if (!std::isnan(wu) && !std::isnan(wv)) {
 						wu *= (-1e-3f * Point::km_to_nmi * 3600);
 						wv *= (-1e-3f * Point::km_to_nmi * 3600);
 						windspeed5 = Point::round<int,double>(sqrtf(wu * wu + wv * wv) * 0.2);
-						winddirrad = M_PI - atan2f(wu, wv);
+						winddirrad = atan2f(wu, wv);
 					}
 				}
 				static const double windradius = 1.5;
@@ -4372,7 +4526,7 @@ void MeteoChart::draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int he
 				txt = wpt.get_name();
 			if (txt.empty())
 				continue;
-			if (txt == "*TOC*" || txt == "*TOD*" || (wpt.get_flags() & FPlanWaypoint::altflag_generated))
+			if (wpt.get_type() >= FPlanWaypoint::type_generated_start && wpt.get_type() <= FPlanWaypoint::type_generated_end)
 				continue;
 			double xc, yc;
 			{
@@ -4653,7 +4807,7 @@ const std::string& to_str(Cairo::SurfaceType st)
 	}
 #endif
 
-	default:	
+	default:
 	{
 		static const std::string r("?");
 		return r;
@@ -4718,6 +4872,22 @@ bool METARTAFChart::OrderFlightPath::operator()(const MetarTafSet::Station& a, c
 	double mb(p.get_lon() * (double)pb.get_lon() * m_lonscale2 + p.get_lat() * (double)pb.get_lat());
 	return ma < mb;
 }
+
+void METARTAFChart::DbLoaderSqlite::load(MetarTafSet& mtset, const Rect& bbox, time_t tmin, time_t tmax,
+					 unsigned int metarhistory, unsigned int tafhistory)
+{
+	mtset.loadstn_sqlite(m_db, bbox, metarhistory, tafhistory);
+}
+
+#ifdef HAVE_PQXX
+
+void METARTAFChart::DbLoaderPG::load(MetarTafSet& mtset, const Rect& bbox, time_t tmin, time_t tmax,
+				     unsigned int metarhistory, unsigned int tafhistory)
+{
+	mtset.loadstn_pg(m_conn, bbox, tmin, tmax, metarhistory, tafhistory);
+}
+
+#endif
 
 METARTAFChart::Label::Label(const std::string& txt, const std::string& code, double x, double y,
 			    placement_t placement, bool fixed, bool keep)
@@ -4979,10 +5149,24 @@ constexpr double METARTAFChart::tex_anchor_x;
 constexpr double METARTAFChart::tex_anchor_y;
 
 METARTAFChart::METARTAFChart(const FPlanRoute& route, const alternates_t& altn, const altroutes_t& altnfpl,
-			     const std::string& dbfile, dbmode_t dbmode, const RadioSoundings& raobs, const std::string& tempdir)
-	: m_raobs(raobs), m_route(route), m_altn(altn), m_altnroutes(altnfpl), m_tempdir(tempdir), m_db(dbfile), m_dbmode(dbmode)
+			      const RadioSoundings& raobs, const std::string& tempdir)
+	: m_raobs(raobs), m_route(route), m_altn(altn), m_altnroutes(altnfpl), m_tempdir(tempdir)
 {
 }
+
+void METARTAFChart::set_db_sqlite(const std::string& db)
+{
+	m_dbloader = dbloader_t(new DbLoaderSqlite(db));
+}
+
+#ifdef HAVE_PQXX
+
+void METARTAFChart::set_db_pg(pqxx::connection_base& conn)
+{
+	m_dbloader = dbloader_t(new DbLoaderPG(conn));
+}
+
+#endif
 
 void METARTAFChart::add_fir(const std::string& id, const MultiPolygonHole& poly)
 {
@@ -5115,6 +5299,8 @@ void METARTAFChart::polypath(std::ostream& os, const std::string& attr, const Po
 		if (!attr.empty())
 			os << '[' << attr << ']';
 		for (i = 0; i < n; ++i) {
+			if (!(i & 15) && i)
+				os << std::endl << "      ";
 			double xc, yc;
 			{
 				Point pdiff(poly[i] - center);
@@ -5143,17 +5329,18 @@ void METARTAFChart::polypath(std::ostream& os, const std::string& attr, const Po
 		os << "    \\path";
 		if (!attr.empty())
 			os << '[' << attr << ']';
-		bool first(true);
+		unsigned int cnt(0);
 		for (;;) {
-			if (first) {
+			if (!cnt) {
 				os << ' ';
-				first = false;
 			} else if (inside[i]) {
 				os << " -- ";
 			} else {
 				os << ';' << std::endl;
 				break;
 			}
+			if (!(cnt & 15) && cnt)
+				os << std::endl << "      ";
 			double xc, yc;
 			{
 				Point pdiff(poly[i] - center);
@@ -5161,6 +5348,7 @@ void METARTAFChart::polypath(std::ostream& os, const std::string& attr, const Po
 				yc = pdiff.get_lat() * scalelat + 0.5 * height;
 			}
 			os << pgfcoord(xc, yc);
+			++cnt;
 			++i;
 			if (i >= n)
 				i = 0;
@@ -5212,6 +5400,8 @@ void METARTAFChart::polypath(std::ostream& os, const std::string& attr, const Li
 		if (!attr.empty())
 			os << '[' << attr << ']';
 		for (i = 0; i < n; ++i) {
+			if (!(i & 15) && i)
+				os << std::endl << "      ";
 			double xc, yc;
 			{
 				Point pdiff(line[i] - center);
@@ -5235,17 +5425,18 @@ void METARTAFChart::polypath(std::ostream& os, const std::string& attr, const Li
 		os << "    \\path";
 		if (!attr.empty())
 			os << '[' << attr << ']';
-		bool first(true);
+		unsigned int cnt(0);
 		for (;;) {
-			if (first) {
+			if (!cnt) {
 				os << ' ';
-				first = false;
 			} else if (inside[i]) {
 				os << " -- ";
 			} else {
 				os << ';' << std::endl;
 				break;
 			}
+			if (!(cnt & 15) && cnt)
+				os << std::endl << "      ";
 			double xc, yc;
 			{
 				Point pdiff(line[i] - center);
@@ -5253,6 +5444,7 @@ void METARTAFChart::polypath(std::ostream& os, const std::string& attr, const Li
 				yc = pdiff.get_lat() * scalelat + 0.5 * height;
 			}
 			os << pgfcoord(xc, yc);
+			++cnt;
 			++i;
 			if (i >= n) {
 				os << ';' << std::endl;
@@ -5275,6 +5467,8 @@ void METARTAFChart::polypath_fill_helper(std::ostream& os, const PolygonSimple& 
 	if (poly.size() < 2)
 		return;
 	for (PolygonSimple::size_type i(0), n(poly.size()); i < n; ++i) {
+		if (!(i & 15) && i)
+			os << std::endl << "      ";
 		double xc, yc;
 		{
 			Point pdiff(poly[i] - center);
@@ -5308,7 +5502,7 @@ void METARTAFChart::polypath_fill(std::ostream& os, const std::string& attr, con
 				  const Point& center, double width, double height, double scalelon, double scalelat)
 {
 	for (MultiPolygonHole::const_iterator phi(poly.begin()), phe(poly.end()); phi != phe; ++phi)
-		polypath_fill(os, attr, *phi, center, width, height, scalelon, scalelat);	
+		polypath_fill(os, attr, *phi, center, width, height, scalelon, scalelat);
 }
 
 Rect METARTAFChart::get_bbox(unsigned int wptidx0, unsigned int wptidx1) const
@@ -5359,18 +5553,7 @@ std::pair<time_t,time_t> METARTAFChart::get_timebound(void) const
 
 void METARTAFChart::loadstn(const Rect& bbox)
 {
-	switch (m_dbmode) {
-	case dbmode_sqlite:
-		loadstn_sqlite(bbox);
-		break;
-
-	case dbmode_pg:
-		loadstn_pg(bbox);
-		break;
-
-	default:
-		break;
-	}
+	loadstn_db(bbox);
 	loadstn_raob(bbox);
 	{
 		std::set<std::string> filter;
@@ -5392,19 +5575,16 @@ void METARTAFChart::loadstn(const Rect& bbox)
 	}
 }
 
-void METARTAFChart::loadstn_sqlite(const Rect& bbox)
+void METARTAFChart::loadstn_db(const Rect& bbox)
 {
-	m_set.loadstn_sqlite(m_db, bbox, std::max(metar_history_size, metar_depdestalt_history_size), taf_history_size);
-}
-
-void METARTAFChart::loadstn_pg(const Rect& bbox)
-{
+	if (!m_dbloader)
+		return;
 	std::pair<time_t,time_t> tb(get_timebound());
 	if (tb.first <= tb.second) {
 		tb.first -= 2 * 60 * 60;
 		tb.second += 2 * 60 * 60;
 	}
-	m_set.loadstn_pg(m_db, bbox, tb.first, tb.second, std::max(metar_history_size, metar_depdestalt_history_size), taf_history_size);
+	m_dbloader->load(m_set, bbox, tb.first, tb.second, std::max(metar_history_size, metar_depdestalt_history_size), taf_history_size);
 }
 
 void METARTAFChart::loadstn_raob(const Rect& bbox)
@@ -5448,7 +5628,7 @@ void METARTAFChart::loadstn_raob(const Rect& bbox)
 					si->set_wmonr(wmonr);
 					break;
 				}
-				double dist2(si->get_coord().spheric_distance_nmi_dbl(stn2->get_coord()));	
+				double dist2(si->get_coord().spheric_distance_nmi_dbl(stn2->get_coord()));
 				if (dist < dist2) {
 					si->set_wmonr(wmonr);
 					wmonr = wmonr2;
@@ -5475,7 +5655,7 @@ void METARTAFChart::loadstn_raob(const Rect& bbox)
 				if (stn->get_elev() != TopoDb30::nodata)
 					elevm = stn->get_elev();
 				si = m_set.get_stations().insert(se, MetarTafSet::Station(stnid.str(), stn->get_coord(), elevm));
-			}		   
+			}
 			si->set_wmonr(wmonr);
 			break;
 		}
@@ -6311,7 +6491,7 @@ void METARTAFChart::draw(unsigned int wptidx0, unsigned int wptidx1, const Cairo
 {
 	if (wptidx1 < wptidx0 + 2 || m_route[wptidx0].get_coord().is_invalid() || m_route[wptidx1-1].get_coord().is_invalid())
 		return;
-	Rect bbox(get_bbox(wptidx0, wptidx1).oversize_nmi(max_dist_from_route));
+	Rect bbox(get_extended_bbox(wptidx0, wptidx1));
 	loadstn(bbox);
 	filterstn();
 	cr->save();
@@ -6435,7 +6615,7 @@ void METARTAFChart::draw(unsigned int wptidx0, unsigned int wptidx1, const Cairo
 				continue;
 			if (i > 0 && i + 1 != m_route.get_nrwpt() && m_route[i-1].get_pathcode() == FPlanWaypoint::pathcode_star)
 				continue;
-			if (wpt.get_name() == "*TOC*" || wpt.get_name() == "*TOD*" || (wpt.get_flags() & FPlanWaypoint::altflag_generated))
+			if (wpt.get_type() >= FPlanWaypoint::type_generated_start && wpt.get_type() <= FPlanWaypoint::type_generated_end)
 				continue;
 			Glib::ustring txt(wpt.get_icao());
 			if (txt.empty() || (wpt.get_type() == FPlanWaypoint::type_airport && AirportsDb::Airport::is_fpl_zzzz(txt)))
@@ -6691,7 +6871,7 @@ void METARTAFChart::draw_firs(std::ostream& os, LabelLayout& lbl, const Rect& bb
 
 std::ostream& METARTAFChart::dump_latex_legend(std::ostream& os)
 {
-	static const char legend[] = 
+	static const char legend[] =
 		"\n\n"
 		"\\setlength{\\extrarowheight}{2pt}\n"
 		"\\small\n"
@@ -6800,7 +6980,7 @@ void METARTAFChart::draw(unsigned int wptidx0, unsigned int wptidx1, std::ostrea
 				continue;
 			if (i > 0 && i + 1 != m_route.get_nrwpt() && m_route[i-1].get_pathcode() == FPlanWaypoint::pathcode_star)
 				continue;
-			if (wpt.get_name() == "*TOC*" || wpt.get_name() == "*TOD*" || (wpt.get_flags() & FPlanWaypoint::altflag_generated))
+			if (wpt.get_type() >= FPlanWaypoint::type_generated_start && wpt.get_type() <= FPlanWaypoint::type_generated_end)
 				continue;
 			Glib::ustring txt(wpt.get_icao());
 			if (txt.empty() || (wpt.get_type() == FPlanWaypoint::type_airport && AirportsDb::Airport::is_fpl_zzzz(txt)))
@@ -6883,7 +7063,7 @@ void METARTAFChart::draw(unsigned int wptidx0, unsigned int wptidx1, std::ostrea
 					}
 					if (first)
 						continue;
-				} else {				
+				} else {
 					{
 						Point pdiff(wpte.get_coord() - center);
 						xc = pdiff.get_lon() * scalelon + 0.5 * width;
@@ -7488,7 +7668,7 @@ unsigned int RadioSoundings::parse_wmo(const std::string& dir, const std::string
 		if (x[i] < xmin[i] || x[i] > xmax[i])
 			return 0;
 	}
-	
+
 	struct tm tm;
 	tm.tm_sec = 0;
 	tm.tm_min = 0;
@@ -9093,5 +9273,275 @@ void SkewTChartSounding::drawwindbarbs(const Cairo::RefPtr<Cairo::Context>& cr, 
 				cr->restore();
 			}
 		}
-	}	
+	}
+}
+
+const int16_t WindsAloft::isobaric_levels[3][6] = {
+	{ 850, 750, 700, 600, 500, 450 },
+	{ 700, 500, 450, 400, 350, 300 },
+	{ 700, 500, 300, 250, 200, 150 }
+};
+
+WindsAloft::WindsAloft(const GRIB2& wxdb)
+	: m_wxdb(&wxdb),
+	  m_minefftime(std::numeric_limits<gint64>::max()),
+	  m_maxefftime(std::numeric_limits<gint64>::min()),
+	  m_minreftime(std::numeric_limits<gint64>::max()),
+	  m_maxreftime(std::numeric_limits<gint64>::min()),
+	  m_lvlindex(0)
+{
+}
+
+WindsAloft::WindsAloft(const Aircraft& acft, const GRIB2& wxdb)
+	: m_wxdb(&wxdb),
+	  m_minefftime(std::numeric_limits<gint64>::max()),
+	  m_maxefftime(std::numeric_limits<gint64>::min()),
+	  m_minreftime(std::numeric_limits<gint64>::max()),
+	  m_maxreftime(std::numeric_limits<gint64>::min()),
+	  m_lvlindex(0)
+{
+	{
+		double ceil(acft.get_climb().get_ceiling());
+		if (ceil > 30000)
+			m_lvlindex = 2;
+		else if (ceil > 18000)
+			m_lvlindex = 1;
+	}
+}
+
+std::ostream& WindsAloft::definitions(std::ostream& os)
+{
+	os << ("\\newlength{\\windsalofttblname}\n"
+	       "\\newlength{\\windsalofttblwind}\n"
+	       "\\newlength{\\windsalofttbltropo}\n"
+	       "\\settowidth{\\windsalofttblwind}{888888}\n"
+	       "\\settowidth{\\windsalofttbltropo}{FL888}\n"
+	       "\\setlength{\\windsalofttblname}{\\linewidth}\n"
+	       "\\addtolength{\\windsalofttblname}{-")
+	   << (sizeof(isobaric_levels[0])/sizeof(isobaric_levels[0][0]))
+	   << (".0\\windsalofttblwind}\n"
+	       "\\addtolength{\\windsalofttblname}{-\\windsalofttbltropo}\n"
+	       "\\addtolength{\\windsalofttblname}{-")
+	   << (2*(sizeof(isobaric_levels[0])/sizeof(isobaric_levels[0][0])+2))
+	   << (".0\\tabcolsep}\n"
+	       "\\addtolength{\\windsalofttblname}{-")
+	   << (sizeof(isobaric_levels[0])/sizeof(isobaric_levels[0][0])+3)
+	   << ".0\\arrayrulewidth}\n\n";
+	return os;
+}
+
+std::ostream& WindsAloft::legend(std::ostream& os)
+{
+	os << ("\\medskip\\noindent$\\downarrow$: headwind, $\\uparrow$: tailwind, "
+	       "$\\leftarrow$: crosswind from the right, $\\rightarrow$: crosswind from the left\n\n");
+	return os;
+}
+
+std::ostream& WindsAloft::hhline(std::ostream& os, bool mid)
+{
+	os << "  \\hhline{|" << (mid ? '-' : '~');
+	for (unsigned int i(0); i < (sizeof(isobaric_levels[0])/sizeof(isobaric_levels[0][0])+1); ++i)
+		os << '|' << (mid ? '~' : '-');
+	return os << "|}";
+}
+
+std::ostream& WindsAloft::winds_aloft(std::ostream& os, unsigned int& lines, const FPlanRoute& route)
+{
+	static const unsigned int maxlines = 83;
+	if (!m_wxdb)
+		return os;
+	if (lines > maxlines)
+		lines = maxlines;
+	Glib::RefPtr<GRIB2::LayerInterpolateResult> wxwindu[sizeof(isobaric_levels[0])/sizeof(isobaric_levels[0][0])];
+	Glib::RefPtr<GRIB2::LayerInterpolateResult> wxwindv[sizeof(isobaric_levels[0])/sizeof(isobaric_levels[0][0])];
+	Glib::RefPtr<GRIB2::LayerInterpolateResult> wxtemperature[sizeof(isobaric_levels[0])/sizeof(isobaric_levels[0][0])];
+	Glib::RefPtr<GRIB2::LayerInterpolateResult> wxprmsl;
+	Glib::RefPtr<GRIB2::LayerInterpolateResult> wxtropopause;
+	Rect bbox(route.get_bbox());
+        Rect bbox1(bbox.oversize_nmi(200));
+	unsigned int nr(route.get_nrwpt());
+	bool intbl(false);
+	for (unsigned int icur(0), iprev(0); iprev < nr; ) {
+		const FPlanWaypoint& wptp(route[iprev]);
+		if (wptp.get_coord().is_invalid()) {
+			++iprev;
+			continue;
+		}
+		for (icur = iprev + 1; icur < nr; ++icur) {
+			const FPlanWaypoint& wptn(route[icur]);
+			if (!wptn.get_coord().is_invalid() &&
+			    (wptn.get_type() < FPlanWaypoint::type_generated_start || wptn.get_type() > FPlanWaypoint::type_generated_end))
+				break;
+		}
+		if (intbl && (icur >= nr || lines < 3)) {
+			hhline(os, false) << "\n  ";
+			if (wptp.is_altitude_valid())
+				os << "\\truncate{\\windsalofttblname}{" << wptp.get_fpl_altstr() << "} ";
+			for (unsigned int i(0); i < sizeof(isobaric_levels[0])/sizeof(isobaric_levels[0][0]); ++i)
+				os << " &";
+			os << " & \\\\\n  \\hline\n\\end{tabular}\n\n";
+			intbl = false;
+		}
+		if (icur >= nr)
+			break;
+		const FPlanWaypoint& wptn(route[icur]);
+		if (!intbl) {
+			if (lines < 4) {
+				os << "\\clearpage\n\n";
+				lines = maxlines;
+			}
+			os << "\\noindent\\begin{tabular}{|p{\\windsalofttblname}|";
+			for (unsigned int i(0); i < sizeof(isobaric_levels[0])/sizeof(isobaric_levels[0][0]); ++i)
+				os << "p{\\windsalofttblwind}|";
+			os << "p{\\windsalofttbltropo}|}\n  \\hline\n  "
+			   << "\\truncate{\\windsalofttblname}{" << METARTAFChart::latex_string_meta(wptp.get_icao_name())
+			   << "}";
+			for (unsigned int i(0); i < sizeof(isobaric_levels[0])/sizeof(isobaric_levels[0][0]); ++i) {
+				float alt;
+				IcaoAtmosphere<float>::std_pressure_to_altitude(&alt, 0, isobaric_levels[m_lvlindex][i]);
+				os << " & FL" << std::setw(3) << std::setfill('0')
+				   << Point::round<int32_t,float>(alt * (0.01f * Point::m_to_ft));
+			}
+			os << "& Tropo \\\\\n";
+			--lines;
+			intbl = true;
+		}
+		std::pair<Point,double> ptc(wptp.get_coord().get_gcnav(wptn.get_coord(), 0.5));
+		gint64 efftime(route[0].get_time_unix() + ((wptp.get_flighttime() + wptn.get_flighttime()) >> 1));
+		os << "% Point " << ptc.first.get_lat_str2() << ' ' << ptc.first.get_lon_str2() << std::endl
+		   << "% Track " << ptc.second << std::endl
+		   << "% Time " << Glib::TimeVal(efftime, 0).as_iso8601() << std::endl;
+		for (unsigned int i(0); i < sizeof(isobaric_levels[0])/sizeof(isobaric_levels[0][0]); ++i) {
+			const int16_t isobarlvl(isobaric_levels[m_lvlindex][i]);
+			const uint8_t sfc((isobarlvl < 0) ? GRIB2::surface_specific_height_gnd : GRIB2::surface_isobaric_surface);
+			const double pressure((isobarlvl < 0) ? 2 : isobarlvl * 100.0);
+			if (!wxwindu[i] || efftime < wxwindu[i]->get_minefftime() || efftime > wxwindu[i]->get_maxefftime() ||
+			    pressure < wxwindu[i]->get_minsurface1value() || pressure > wxwindu[i]->get_maxsurface1value() ||
+			    !wxwindu[i]->get_bbox().is_inside(bbox)) {
+				GRIB2::layerlist_t ll(const_cast<GRIB2 *>(m_wxdb)->find_layers(GRIB2::find_parameter(GRIB2::param_meteorology_momentum_ugrd),
+											       efftime, sfc, pressure));
+				wxwindu[i] = GRIB2::interpolate_results(bbox1, ll, efftime, pressure);
+			}
+			if (!wxwindv[i] || efftime < wxwindv[i]->get_minefftime() || efftime > wxwindv[i]->get_maxefftime() ||
+			    pressure < wxwindv[i]->get_minsurface1value() || pressure > wxwindv[i]->get_maxsurface1value() ||
+			    !wxwindv[i]->get_bbox().is_inside(bbox)) {
+				GRIB2::layerlist_t ll(const_cast<GRIB2 *>(m_wxdb)->find_layers(GRIB2::find_parameter(GRIB2::param_meteorology_momentum_vgrd),
+											       efftime, sfc, pressure));
+				wxwindv[i] = GRIB2::interpolate_results(bbox1, ll, efftime, pressure);
+			}
+			if (!wxtemperature[i] || efftime < wxtemperature[i]->get_minefftime() || efftime > wxtemperature[i]->get_maxefftime() ||
+			    pressure < wxtemperature[i]->get_minsurface1value() || pressure > wxtemperature[i]->get_maxsurface1value() ||
+			    !wxtemperature[i]->get_bbox().is_inside(bbox)) {
+				GRIB2::layerlist_t ll(const_cast<GRIB2 *>(m_wxdb)->find_layers(GRIB2::find_parameter(GRIB2::param_meteorology_temperature_tmp),
+											       efftime, sfc, pressure));
+				wxtemperature[i] = GRIB2::interpolate_results(bbox1, ll, efftime, pressure);
+			}
+			if (wxwindu[i]) {
+				m_minefftime = std::min(m_minefftime, wxwindu[i]->get_minefftime());
+				m_maxefftime = std::max(m_maxefftime, wxwindu[i]->get_maxefftime());
+				m_minreftime = std::min(m_minreftime, wxwindu[i]->get_minreftime());
+				m_maxreftime = std::max(m_maxreftime, wxwindu[i]->get_maxreftime());
+			}
+			if (wxwindv[i]) {
+				m_minefftime = std::min(m_minefftime, wxwindv[i]->get_minefftime());
+				m_maxefftime = std::max(m_maxefftime, wxwindv[i]->get_maxefftime());
+				m_minreftime = std::min(m_minreftime, wxwindv[i]->get_minreftime());
+				m_maxreftime = std::max(m_maxreftime, wxwindv[i]->get_maxreftime());
+			}
+			if (wxtemperature[i]) {
+				m_minefftime = std::min(m_minefftime, wxtemperature[i]->get_minefftime());
+				m_maxefftime = std::max(m_maxefftime, wxtemperature[i]->get_maxefftime());
+				m_minreftime = std::min(m_minreftime, wxtemperature[i]->get_minreftime());
+				m_maxreftime = std::max(m_maxreftime, wxtemperature[i]->get_maxreftime());
+			}
+		}
+		if (!wxprmsl || efftime < wxprmsl->get_minefftime() || efftime > wxprmsl->get_maxefftime() ||
+		    !wxprmsl->get_bbox().is_inside(bbox)) {
+			GRIB2::layerlist_t ll(const_cast<GRIB2 *>(m_wxdb)->find_layers(GRIB2::find_parameter(GRIB2::param_meteorology_mass_prmsl),
+										       efftime));
+			wxprmsl = GRIB2::interpolate_results(bbox1, ll, efftime);
+		}
+		if (!wxtropopause || efftime < wxtropopause->get_minefftime() || efftime > wxtropopause->get_maxefftime() ||
+		    !wxtropopause->get_bbox().is_inside(bbox)) {
+			GRIB2::layerlist_t ll(const_cast<GRIB2 *>(m_wxdb)->find_layers(GRIB2::find_parameter(GRIB2::param_meteorology_mass_hgt),
+										       efftime, GRIB2::surface_tropopause, 0));
+			wxtropopause = GRIB2::interpolate_results(bbox1, ll, efftime);
+		}
+		if (wxprmsl) {
+			m_minefftime = std::min(m_minefftime, wxprmsl->get_minefftime());
+			m_maxefftime = std::max(m_maxefftime, wxprmsl->get_maxefftime());
+			m_minreftime = std::min(m_minreftime, wxprmsl->get_minreftime());
+			m_maxreftime = std::max(m_maxreftime, wxprmsl->get_maxreftime());
+		}
+		if (wxtropopause) {
+			m_minefftime = std::min(m_minefftime, wxtropopause->get_minefftime());
+			m_maxefftime = std::max(m_maxefftime, wxtropopause->get_maxefftime());
+			m_minreftime = std::min(m_minreftime, wxtropopause->get_minreftime());
+			m_maxreftime = std::max(m_maxreftime, wxtropopause->get_maxreftime());
+		}
+		hhline(os, false) << "\n  ";
+		if (wptp.is_altitude_valid())
+			os << "\\truncate{\\windsalofttblname}{" << wptp.get_fpl_altstr() << "} ";
+		float windspeed[sizeof(isobaric_levels[0])/sizeof(isobaric_levels[0][0])];
+		float winddirrad[sizeof(isobaric_levels[0])/sizeof(isobaric_levels[0][0])];
+		for (unsigned int i(0); i < sizeof(isobaric_levels[0])/sizeof(isobaric_levels[0][0]); ++i) {
+			windspeed[i] = winddirrad[i] = std::numeric_limits<float>::quiet_NaN();
+			os << "& ";
+			const int16_t isobarlvl(isobaric_levels[m_lvlindex][i]);
+			const double pressure((isobarlvl < 0) ? 2 : isobarlvl * 100.0);
+			if (wxwindu[i] && wxwindv[i]) {
+				float wu(wxwindu[i]->operator()(ptc.first, efftime, pressure));
+				float wv(wxwindv[i]->operator()(ptc.first, efftime, pressure));
+				if (!std::isnan(wu) && !std::isnan(wv)) {
+					wu *= (-1e-3f * Point::km_to_nmi * 3600);
+					wv *= (-1e-3f * Point::km_to_nmi * 3600);
+					windspeed[i] = sqrtf(wu * wu + wv * wv);
+					winddirrad[i] = M_PI - atan2f(wu, wv);
+				}
+			}
+			if (std::isnan(windspeed[i]) || std::isnan(winddirrad[i]))
+				continue;
+			os << std::setw(3) << std::setfill('0') << Point::round<int,float>(winddirrad[i] * Wind<float>::from_rad)
+			   << std::setw(2) << std::setfill('0') << Point::round<int,float>(windspeed[i]) << ' ';
+		}
+		os << "& ";
+		if (wxtropopause) {
+			float tp(wxtropopause->operator()(ptc.first, efftime, 0.0) * Point::m_to_ft);
+			if (!std::isnan(tp))
+				os << "FL" << std::setw(3) << std::setfill('0') << Point::round<int,float>(tp * 0.01f);
+		}
+		hhline(os << "\\\\\n", true) << "\n  \\truncate{\\windsalofttblname}{" << wptn.get_icao_name() << "} ";
+		for (unsigned int i(0); i < sizeof(isobaric_levels[0])/sizeof(isobaric_levels[0][0]); ++i) {
+			os << "& ";
+			if (std::isnan(windspeed[i]) || std::isnan(winddirrad[i]))
+				continue;
+			float dir(winddirrad[i] - ptc.second * Wind<float>::to_rad);
+			if (std::isnan(dir))
+				continue;
+			float hw, xw;
+			sincosf(dir, &xw, &hw);
+			xw *= windspeed[i];
+			hw *= windspeed[i];
+			if (hw > 0)
+				os << "$\\downarrow$";
+			else
+				os << "$\\uparrow$";
+			os << Point::round<int,float>(fabsf(hw));
+			if (xw > 0)
+				os << "$\\leftarrow$";
+			else
+				os << "$\\rightarrow$";
+			os << Point::round<int,float>(fabsf(xw));
+		}
+		os << "& ";
+		if (wxprmsl) {
+			float hpa(wxprmsl->operator()(ptc.first, efftime, 0.0) * 0.01f);
+			if (!std::isnan(hpa))
+				os << 'Q' << Point::round<int,float>(hpa);
+		}
+		os << "\\\\\n";
+		lines -= 2;
+		iprev = icur;
+	}
+	return os;
 }

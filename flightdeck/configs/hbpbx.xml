@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<aircraft callsign="HBPBX" manufacturer="Piper" model="PA28R-200 Arrow 1.5" year="1971" icaotype="P28R" equipment="SDFGBRY" transponder="S" pbn="B2D2S1" colormarking="WHITE BLUE STRIPES" emergencyradio="E" homebase="LSZK" mrm="2600" mtom="2600" mlm="2600" vr0="53.8765" vr1="59.0904" vx0="69.5181" vx1="69.5181" vy="82.5527" vs0="55.6145" vs1="60.8283" vno="147.726" vne="185.961" vref0="77.8603" vref1="85.1597" va="116.443" vfe="108.622" vgearext="130.346" vgearret="108.622" vbestglide="91.2425" glideslope="8.1086" fuelunitname="usg" fuelmass="6.017" maxbhp="200" propulsion="constantspeed" freecirculation="N">
+<aircraft callsign="HBPBX" manufacturer="Piper" model="PA28R-200 Arrow 1.5" year="1971" icaotype="P28R" equipment="SYBDFGR" transponder="S" pbn="B2D2S1" gnssflags="GPS,SBAS" colormarking="WHITE BLUE STRIPES" emergencyradio="E" homebase="LSZK" mrm="2600" mtom="2600" mlm="2600" vr0="53.8765" vr1="59.0904" vx0="69.5181" vx1="69.5181" vy="82.5527" vs0="55.6145" vs1="60.8283" vno="147.726" vne="185.961" vref0="77.8603" vref1="85.1597" va="116.443" vfe="108.622" vgearext="130.346" vgearret="108.622" fuelunitname="usg" fuelmass="6.017" maxbhp="200" propulsion="constantspeed" opsrules="auto" freecirculation="N" vbestglide="91.2425" glideslope="8.10858">
   <wb armunitname="in" massunitname="lb">
     <element name="Pilot and Front Pax" massmax="600" arm="85.5">
       <unit name="kg" factor="2.20462"/>
@@ -81,16 +81,15 @@
     </ldgdist>
   </distances>
   <climb>
-    <curve name="Normal" mass="2600" ceiling="17134.3" climbtime="3593.15" mode="rateofclimb">
+    <curve name="Normal" mass="2600" ceiling="17134.3" climbtime="3593.14" mode="rateofclimb">
       <point pa="0" rate="910" fuelflow="14" cas="82.5527"/>
       <point pa="18000" rate="0" fuelflow="8" cas="82.5527"/>
       <ratepoly>910,-0.05055555556</ratepoly>
       <fuelflowpoly>14,-0.0003333333333</fuelflowpoly>
       <caspoly>82.5527</caspoly>
-      <climbtimepoly>0,0.1150253633,-5.336742064e-05,2.164656388e-08,-3.966208416e-12,3.746815973e-16,-1.758188857e-20,3.270290682e-25</climbtimepoly>
-      <climbaltpoly>0,15.13182994,-0.006233278474,1.576194999e-06,-2.367737127e-10,1.600622568e-14</climbaltpoly>
-      <climbdistpoly>0,0.02291962453,2.573354327e-06,-5.009044218e-10</climbdistpoly>
-      <climbfuelpoly>0,0.003885058906,-6.849714406e-07,1.732036272e-10,-2.601730719e-14</climbfuelpoly>
+      <climbaltpoly>0,15.13182994,-0.006233278476,1.576195001e-06,-2.367737133e-10,1.600622574e-14</climbaltpoly>
+      <climbdistpoly>0,0.02291966981,2.57336196e-06,-5.008989876e-10,5.293777093e-14,-2.333322461e-18</climbdistpoly>
+      <climbfuelpoly>0,0.003885058906,-6.849714409e-07,1.732036275e-10,-2.601730729e-14,1.758704408e-18</climbfuelpoly>
     </curve>
   </climb>
   <descent rate="500">
@@ -116,7 +115,6 @@
       <ratepoly>500</ratepoly>
       <fuelflowpoly>8.33333</fuelflowpoly>
       <caspoly>104.7746614,-0.0002888085215,7.915693665e-10,-5.845324789e-13</caspoly>
-      <climbtimepoly>0,0.1199999082</climbtimepoly>
       <climbaltpoly>0,8.333061265,1.093059483e-06,-1.251457606e-09,5.416231899e-13,-8.695083575e-17</climbaltpoly>
       <climbdistpoly>0,0.02910245104,1.427391433e-06</climbdistpoly>
       <climbfuelpoly>0,0.002314813889</climbfuelpoly>
@@ -143,7 +141,6 @@
       <ratepoly>500</ratepoly>
       <fuelflowpoly>9.137427076,-0.0001942153781,4.138723125e-08,-1.97082115e-12</fuelflowpoly>
       <caspoly>114.7114481,-0.001004605733,1.38667332e-07,-8.523400395e-12</caspoly>
-      <climbtimepoly>0,0.1199999082</climbtimepoly>
       <climbaltpoly>0,8.333061265,1.093059483e-06,-1.251457606e-09,5.416231899e-13,-8.695083575e-17</climbaltpoly>
       <climbdistpoly>0,0.03186040658,7.801889216e-07,8.710622782e-10,-2.240868773e-13</climbdistpoly>
       <climbfuelpoly>0,0.002538400143,-2.251931962e-07,2.662962493e-10,-7.921577705e-14</climbfuelpoly>
@@ -170,7 +167,6 @@
       <ratepoly>500</ratepoly>
       <fuelflowpoly>9.561403684,-9.280785604e-05,2.182238777e-08,-1.254160217e-12</fuelflowpoly>
       <caspoly>114.7114481,-0.001004605733,1.38667332e-07,-8.523400395e-12</caspoly>
-      <climbtimepoly>0,0.1199999082</climbtimepoly>
       <climbaltpoly>0,8.333061265,1.093059483e-06,-1.251457606e-09,5.416231899e-13,-8.695083575e-17</climbaltpoly>
       <climbdistpoly>0,0.03186040658,7.801889216e-07,8.710622782e-10,-2.240868773e-13</climbdistpoly>
       <climbfuelpoly>0,0.002656052941,-1.076280776e-07,1.404237286e-10,-5.040654569e-14</climbfuelpoly>
@@ -197,7 +193,6 @@
       <ratepoly>500</ratepoly>
       <fuelflowpoly>9.971763333,0.0001894605908,-1.963775155e-08,1.170988132e-13</fuelflowpoly>
       <caspoly>123.0785381,0.001273004001,-2.841248534e-07,6.822313987e-12</caspoly>
-      <climbtimepoly>0,0.1199999082</climbtimepoly>
       <climbaltpoly>0,8.333061265,1.093059483e-06,-1.251457606e-09,5.416231899e-13,-8.695083575e-17</climbaltpoly>
       <climbdistpoly>0,0.03418675741,3.526425985e-06,-1.56701075e-09</climbdistpoly>
       <climbfuelpoly>0,0.002769713038,2.194828136e-07,-1.262976935e-10</climbfuelpoly>
@@ -224,7 +219,6 @@
       <ratepoly>500</ratepoly>
       <fuelflowpoly>10.5507107,0.000143816456,-2.383021801e-08,4.180964052e-13</fuelflowpoly>
       <caspoly>123.0785381,0.001273004001,-2.841248534e-07,6.822313987e-12</caspoly>
-      <climbtimepoly>0,0.1199999082</climbtimepoly>
       <climbaltpoly>0,8.333061265,1.093059483e-06,-1.251457606e-09,5.416231899e-13,-8.695083575e-17</climbaltpoly>
       <climbdistpoly>0,0.03418675741,3.526425985e-06,-1.56701075e-09</climbdistpoly>
       <climbfuelpoly>0,0.002930583978,1.6669837e-07,-1.532872112e-10,1.681691478e-14</climbfuelpoly>
@@ -251,12 +245,40 @@
       <ratepoly>500</ratepoly>
       <fuelflowpoly>12.09453175,2.210180599e-05,-3.500984907e-08,1.220736584e-12</fuelflowpoly>
       <caspoly>133.1680979,0.0005477833098,-3.682895387e-07,1.248788806e-11</caspoly>
-      <climbtimepoly>0,0.1199999082</climbtimepoly>
       <climbaltpoly>0,8.333061265,1.093059483e-06,-1.251457606e-09,5.416231899e-13,-8.695083575e-17</climbaltpoly>
       <climbdistpoly>0,0.0369924097,2.838229031e-06,-2.134671338e-09,2.532868836e-13</climbdistpoly>
       <climbfuelpoly>0,0.003359562428,2.594337249e-08,-2.252574593e-10,4.908732189e-14</climbfuelpoly>
     </curve>
   </descent>
+  <glide>
+    <curve mass="2600" ceiling="17134.3" climbtime="794.94" mode="rateofclimb" vbestglide="91.2425" glideslope="8.10858">
+      <point pa="0" rate="1139.53" cas="91.2425"/>
+      <point pa="1000" rate="1156.28" cas="91.2425"/>
+      <point pa="2000" rate="1173.4" cas="91.2425"/>
+      <point pa="3000" rate="1190.88" cas="91.2425"/>
+      <point pa="4000" rate="1208.75" cas="91.2425"/>
+      <point pa="5000" rate="1227.01" cas="91.2425"/>
+      <point pa="6000" rate="1245.68" cas="91.2425"/>
+      <point pa="7000" rate="1264.76" cas="91.2425"/>
+      <point pa="8000" rate="1284.27" cas="91.2425"/>
+      <point pa="9000" rate="1304.22" cas="91.2425"/>
+      <point pa="10000" rate="1324.62" cas="91.2425"/>
+      <point pa="11000" rate="1345.49" cas="91.2425"/>
+      <point pa="12000" rate="1366.85" cas="91.2425"/>
+      <point pa="13000" rate="1388.69" cas="91.2425"/>
+      <point pa="14000" rate="1411.05" cas="91.2425"/>
+      <point pa="15000" rate="1433.93" cas="91.2425"/>
+      <point pa="16000" rate="1457.36" cas="91.2425"/>
+      <point pa="17000" rate="1481.34" cas="91.2425"/>
+      <point pa="17134.3" rate="1484.61" cas="91.2425"/>
+      <ratepoly>1139.515672,0.01659953587,1.691574614e-07,2.186336858e-12</ratepoly>
+      <fuelflowpoly>0</fuelflowpoly>
+      <caspoly>91.2425</caspoly>
+      <climbaltpoly>0,18.98928859,0.002625373731,5.872411012e-07,1.481622946e-10,8.111028859e-14</climbaltpoly>
+      <climbdistpoly>0,0.02534201536,3.492622765e-06,8.271620376e-10,1.310205021e-13,1.434262135e-16</climbdistpoly>
+      <climbfuelpoly>0</climbfuelpoly>
+    </curve>
+  </glide>
   <cruise>
     <curve name="45%, 2400 RPM" mass="2600" rpm="2400" flags="interpolate">
       <point pa="0" bhp="90" tas="104.712" fuelflow="8.33333"/>
@@ -402,5 +424,7 @@
       <point pa="16000" isaoffs="0" bhp="90" rpm="2400" mp="14.5"/>
       <point pa="17000" isaoffs="0" bhp="90" rpm="2400" mp="14.3"/>
     </PistonPower>
+    <optimalaltitude/>
   </cruise>
+  <otherinfo category="CODE" text="4B27CD"/>
 </aircraft>

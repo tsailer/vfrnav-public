@@ -313,14 +313,14 @@ template <> void FlightDeckWindow::wptpage_updatedist(Gtk::TreeModel::Row& row, 
 			double baroalt, truealt;
 			m_sensors->get_altitude(baroalt, truealt);
 			const Aircraft& acft(m_sensors->get_aircraft());
-			double gd((truealt - el->get_elevation()) * acft.get_glideslope() *
+			double gd((truealt - el->get_elevation()) * acft.get_glide().get_glideslope() *
 				  (Point::ft_to_m_dbl * 0.001 * Point::km_to_nmi_dbl));
 			if (!std::isnan(gd)) {
 				Sensors::fplanwind_t fpwind(m_sensors->get_fplan_wind(el->get_coord()));
 				if (fpwind.second > 0) {
 					Wind<double> wind;
 					wind.set_wind(fpwind.first, fpwind.second);
-					wind.set_crs_tas(m_wptquerypoint.spheric_true_course(el->get_coord()), acft.get_vbestglide());
+					wind.set_crs_tas(m_wptquerypoint.spheric_true_course(el->get_coord()), acft.get_glide().get_vbestglide());
 					if (std::isnan(wind.get_gs()) || wind.get_gs() <= 0)
 						gd = 0;
 					else

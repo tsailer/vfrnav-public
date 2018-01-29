@@ -1410,9 +1410,9 @@ public:
 protected:
 	class Parameter {
 	public:
-		Parameter(const struct paramdiscipline_id *pdisc, 
+		Parameter(const struct paramdiscipline_id *pdisc,
 			  const struct paramcategory_id *pcat,
-			  const struct parameter_id *par) : 
+			  const struct parameter_id *par) :
 			m_discipline(pdisc), m_paramcategory(pcat), m_parameter(par),
 			m_disciplineindex(0), m_paramcategoryindex(0), m_parameterindex(0) {}
 		uint8_t get_disciplineid(void) const { return m_discipline ? m_discipline->id : 0xff; }

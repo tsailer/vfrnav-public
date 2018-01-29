@@ -283,7 +283,7 @@ MultiPolygonHole PolygonSimple::geos_simplify(Point::coord_t lonoffs)
 	c.AddPolygon(to_clipper(*this, lonoffs), ClipperLib::ptSubject);
 #endif
 	ClipperLibSolution sol;
-	c.Execute(ClipperLib::ctUnion, sol, ClipperLib::pftNonZero, ClipperLib::pftNonZero); 
+	c.Execute(ClipperLib::ctUnion, sol, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
 	return from_clipper(sol, lonoffs);
 }
 
@@ -415,7 +415,7 @@ void MultiPolygonHole::geos_subtract(const MultiPolygonHole& m)
 #endif
 	}
 	ClipperLibSolution sol;
-	c.Execute(ClipperLib::ctDifference, sol, ClipperLib::pftNonZero, ClipperLib::pftNonZero); 
+	c.Execute(ClipperLib::ctDifference, sol, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
 	MultiPolygonHole mp(from_clipper(sol, lonoffs));
 	swap(mp);
 }
@@ -453,7 +453,7 @@ void MultiPolygonHole::geos_subtract(const MultiPolygonHole& m, Point::coord_t l
 #endif
 	}
 	ClipperLibSolution sol;
-	c.Execute(ClipperLib::ctDifference, sol, ClipperLib::pftNonZero, ClipperLib::pftNonZero); 
+	c.Execute(ClipperLib::ctDifference, sol, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
 	MultiPolygonHole mp(from_clipper(sol, lonoffs));
 	swap(mp);
 }
@@ -493,7 +493,7 @@ void MultiPolygonHole::geos_intersect(const MultiPolygonHole& m)
 #endif
 	}
 	ClipperLibSolution sol;
-	c.Execute(ClipperLib::ctIntersection, sol, ClipperLib::pftNonZero, ClipperLib::pftNonZero); 
+	c.Execute(ClipperLib::ctIntersection, sol, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
 	MultiPolygonHole mp(from_clipper(sol, lonoffs));
 	swap(mp);
 }
@@ -531,7 +531,7 @@ void MultiPolygonHole::geos_intersect(const MultiPolygonHole& m, Point::coord_t 
 #endif
 	}
 	ClipperLibSolution sol;
-	c.Execute(ClipperLib::ctIntersection, sol, ClipperLib::pftNonZero, ClipperLib::pftNonZero); 
+	c.Execute(ClipperLib::ctIntersection, sol, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
 	MultiPolygonHole mp(from_clipper(sol, lonoffs));
 	swap(mp);
 }

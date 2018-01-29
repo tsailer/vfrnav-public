@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
                         case 'q':
                                 quiet = true;
                                 break;
- 
+
                         case 'h':
                         default:
                                 err++;

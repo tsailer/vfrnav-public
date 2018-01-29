@@ -72,8 +72,9 @@ public:
 
 	float_t get_p(void) const { return m_p; }
 	float_t get_q(void) const { return m_q; }
-	static float_t get_lss(float_t temp);
-	float_t get_lss(void) const { return get_lss(get_oat()); }
+	static float_t get_lss_degc(float_t temp);
+	static float_t get_lss_kelvin(float_t temp);
+	float_t get_lss(void) const { return get_lss_degc(get_oat()); }
 
 protected:
 	IcaoAtmosphere<float_t> m_atmosphere;

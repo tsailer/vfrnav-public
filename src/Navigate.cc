@@ -483,7 +483,7 @@ Navigate::GPSCommGPSD::GPSCommGPSD(const Glib::ustring& port)
         char *path;
         m_control = gypsy_control_get_default();
 
-        // Tell gypsy-daemon to create a GPS object 
+        // Tell gypsy-daemon to create a GPS object
         // The GPS to use is passed in as a command line argument
         path = gypsy_control_create(m_control, port.c_str(), &error);
         if (!path) {
@@ -2732,8 +2732,8 @@ Navigate::Navigate(Engine& eng, Glib::RefPtr<PrefsWindow>& prefswindow)
           m_navterraininfohdg(0), m_navterraininfodist(0), m_navterraininfovs(0), m_navterraininfoname(0),
           m_navterraininfotarghdg(0), m_navterraininfotargdist(0), m_navterraininfotargvs(0), m_navterraininfogps(0), m_navterraininfovgnd(0),
           m_navairportdiagramarea(0), m_navairportdiagrammenuzoomin(0), m_navairportdiagrammenuzoomout(0),
-          m_navairportdiagraminfohdg(0), m_navairportdiagraminfodist(0), m_navairportdiagraminfovs(0), m_navairportdiagraminfoname(0), 
-          m_navairportdiagraminfotarghdg(0), m_navairportdiagraminfotargdist(0), m_navairportdiagraminfotargvs(0), 
+          m_navairportdiagraminfohdg(0), m_navairportdiagraminfodist(0), m_navairportdiagraminfovs(0), m_navairportdiagraminfoname(0),
+          m_navairportdiagraminfotarghdg(0), m_navairportdiagraminfotargdist(0), m_navairportdiagraminfotargvs(0),
           m_navairportdiagraminfogps(0), m_navairportdiagraminfovgnd(0),
           m_navpoiinfohdg(0), m_navpoiinfodist(0), m_navpoiinfovs(0), m_navpoiinfoname(0),
           m_navpoiinfotarghdg(0), m_navpoiinfotargdist(0), m_navpoiinfotargvs(0), m_navpoiinfogps(0), m_navpoiinfovgnd(0),

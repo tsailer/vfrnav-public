@@ -4,7 +4,7 @@
 // Description: Flight Plan XML Import/Export Utility (PalmPilot Compatible Format)
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2013, 2014, 2015
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2013, 2014, 2015, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -37,6 +37,7 @@
 #define EX_OK      0
 #endif
 
+#include "sitename.h"
 #include "fplan.h"
 #include "engine.h"
 #include "icaofpl.h"
@@ -1744,7 +1745,7 @@ void XmlWriter::write_header_gpx(void)
 	rc = xmlTextWriterWriteAttribute(m_writer, (const xmlChar *)"version", (const xmlChar *)"1.1");
 	if (rc < 0)
 		throw std::runtime_error("XmlWriter: Error at xmlTextWriterWriteAttribute");
-	rc = xmlTextWriterWriteAttribute(m_writer, (const xmlChar *)"creator", (const xmlChar *)"vfrnav " VERSION " - http://www.autorouter.eu");
+	rc = xmlTextWriterWriteAttribute(m_writer, (const xmlChar *)"creator", (const xmlChar *)(std::string("vfrnav " VERSION " - ") + SiteName::sitesecureurl).c_str());
 	if (rc < 0)
 		throw std::runtime_error("XmlWriter: Error at xmlTextWriterWriteAttribute");
 	rc = xmlTextWriterWriteAttribute(m_writer, (const xmlChar *)"xmlns:xsi", (const xmlChar *)"http://www.w3.org/2001/XMLSchema-instance");

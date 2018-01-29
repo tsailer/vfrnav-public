@@ -75,7 +75,7 @@ void ADDS::complete(void)
 	xmlCleanupParser();
 	m_rxbuffer.clear();
 	xmlNodePtr reqnode(0);
-	{	
+	{
 		xmlNodePtr node(xmlDocGetRootElement(doc));
 		for (; node && !reqnode; node = node->next) {
 			if (node->type != XML_ELEMENT_NODE || xmlStrcmp(node->name, BAD_CAST "response"))
@@ -185,7 +185,7 @@ void ADDS::curlio(void)
 	if (res != CURLE_OK) {
 		std::cerr << "ADDS::curlio: error " << res << std::endl;
 		m_rxbuffer.clear();
-	}	
+	}
 	m_dispatch();
 }
 

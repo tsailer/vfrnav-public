@@ -1,10 +1,10 @@
 //
 // C++ Interface: dbobj
 //
-// Description: 
+// Description:
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2008, 2009, 2012, 2013, 2014, 2015, 2016
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2008, 2009, 2012, 2013, 2014, 2015, 2016, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -208,7 +208,7 @@ namespace DbBaseElements {
 	class DbElementLabelSourceCoordBase : public DbElementLabelSourceBase {
 	public:
 		DbElementLabelSourceCoordBase();
-		
+
 		Point get_coord(void) const { return m_coord; }
 		void set_coord(const Point& pt) { m_coord = pt; }
 
@@ -229,7 +229,7 @@ namespace DbBaseElements {
 	class DbElementLabelSourceCoordIcaoNameBase : public DbElementLabelSourceCoordBase {
 	public:
 		DbElementLabelSourceCoordIcaoNameBase();
-		
+
 		const Glib::ustring& get_icao(void) const { return m_icao; }
 		void set_icao(const Glib::ustring& ic) { m_icao = ic; }
 		const Glib::ustring& get_name(void) const { return m_name; }
@@ -256,7 +256,7 @@ namespace DbBaseElements {
 	class DbElementLabelSourceCoordIcaoNameAuthorityBase : public DbElementLabelSourceCoordIcaoNameBase {
 	public:
 		DbElementLabelSourceCoordIcaoNameAuthorityBase();
-		
+
 		const Glib::ustring& get_authority(void) const { return m_authority; }
 		void set_authority(const Glib::ustring& au) { m_authority = au; }
 		typedef std::set<Glib::ustring> authorityset_t;
@@ -316,9 +316,9 @@ namespace DbBaseElements {
 #ifdef HAVE_PQXX
 		void load(const pqxx::tuple& cursor, pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all);
 		void load_subtables(pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all) {}
-		void save(pqxx::connection& conn, bool rtree);
-		void erase(pqxx::connection& conn, bool rtree);
-		void update_index(pqxx::connection& conn, bool rtree);
+		void save(pqxx::connection_base& conn, bool rtree);
+		void erase(pqxx::connection_base& conn, bool rtree);
+		void update_index(pqxx::connection_base& conn, bool rtree);
 #endif
 		Point get_dmecoord(void) const { return m_dmecoord; }
 		void set_dmecoord(const Point& dmecoord) { m_dmecoord = dmecoord; }
@@ -417,9 +417,9 @@ namespace DbBaseElements {
 #ifdef HAVE_PQXX
 		void load(const pqxx::tuple& cursor, pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all);
 		void load_subtables(pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all) {}
-		void save(pqxx::connection& conn, bool rtree);
-		void erase(pqxx::connection& conn, bool rtree);
-		void update_index(pqxx::connection& conn, bool rtree);
+		void save(pqxx::connection_base& conn, bool rtree);
+		void erase(pqxx::connection_base& conn, bool rtree);
+		void update_index(pqxx::connection_base& conn, bool rtree);
 #endif
 		char get_usage(void) const { return m_usage; }
 		void set_usage(char u) { m_usage = u; }
@@ -489,9 +489,9 @@ namespace DbBaseElements {
 #ifdef HAVE_PQXX
 		void load(const pqxx::tuple& cursor, pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all);
 		void load_subtables(pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all) {}
-		void save(pqxx::connection& conn, bool rtree);
-		void erase(pqxx::connection& conn, bool rtree);
-		void update_index(pqxx::connection& conn, bool rtree);
+		void save(pqxx::connection_base& conn, bool rtree);
+		void erase(pqxx::connection_base& conn, bool rtree);
+		void update_index(pqxx::connection_base& conn, bool rtree);
 #endif
 		Rect get_bbox(void) const;
 		Point get_labelcoord(void) const { return m_begin_coord.halfway(m_end_coord); }
@@ -1046,7 +1046,7 @@ namespace DbBaseElements {
 				feature_solid_yellow_line = 1,                  // Solid yellow line (eg. taxiway centreline or taxiway edge line).
 				feature_broken_yellow_line = 2,                 // Broken yellow line (used for taxiway-taxiway hold positions, AIM 2-3-6))
 				feature_double_solid_yellow_line = 3,           // Double solid yellow line (eg. taxiway edge lines)
-				feature_runway_hold_line = 4,                   // Runway hold lines (four yellow lines, two solid and two broken, solid line to right side along axis of chain) 
+				feature_runway_hold_line = 4,                   // Runway hold lines (four yellow lines, two solid and two broken, solid line to right side along axis of chain)
 				feature_other_hold_line = 5,                    // Other hold lines (one solid yellow and one broken, solid line to right along axis of chain) (used to define hold lines NOT related to runway, such as exits from aprons to active taxiways)
 				feature_ils_hold_line = 6,                      // ILS hold lines (two yellow lines with perpendicular yellow bars between them.
 				feature_yellow_line_with_broken_lines = 7,      // Yellow line with broken line on each side (used on taxiway centre lines for in the "ILS critical zone", on approach to a runway hold line).
@@ -1064,7 +1064,7 @@ namespace DbBaseElements {
 				feature_yellow_line_with_broken_lines_on_black = 57,
 				feature_widely_broken_single_yellow_line_on_black = 58,
 				feature_widely_broken_double_yellow_line_on_black = 59,
-				feature_green_embedded_lights = 101,            // Green embedded centreline lights - bidirectional along (both ways) the string axis. 
+				feature_green_embedded_lights = 101,            // Green embedded centreline lights - bidirectional along (both ways) the string axis.
 				feature_blue_edge_lights = 102,                 // Blue taxiway edge lights, omnidirectional.
 				feature_amber_embedded_lights = 103,            // Closely spaced Amber embedded lights, unidirectional, (one-way perpendicular to right of string axis), visible only to the left of the direction on the string (typically used for hold lines across taxiways).
 				feature_amber_pulsating_embedded_lights = 104,  // Closely spaced Amber embedded lights, unidirectional & alternately pulsating (one-way perpendicular to right of  string axis) and pulsating alternately (used for some hold short lines across wide taxiways, visible only to an aeroplane approaching the hold line towards the runway entrance).  Will pulse at between 30 and 60 Hz, and always "on".
@@ -1337,7 +1337,7 @@ namespace DbBaseElements {
 			template<class Archive> void hibernate(Archive& ar) {
 				Glib::ustring pathid;
 				if (ar.is_save() || ar.is_schema())
-					pathid = get_referencepathident(); 
+					pathid = get_referencepathident();
 				ar.io(pathid, "REFPATHID", "refpathid");
 				if (ar.is_load())
 					set_referencepathident(pathid);
@@ -1497,9 +1497,9 @@ namespace DbBaseElements {
 #ifdef HAVE_PQXX
 		void load(const pqxx::tuple& cursor, pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all);
 		void load_subtables(pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all);
-		void save(pqxx::connection& conn, bool rtree);
-		void erase(pqxx::connection& conn, bool rtree);
-		void update_index(pqxx::connection& conn, bool rtree);
+		void save(pqxx::connection_base& conn, bool rtree);
+		void erase(pqxx::connection_base& conn, bool rtree);
+		void update_index(pqxx::connection_base& conn, bool rtree);
 #endif
 		Rect get_bbox(void) const { return m_bbox; }
 		void set_coord(const Point& pt) { DbElementLabelSourceCoordBase::set_coord(pt); recompute_bbox(); }
@@ -1823,10 +1823,21 @@ namespace DbBaseElements {
 			operator_t m_operator;
 		};
 
+		struct IcaoRegion {
+			struct Country {
+				const char *name;
+				const char *ident;
+			};
+
+			const char *region;
+			const Country *countries;
+		};
+
 		static const char *db_query_string;
 		static const char *db_aux_query_string;
 		static const char *db_text_fields[];
 		static const char *db_time_fields[];
+		static const IcaoRegion icao_regions[];
 
 		typedef int32_t gndelev_t;
 
@@ -1841,9 +1852,9 @@ namespace DbBaseElements {
 #ifdef HAVE_PQXX
 		void load(const pqxx::tuple& cursor, pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all);
 		void load_subtables(pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all);
-		void save(pqxx::connection& conn, bool rtree);
-		void erase(pqxx::connection& conn, bool rtree);
-		void update_index(pqxx::connection& conn, bool rtree);
+		void save(pqxx::connection_base& conn, bool rtree);
+		void erase(pqxx::connection_base& conn, bool rtree);
+		void update_index(pqxx::connection_base& conn, bool rtree);
 #endif
 		Rect get_bbox(void) const { return m_bbox; }
 		Point get_labelcoord(void) const { return get_coord(); }
@@ -1915,6 +1926,8 @@ namespace DbBaseElements {
 		static float label_metric(const Point& p0, const Point& p1);
 		void compute_segments_from_poly(void);
 		void set_polygon(const MultiPolygonHole& poly);
+		static const IcaoRegion::Country *find_icaoregion_countries(const std::string& rgn);
+		static const char *find_icaoregion_from_ident(const std::string& id);
 
 		static const gndelev_t gndelev_unknown;
 
@@ -2075,9 +2088,9 @@ namespace DbBaseElements {
 #ifdef HAVE_PQXX
 		void load(const pqxx::tuple& cursor, pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all);
 		void load_subtables(pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all) {}
-		void save(pqxx::connection& conn, bool rtree);
-		void erase(pqxx::connection& conn, bool rtree);
-		void update_index(pqxx::connection& conn, bool rtree);
+		void save(pqxx::connection_base& conn, bool rtree);
+		void erase(pqxx::connection_base& conn, bool rtree);
+		void update_index(pqxx::connection_base& conn, bool rtree);
 #endif
 		int64_t get_id(void) const { return m_id; }
 		table_t get_table(void) const { return m_table; }
@@ -2183,9 +2196,9 @@ namespace DbBaseElements {
 #ifdef HAVE_PQXX
 		void load(const pqxx::tuple& cursor, pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all);
 		void load_subtables(pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all) {}
-		void save(pqxx::connection& conn, bool rtree);
-		void erase(pqxx::connection& conn, bool rtree);
-		void update_index(pqxx::connection& conn, bool rtree);
+		void save(pqxx::connection_base& conn, bool rtree);
+		void erase(pqxx::connection_base& conn, bool rtree);
+		void update_index(pqxx::connection_base& conn, bool rtree);
 #endif
 		int64_t get_id(void) const { return m_id; }
 		table_t get_table(void) const { return m_table; }
@@ -2314,10 +2327,10 @@ namespace DbBaseElements {
 #ifdef HAVE_PQXX
 		void load(const pqxx::tuple& cursor, pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all);
 		void load_subtables(pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all) {}
-		void save(pqxx::connection& conn, bool rtree);
-		void erase(pqxx::connection& conn, bool rtree);
-		void update_index(pqxx::connection& conn, bool rtree);
-		void save_appendlog(pqxx::connection& conn, bool rtree);
+		void save(pqxx::connection_base& conn, bool rtree);
+		void erase(pqxx::connection_base& conn, bool rtree);
+		void update_index(pqxx::connection_base& conn, bool rtree);
+		void save_appendlog(pqxx::connection_base& conn, bool rtree);
 #endif
 		const Glib::ustring& get_fromicao(void) const { return m_fromicao; }
 		void set_fromicao(const Glib::ustring& ic) { m_fromicao = ic; }
@@ -2438,9 +2451,9 @@ namespace DbBaseElements {
 #ifdef HAVE_PQXX
 		void load(const pqxx::tuple& cursor, pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all);
 		void load_subtables(pqxx::basic_transaction& w, unsigned int loadsubtables = subtables_all) {}
-		void save(pqxx::connection& conn, bool rtree);
-		void erase(pqxx::connection& conn, bool rtree);
-		void update_index(pqxx::connection& conn, bool rtree);
+		void save(pqxx::connection_base& conn, bool rtree);
+		void erase(pqxx::connection_base& conn, bool rtree);
+		void update_index(pqxx::connection_base& conn, bool rtree);
 #endif
 		bool get_mutable(void) const { return m_mutable; }
 		void set_mutable(bool mut) { m_mutable = mut; }
@@ -2538,6 +2551,8 @@ public:
 	virtual elementvector_t find_by_rect(const Rect& r, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all) = 0;
 	virtual elementvector_t find_nearest(const Point& pt, const Rect& r, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all) = 0;
 	virtual elementvector_t find_nulltile(unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all) = 0;
+	virtual void load_subtables(element_t& el, unsigned int loadsubtables = element_t::subtables_all) = 0;
+	virtual void load_subtables(elementvector_t& ev, unsigned int loadsubtables = element_t::subtables_all);
 };
 
 template <class T> class DbQueryInterface : public DbQueryInterfaceSpecCommon<T> {
@@ -2706,6 +2721,7 @@ public:
 	elementvector_t find_by_rect(const Rect& r, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all);
 	elementvector_t find_nearest(const Point& pt, const Rect& r, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all);
 	elementvector_t find_nulltile(unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all);
+	void load_subtables(element_t& el, unsigned int loadsubtables = element_t::subtables_all);
 
 protected:
 	static const char *main_table_name;
@@ -2883,8 +2899,8 @@ public:
 		read_only
 	} read_only_tag_t;
 
-	PGDbBaseCommon(const std::string& connstr);
-	PGDbBaseCommon(const std::string& connstr, read_only_tag_t);
+	PGDbBaseCommon(pqxx::connection_base& conn);
+	PGDbBaseCommon(pqxx::connection_base& conn, read_only_tag_t);
 	~PGDbBaseCommon(void);
 	void close(void);
 	void sync_off(void);
@@ -2900,7 +2916,7 @@ public:
 	static std::string get_str(const LineString& ls);
 
 protected:
-        pqxx::connection m_conn;
+	pqxx::connection_base& m_conn;
 	bool m_has_rtree;
 	bool m_readonly;
 
@@ -2919,9 +2935,8 @@ public:
 	typedef typename DbQueryInterface<T>::ForEach ForEach;
 	typedef typename DbQueryInterface<T>::comp_t comp_t;
 
-	// readonly: ?readOnly=true
-	PGDbBase(const std::string& connstr);
-	PGDbBase(const std::string& connstr, read_only_tag_t);
+	PGDbBase(pqxx::connection_base& conn);
+	PGDbBase(pqxx::connection_base& conn, read_only_tag_t);
 	void close(void) { PGDbBaseCommon::close(); }
 	void sync_off(void) { PGDbBaseCommon::sync_off(); }
 	void analyze(void) { PGDbBaseCommon::analyze(); }
@@ -2945,6 +2960,8 @@ public:
 	elementvector_t find_by_rect(const Rect& r, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all);
 	elementvector_t find_nearest(const Point& pt, const Rect& r, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all);
 	elementvector_t find_nulltile(unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all);
+	void load_subtables(element_t& el, unsigned int loadsubtables = element_t::subtables_all);
+	void load_subtables(elementvector_t& ev, unsigned int loadsubtables = element_t::subtables_all);
 
 protected:
 	static const char *main_table_name;
@@ -2968,8 +2985,8 @@ class NavaidsPGDb : public PGDbBase<DbBaseElements::Navaid> {
 public:
 	typedef element_t Navaid;
 
-	NavaidsPGDb(const std::string& connstr) : PGDbBase<DbBaseElements::Navaid>(connstr) {}
-	NavaidsPGDb(const std::string& connstr, read_only_tag_t) : PGDbBase<DbBaseElements::Navaid>(connstr, read_only) {}
+	NavaidsPGDb(pqxx::connection_base& conn) : PGDbBase<DbBaseElements::Navaid>(conn) {}
+	NavaidsPGDb(pqxx::connection_base& conn, read_only_tag_t) : PGDbBase<DbBaseElements::Navaid>(conn, read_only) {}
 
 	elementvector_t find_by_sourceid(const std::string& pattern, char escape = 0, comp_t comp = comp_exact, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all) { return find("SRCID", pattern, escape, comp, limit, loadsubtables); }
 	elementvector_t find_by_icao(const std::string& pattern, char escape = 0, comp_t comp = comp_exact, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all) { return find("ICAO", pattern, escape, comp, limit, loadsubtables); }
@@ -2980,8 +2997,8 @@ class WaypointsPGDb : public PGDbBase<DbBaseElements::Waypoint> {
 public:
 	typedef element_t Waypoint;
 
-	WaypointsPGDb(const std::string& connstr) : PGDbBase<DbBaseElements::Waypoint>(connstr) {}
-	WaypointsPGDb(const std::string& connstr, read_only_tag_t) : PGDbBase<DbBaseElements::Waypoint>(connstr, read_only) {}
+	WaypointsPGDb(pqxx::connection_base& conn) : PGDbBase<DbBaseElements::Waypoint>(conn) {}
+	WaypointsPGDb(pqxx::connection_base& conn, read_only_tag_t) : PGDbBase<DbBaseElements::Waypoint>(conn, read_only) {}
 
 	elementvector_t find_by_sourceid(const std::string& pattern, char escape = 0, comp_t comp = comp_exact, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all) { return find("SRCID", pattern, escape, comp, limit, loadsubtables); }
 	elementvector_t find_by_icao(const std::string& pattern, char escape = 0, comp_t comp = comp_exact, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all) { return find("ICAO", pattern, escape, comp, limit, loadsubtables); }
@@ -2992,8 +3009,8 @@ class AirwaysPGDb : public PGDbBase<DbBaseElements::Airway> {
 public:
 	typedef element_t Airway;
 
-	AirwaysPGDb(const std::string& connstr) : PGDbBase<DbBaseElements::Airway>(connstr) {}
-	AirwaysPGDb(const std::string& connstr, read_only_tag_t) : PGDbBase<DbBaseElements::Airway>(connstr, read_only) {}
+	AirwaysPGDb(pqxx::connection_base& conn) : PGDbBase<DbBaseElements::Airway>(conn) {}
+	AirwaysPGDb(pqxx::connection_base& conn, read_only_tag_t) : PGDbBase<DbBaseElements::Airway>(conn, read_only) {}
 
 	elementvector_t find_by_sourceid(const std::string& pattern, char escape = 0, comp_t comp = comp_exact, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all) { return find("SRCID", pattern, escape, comp, limit, loadsubtables); }
 	elementvector_t find_by_begin_name(const std::string& pattern, char escape = 0, comp_t comp = comp_exact, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all) { return find("BNAME", pattern, escape, comp, limit, loadsubtables); }
@@ -3009,8 +3026,8 @@ class AirportsPGDb : public PGDbBase<DbBaseElements::Airport> {
 public:
 	typedef element_t Airport;
 
-	AirportsPGDb(const std::string& connstr) : PGDbBase<DbBaseElements::Airport>(connstr) {}
-	AirportsPGDb(const std::string& connstr, read_only_tag_t) : PGDbBase<DbBaseElements::Airport>(connstr, read_only) {}
+	AirportsPGDb(pqxx::connection_base& conn) : PGDbBase<DbBaseElements::Airport>(conn) {}
+	AirportsPGDb(pqxx::connection_base& conn, read_only_tag_t) : PGDbBase<DbBaseElements::Airport>(conn, read_only) {}
 
 	elementvector_t find_by_sourceid(const std::string& pattern, char escape = 0, comp_t comp = comp_exact, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all) { return find("SRCID", pattern, escape, comp, limit, loadsubtables); }
 	elementvector_t find_by_icao(const std::string& pattern, char escape = 0, comp_t comp = comp_exact, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all) { return find("ICAO", pattern, escape, comp, limit, loadsubtables); }
@@ -3021,8 +3038,8 @@ class AirspacesPGDb : public PGDbBase<DbBaseElements::Airspace> {
 public:
 	typedef element_t Airspace;
 
-	AirspacesPGDb(const std::string& connstr) : PGDbBase<DbBaseElements::Airspace>(connstr) {}
-	AirspacesPGDb(const std::string& connstr, read_only_tag_t) : PGDbBase<DbBaseElements::Airspace>(connstr, read_only) {}
+	AirspacesPGDb(pqxx::connection_base& conn) : PGDbBase<DbBaseElements::Airspace>(conn) {}
+	AirspacesPGDb(pqxx::connection_base& conn, read_only_tag_t) : PGDbBase<DbBaseElements::Airspace>(conn, read_only) {}
 
 	elementvector_t find_by_sourceid(const std::string& pattern, char escape = 0, comp_t comp = comp_exact, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all) { return find("SRCID", pattern, escape, comp, limit, loadsubtables); }
 	elementvector_t find_by_icao(const std::string& pattern, char escape = 0, comp_t comp = comp_exact, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all) { return find("ICAO", pattern, escape, comp, limit, loadsubtables); }
@@ -3034,8 +3051,8 @@ class MapelementsPGDb : public PGDbBase<DbBaseElements::Mapelement> {
 public:
 	typedef element_t Mapelement;
 
-	MapelementsPGDb(const std::string& connstr) : PGDbBase<DbBaseElements::Mapelement>(connstr) {}
-	MapelementsPGDb(const std::string& connstr, read_only_tag_t) : PGDbBase<DbBaseElements::Mapelement>(connstr, read_only) {}
+	MapelementsPGDb(pqxx::connection_base& conn) : PGDbBase<DbBaseElements::Mapelement>(conn) {}
+	MapelementsPGDb(pqxx::connection_base& conn, read_only_tag_t) : PGDbBase<DbBaseElements::Mapelement>(conn, read_only) {}
 
 	elementvector_t find_by_name(const std::string& pattern, char escape = 0, comp_t comp = comp_exact, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all) { return find("NAME", pattern, escape, comp, limit, loadsubtables); }
 };
@@ -3044,8 +3061,8 @@ class WaterelementsPGDb : public PGDbBase<DbBaseElements::Waterelement> {
 public:
 	typedef element_t Waterelement;
 
-	WaterelementsPGDb(const std::string& connstr) : PGDbBase<DbBaseElements::Waterelement>(connstr) {}
-	WaterelementsPGDb(const std::string& connstr, read_only_tag_t) : PGDbBase<DbBaseElements::Waterelement>(connstr, read_only) {}
+	WaterelementsPGDb(pqxx::connection_base& conn) : PGDbBase<DbBaseElements::Waterelement>(conn) {}
+	WaterelementsPGDb(pqxx::connection_base& conn, read_only_tag_t) : PGDbBase<DbBaseElements::Waterelement>(conn, read_only) {}
 
 	elementvector_t find_by_rect_type(const Rect& r, element_t::type_t typ, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all);
 	elementvector_t find_by_type(element_t::type_t typ, unsigned int limit = 0, unsigned int loadsubtables = element_t::subtables_all);
@@ -3056,8 +3073,8 @@ class TracksPGDb : public PGDbBase<DbBaseElements::Track> {
 public:
 	typedef element_t Track;
 
-	TracksPGDb(const std::string& connstr) : PGDbBase<DbBaseElements::Track>(connstr) {}
-	TracksPGDb(const std::string& connstr, read_only_tag_t) : PGDbBase<DbBaseElements::Track>(connstr, read_only) {}
+	TracksPGDb(pqxx::connection_base& conn) : PGDbBase<DbBaseElements::Track>(conn) {}
+	TracksPGDb(pqxx::connection_base& conn, read_only_tag_t) : PGDbBase<DbBaseElements::Track>(conn, read_only) {}
 
 	void clear_appendlogs(void);
 	void save_appendlog(element_t& e) { e.save_appendlog(m_conn, m_has_rtree); }
@@ -3073,8 +3090,8 @@ class LabelsPGDb : public PGDbBase<DbBaseElements::Label> {
 public:
 	typedef element_t Label;
 
-	LabelsPGDb(const std::string& connstr) : PGDbBase<DbBaseElements::Label>(connstr) {}
-	LabelsPGDb(const std::string& connstr, read_only_tag_t) : PGDbBase<DbBaseElements::Label>(connstr, read_only) {}
+	LabelsPGDb(pqxx::connection_base& conn) : PGDbBase<DbBaseElements::Label>(conn) {}
+	LabelsPGDb(pqxx::connection_base& conn, read_only_tag_t) : PGDbBase<DbBaseElements::Label>(conn, read_only) {}
 
 	elementvector_t find_mutable_by_metric(unsigned int limit = 0, unsigned int offset = 0, unsigned int loadsubtables = element_t::subtables_all);
 };
@@ -3248,6 +3265,11 @@ public:
 		elev_t get_minelev(void) const { return m_minelev; }
 		elev_t get_maxelev(void) const { return m_maxelev; }
 
+		void set_dist(double d) { m_dist = d; }
+		void set_elev(elev_t e) { m_elev = e; }
+		void set_minelev(elev_t e) { m_minelev = e; }
+		void set_maxelev(elev_t e) { m_maxelev = e; }
+
 	protected:
 		double m_dist;
 		elev_t m_elev;
@@ -3273,6 +3295,9 @@ public:
 		RouteProfilePoint(const ProfilePoint& pp, unsigned int rteidx = 0, double rtedist = std::numeric_limits<double>::quiet_NaN());
 		unsigned int get_routeindex(void) const { return m_routeindex; }
 		double get_routedist(void) const { return m_routedist; }
+
+		void set_routeindex(unsigned int i) { m_routeindex = i; }
+		void set_routedist(double d) { m_routedist = d; }
 
 	protected:
 		uint16_t m_routeindex;
@@ -3403,5 +3428,8 @@ public:
 	void open(const Glib::ustring& path);
 	void open_readonly(const Glib::ustring& path, bool enablebinfile = false);
 };
+
+const std::string& to_str(DbBaseElements::DbElementBase::table_t t);
+inline std::ostream& operator<<(std::ostream& os, DbBaseElements::DbElementBase::table_t t) { return os << to_str(t); }
 
 #endif /* _DBOBJ_H */

@@ -331,6 +331,29 @@ bool DbBaseElements::TileNumber::Iterator::next(void)
 	return m_bits <= tile_bits;
 }
 
+const std::string& to_str(DbBaseElements::DbElementBase::table_t t)
+{
+	switch (t) {
+	case DbBaseElements::DbElementBase::table_main:
+	{
+		static const std::string r("main");
+		return r;
+	}
+
+	case DbBaseElements::DbElementBase::table_aux:
+	{
+		static const std::string r("aux");
+		return r;
+	}
+
+	default:
+	{
+		static const std::string r("?");
+		return r;
+	}
+	}
+}
+
 DbBaseCommon::DbBaseCommon(void)
 	: m_open(openstate_closed), m_has_rtree(false), m_has_aux_rtree(false)
 {
@@ -1123,7 +1146,7 @@ template<class T> std::string DbBase<T>::get_area_select_string(bool auxtable, c
 				oss << " OR ";
 			needor = true;
 			if (tr.second < tr.first) {
-				oss << "(TILE BETWEEN " << tr.first << " AND " << (tr.first | mask) 
+				oss << "(TILE BETWEEN " << tr.first << " AND " << (tr.first | mask)
 				    << ") OR (TILE BETWEEN " << (tr.second & ~mask) << " AND " << tr.second << ')';
 			} else {
 				oss << "(TILE BETWEEN " << tr.first << " AND " << tr.second << ')';
@@ -1322,6 +1345,13 @@ template <class T> typename DbBase<T>::elementvector_t DbBase<T>::find_nulltile(
 	return ret;
 }
 
+template <class T> void DbBase<T>::load_subtables(element_t& el, unsigned int loadsubtables)
+{
+	if (!loadsubtables)
+		return;
+	el.load_subtables(m_db, loadsubtables);
+}
+
 const unsigned int DbBaseElements::DbElementBase::hibernate_none;
 const unsigned int DbBaseElements::DbElementBase::hibernate_id;
 const unsigned int DbBaseElements::DbElementBase::hibernate_xmlnonzero;
@@ -1420,7 +1450,7 @@ DbBaseElements::DbElementLabelSourceCoordIcaoNameAuthorityBase::DbElementLabelSo
 	: m_authority()
 {
 }
-			
+
 DbBaseElements::DbElementLabelSourceCoordIcaoNameAuthorityBase::authorityset_t DbBaseElements::DbElementLabelSourceCoordIcaoNameAuthorityBase::get_authorityset(void) const
 {
 	authorityset_t as;
@@ -1463,6 +1493,14 @@ bool DbBaseElements::DbElementLabelSourceCoordIcaoNameAuthorityBase::is_authorit
 	return as.find(au) != as.end();
 }
 
+template <class T> void DbQueryInterfaceSpecCommon<T>::load_subtables(elementvector_t& ev, unsigned int loadsubtables)
+{
+	if (!loadsubtables)
+		return;
+	for (typename elementvector_t::iterator ei(ev.begin()), ee(ev.end()); ei != ee; ++ei)
+		load_subtables(*ei, loadsubtables);
+}
+
 template class DbQueryInterfaceSpecCommon<DbBaseElements::Navaid>;
 template class DbQueryInterfaceSpecCommon<DbBaseElements::Waypoint>;
 template class DbQueryInterfaceSpecCommon<DbBaseElements::Airway>;
@@ -1493,13 +1531,13 @@ template class DbBase<TracksDb::Track>;
 
 #ifdef HAVE_PQXX
 
-PGDbBaseCommon::PGDbBaseCommon(const std::string& connstr)
-	: m_conn(connstr), m_has_rtree(false), m_readonly(false)
+PGDbBaseCommon::PGDbBaseCommon(pqxx::connection_base& conn)
+	: m_conn(conn), m_has_rtree(false), m_readonly(false)
 {
 }
 
-PGDbBaseCommon::PGDbBaseCommon(const std::string& connstr, read_only_tag_t)
-	: m_conn(connstr), m_has_rtree(false), m_readonly(true)
+PGDbBaseCommon::PGDbBaseCommon(pqxx::connection_base& conn, read_only_tag_t)
+	: m_conn(conn), m_has_rtree(false), m_readonly(true)
 {
 }
 
@@ -1707,7 +1745,7 @@ void PGDbBaseCommon::drop_common_tables(void)
 	w.exec("DROP TABLE IF EXISTS aviationdb.labelbase;");
 	w.exec("DROP TABLE IF EXISTS aviationdb.sourcebase;");
 	w.exec("DROP TABLE IF EXISTS aviationdb.base;");
-	w.commit();	
+	w.commit();
 }
 
 void PGDbBaseCommon::create_common_tables(void)
@@ -1811,8 +1849,8 @@ std::string PGDbBaseCommon::get_str(const LineString& ls)
 	return get_str(wb, ls.to_wkb(wb, &wb[sz]));
 }
 
-template <class T> PGDbBase<T>::PGDbBase(const std::string& connstr)
-	: PGDbBaseCommon(connstr)
+template <class T> PGDbBase<T>::PGDbBase(pqxx::connection_base& conn)
+	: PGDbBaseCommon(conn)
 {
 	define_dbfunc();
 	create_tables();
@@ -1820,8 +1858,8 @@ template <class T> PGDbBase<T>::PGDbBase(const std::string& connstr)
 	check_rtree();
 }
 
-template <class T> PGDbBase<T>::PGDbBase(const std::string& connstr, read_only_tag_t)
-	: PGDbBaseCommon(connstr, read_only)
+template <class T> PGDbBase<T>::PGDbBase(pqxx::connection_base& conn, read_only_tag_t)
+	: PGDbBaseCommon(conn, read_only)
 {
 	check_rtree();
 }
@@ -2078,7 +2116,7 @@ template <class T> typename PGDbBase<T>::elementvector_t PGDbBase<T>::find_by_ti
 	}
 	return ret;
 }
-       
+
 template <class T> typename PGDbBase<T>::elementvector_t PGDbBase<T>::find_by_rect(const Rect& bbox, unsigned int limit, unsigned int loadsubtables)
 {
 	if (false)
@@ -2179,7 +2217,7 @@ template <class T> std::string PGDbBase<T>::get_area_select_string(pqxx::basic_t
 				oss << " OR ";
 			needor = true;
 			if (tr.second < tr.first) {
-				oss << "(TILE BETWEEN " << tr.first << " AND " << (tr.first | mask) 
+				oss << "(TILE BETWEEN " << tr.first << " AND " << (tr.first | mask)
 				    << ") OR (TILE BETWEEN " << (tr.second & ~mask) << " AND " << tr.second << ')';
 			} else {
 				oss << "(TILE BETWEEN " << tr.first << " AND " << tr.second << ')';
@@ -2316,6 +2354,23 @@ template <class T> typename PGDbBase<T>::elementvector_t PGDbBase<T>::loadid(uin
 		break;
 	}
 	return ret;
+}
+
+template <class T> void PGDbBase<T>::load_subtables(element_t& el, unsigned int loadsubtables)
+{
+	if (!loadsubtables)
+		return;
+	pqxx::read_transaction w(m_conn);
+	el.load_subtables(w, loadsubtables);
+}
+
+template <class T> void PGDbBase<T>::load_subtables(elementvector_t& ev, unsigned int loadsubtables)
+{
+	if (!loadsubtables)
+		return;
+	pqxx::read_transaction w(m_conn);
+	for (typename elementvector_t::iterator ei(ev.begin()), ee(ev.end()); ei != ee; ++ei)
+		ei->load_subtables(w, loadsubtables);
 }
 
 template class PGDbBase<NavaidsDb::Navaid>;

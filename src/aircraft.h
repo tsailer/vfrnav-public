@@ -4,7 +4,7 @@
 // Description: Aircraft Model
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2012, 2013, 2014, 2015, 2016
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2012, 2013, 2014, 2015, 2016, 2017, 2018
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -15,6 +15,8 @@
 
 #include "sysdeps.h"
 
+#include "interval.hh"
+#include "sitename.h"
 #include "opsperf.h"
 
 #include <limits>
@@ -22,6 +24,10 @@
 #include <set>
 #include <glibmm.h>
 #include <libxml++/libxml++.h>
+
+#ifdef HAVE_PQXX
+#include <pqxx/connection.hxx>
+#endif
 
 class FPlanRoute;
 class FPlanWaypoint;
@@ -270,6 +276,11 @@ public:
 			void load_xml(const xmlpp::Element *el);
 			void save_xml(xmlpp::Element *el) const;
 
+#ifdef HAVE_JSONCPP
+			bool load_garminpilot(const Json::Value& root);
+			void save_garminpilot(Json::Value& root);
+#endif
+
 			template<class Archive> void hibernate(Archive& ar) {
 				uint32_t n(m_units.size());
 				ar.ioleb(n);
@@ -348,11 +359,25 @@ public:
 				double get_arm(void) const { return m_arm; }
 				double get_mass(void) const { return m_mass; }
 
+				Point& operator+=(const Point& x) { m_arm += x.m_arm; m_mass += x.m_mass; return *this; }
+				Point& operator-=(const Point& x) { m_arm -= x.m_arm; m_mass -= x.m_mass; return *this; }
+				Point operator+(const Point& x) const { Point r(*this); r += x; return r; }
+				Point operator-(const Point& x) const { Point r(*this); r -= x; return r; }
+
 				static double area2(const Point& p0, const Point& p1, const Point& p2);
 				double area2(const Point& p0, const Point& p1) const { return area2(p0, p1, *this); }
+				static double length2(const Point& p0, const Point& p1);
+				double length2(const Point& p0) const { return length2(p0, *this); }
+
+				static double interpolate_arm(const Point& p0, const Point& p1, double mass);
 
 				void load_xml(const xmlpp::Element *el);
 				void save_xml(xmlpp::Element *el) const;
+
+#ifdef HAVE_JSONCPP
+				bool load_garminpilot(const Json::Value& root);
+				void save_garminpilot(Json::Value& root);
+#endif
 
 				template<class Archive> void hibernate(Archive& ar) {
 					ar.io(m_arm);
@@ -379,6 +404,11 @@ public:
 
 			void add_point(const Point& pt);
 			void add_point(double arm = 0, double mass = 0);
+
+			typedef std::set<double> masses_t;
+			masses_t get_masses(void) const;
+			typedef IntervalSet<double, std::set<Interval<double> > > armintervals_t;
+			armintervals_t get_armintervals(double mass) const;
 
 		public:
 			template<class Archive> void hibernate(Archive& ar) {
@@ -417,6 +447,11 @@ public:
 
 		void load_xml(const xmlpp::Element *el);
 		void save_xml(xmlpp::Element *el) const;
+
+#ifdef HAVE_JSONCPP
+		bool load_garminpilot(const Json::Value& root, Element::flags_t fueltype, double fullfuel);
+		void save_garminpilot(Json::Value& root);
+#endif
 
 		double get_useable_fuelmass(void) const;
 		double get_total_fuelmass(void) const;
@@ -470,7 +505,7 @@ public:
 			class Point {
 			public:
 				Point(double da = 0, double pa = 0, double temp = 0, double gnddist = 0, double obstdist = 0);
-				
+
 				void load_xml(const xmlpp::Element *el, double altfactor = 1, double tempfactor = 1,
 					      double tempoffset = 273.15, double distfactor = 1);
 				void save_xml(xmlpp::Element *el, double altfactor = 1, double tempfactor = 1,
@@ -637,7 +672,7 @@ public:
 			double get_cas(void) const { return m_cas; }
 
 			void set_rate(double x) { m_rate = x; }
-			void set_fuelflow(double x) { m_fuelflow = x; }		
+			void set_fuelflow(double x) { m_fuelflow = x; }
 			void set_cas(double x) { m_cas = x; }
 
 			void scale_rate(double x) { m_rate *= x; }
@@ -648,7 +683,7 @@ public:
 			double get_dist(void) const { return m_cas; }
 
 			void set_time(double x) { m_rate = x; }
-			void set_fuel(double x) { m_fuelflow = x; }		
+			void set_fuel(double x) { m_fuelflow = x; }
 			void set_dist(double x) { m_cas = x; }
 
 			std::ostream& print(std::ostream& os, mode_t mode) const;
@@ -695,6 +730,12 @@ public:
 			      double timefactor, double fuelfactor, double distfactor);
 		void save_xml(xmlpp::Element *el, double altfactor, double ratefactor, double fuelflowfactor, double casfactor,
 			      double timefactor, double fuelfactor, double distfactor) const;
+
+#ifdef HAVE_JSONCPP
+		bool load_garminpilot(const Json::Value& root);
+		void save_garminpilot(Json::Value& root);
+#endif
+
 		void add_point(const Point& pt);
 		void clear_points(void);
 		bool has_points(void) const { return !m_points.empty(); }
@@ -709,6 +750,10 @@ public:
 		void set_mass(double mass);
 		void set_descent_rate(double rate);
 		void set_name(const std::string& n) { m_name = n; }
+
+		double get_constant_cas(void) const;
+		double get_constant_rate(void) const;
+		double get_constant_slope(void) const;
 
 		CheckErrors check(double minmass, double maxmass, bool descent) const;
 
@@ -862,6 +907,9 @@ public:
 		void save_xml(xmlpp::Element *el) const;
 
 		void set_default(propulsion_t prop, const Cruise& cruise, const Climb& climb);
+		double get_rate(void) const;
+		bool limit_static_descent_by_opsperf(propulsion_t prop, const Cruise& cruise, const Climb& climb, double mtom,
+						     const OperationsPerformance::Aircraft& opsperfacft);
 
  		CheckErrors check(double minmass, double maxmass) const { return Climb::check(minmass, maxmass, true); }
 
@@ -872,7 +920,28 @@ public:
 	protected:
 		ClimbDescent calculate(const massmap_t& ci, double mass, double isaoffs, double qnh) const;
 		using Climb::calculate;
-		double get_rate(void) const;
+	};
+
+	class Glide : public Climb {
+	public:
+		Glide(double altfactor = 1, double ratefactor = 1, double casfactor = 1,
+		      double timefactor = 1, double distfactor = 1);
+
+		void load_xml(const xmlpp::Element *el, double ceiling);
+		void save_xml(xmlpp::Element *el) const;
+
+		void set_default(double mass, double ceiling, double vbg, double glideslope);
+		double get_vbestglide(void) const;
+		double get_glideslope(void) const;
+
+ 		CheckErrors check(double minmass, double maxmass) const { return Climb::check(minmass, maxmass, true); }
+
+		template<class Archive> void hibernate(Archive& ar) {
+			Climb::hibernate(ar);
+		}
+
+	protected:
+		bool set_default(ClimbDescent& cd, double ceiling, double vbg, double glideslope);
 	};
 
 	class Cruise {
@@ -978,6 +1047,10 @@ public:
 			void load_xml(const xmlpp::Element *el, PistonPower& pp, double altfactor = 1, double tasfactor = 1, double fuelfactor = 1);
 			void save_xml(xmlpp::Element *el, double altfactor = 1, double tasfactor = 1, double fuelfactor = 1) const;
 
+#ifdef HAVE_JSONCPP
+			bool load_garminpilot(const Json::Value& root, double maxbhp = 1);
+#endif
+
 			template<class Archive> void hibernate(Archive& ar) {
 				ar.io(m_name);
 				ar.io(m_mass);
@@ -1036,10 +1109,95 @@ public:
 			std::string m_name;
 		};
 
+		class OptimalAltitudePoint {
+		public:
+			OptimalAltitudePoint(double mass = 0, double isaoffs = 0, double pa = 0);
+
+			void load_xml(const xmlpp::Element *el, double altfactor = 1, double massfactor = 1);
+			void save_xml(xmlpp::Element *el, double altfactor = 1, double massfactor = 1) const;
+
+			double get_pressurealt(void) const { return m_pa; }
+			double get_mass(void) const { return m_mass; }
+			double get_isaoffs(void) const { return m_isaoffs; }
+
+			int compare(const OptimalAltitudePoint& x) const;
+			bool operator==(const OptimalAltitudePoint& x) const { return !compare(x); }
+			bool operator!=(const OptimalAltitudePoint& x) const { return !operator==(x); }
+			bool operator<(const OptimalAltitudePoint& x) const { return compare(x) < 0; }
+			bool operator<=(const OptimalAltitudePoint& x) const { return compare(x) <= 0; }
+			bool operator>(const OptimalAltitudePoint& x) const { return compare(x) > 0; }
+			bool operator>=(const OptimalAltitudePoint& x) const { return compare(x) >= 0; }
+
+			template<class Archive> void hibernate(Archive& ar) {
+				ar.io(m_pa);
+				ar.io(m_mass);
+				ar.io(m_isaoffs);
+			}
+
+		protected:
+			double m_pa;
+			double m_mass;
+			double m_isaoffs;
+		};
+
+		class OptimalAltitude : public std::set<OptimalAltitudePoint> {
+		protected:
+			typedef Poly1D<double> poly_t;
+			typedef std::map<double,poly_t> isaoffspoly_t;
+
+		public:
+			OptimalAltitude(void);
+
+			bool recalculatepoly(bool force = false);
+
+			CheckErrors check(double minmass, double maxmass) const;
+
+			poly_t calculate(double isaoffs) const;
+
+			void load_xml(const xmlpp::Element *el, double altfactor = 1, double massfactor = 1);
+			void save_xml(xmlpp::Element *el, double altfactor = 1, double massfactor = 1) const;
+
+			template<class Archive> void hibernate(Archive& ar) {
+				uint32_t sz(size());
+				ar.ioleb(sz);
+				if (ar.is_load()) {
+					clear();
+					for (; sz > 0; --sz) {
+						OptimalAltitudePoint p;
+						p.hibernate(ar);
+						insert(p);
+					}
+				} else {
+					for (iterator i(begin()), e(end()); i != e; ++i)
+						const_cast<OptimalAltitudePoint&>(*i).hibernate(ar);
+				}
+				sz = m_isaoffspoly.size();
+				ar.ioleb(sz);
+				if (ar.is_load()) {
+					m_isaoffspoly.clear();
+					for (; sz > 0; --sz) {
+						double isaoffs;
+						poly_t p;
+						ar.io(isaoffs);
+						p.hibernate(ar);
+						m_isaoffspoly.insert(isaoffspoly_t::value_type(isaoffs, p));
+					}
+				} else {
+					for (isaoffspoly_t::iterator i(m_isaoffspoly.begin()), e(m_isaoffspoly.end()); i != e; ++i) {
+						ar.io(i->first);
+						i->second.hibernate(ar);
+					}
+				}
+			}
+
+		protected:
+			isaoffspoly_t m_isaoffspoly;
+		};
+
 		class CruiseEngineParams {
 		public:
 			CruiseEngineParams(double bhp = std::numeric_limits<double>::quiet_NaN(),
-					   double rpm = std::numeric_limits<double>::quiet_NaN(), 
+					   double rpm = std::numeric_limits<double>::quiet_NaN(),
 					   double mp = std::numeric_limits<double>::quiet_NaN(),
 					   const std::string& name = "", Curve::flags_t flags = Curve::flags_interpolate);
 			CruiseEngineParams(const std::string& name, Curve::flags_t flags = Curve::flags_interpolate);
@@ -1066,6 +1224,7 @@ public:
 			void set_flags(Curve::flags_t f) { m_flags = f; }
 
 			std::ostream& print(std::ostream& os) const;
+			std::string to_lua(void) const;
 
 		protected:
 			std::string m_name;
@@ -1078,7 +1237,7 @@ public:
 		class EngineParams : public CruiseEngineParams {
 		public:
 			EngineParams(double bhp = std::numeric_limits<double>::quiet_NaN(),
-				     double rpm = std::numeric_limits<double>::quiet_NaN(), 
+				     double rpm = std::numeric_limits<double>::quiet_NaN(),
 				     double mp = std::numeric_limits<double>::quiet_NaN(),
 				     const std::string& name = "", Curve::flags_t flags = Curve::flags_interpolate,
 				     const std::string& climbname = "", const std::string& descentname = "");
@@ -1102,18 +1261,23 @@ public:
 			void set_descentname(const std::string& n) { m_descentname = n; }
 
 			std::ostream& print(std::ostream& os) const;
+			std::string to_lua(void) const;
 
 		protected:
 			std::string m_climbname;
 			std::string m_descentname;
 		};
 
-		Cruise(double altfactor = 1, double tasfactor = 1, double fuelfactor = 1, double tempfactor = 1, double bhpfactor = 1);
+		Cruise(double altfactor = 1, double tasfactor = 1, double fuelfactor = 1, double tempfactor = 1, double bhpfactor = 1, double massfactor = 1);
 
 		void calculate(propulsion_t prop, double& tas, double& fuelflow, double& pa, double& mass, double& isaoffs, CruiseEngineParams& ep) const;
 
 		void load_xml(const xmlpp::Element *el, double maxbhp);
 		void save_xml(xmlpp::Element *el, double maxbhp) const;
+
+#ifdef HAVE_JSONCPP
+		void save_garminpilot(Json::Value& root, double maxbhp = 1);
+#endif
 
 		const std::string& get_remark(void) const { return m_remark; }
 
@@ -1132,6 +1296,9 @@ public:
 		bool has_variablepitch(void) const { return m_pistonpower.has_variablepitch(); }
 
 		CheckErrors check(double minmass, double maxmass) const;
+
+		const OptimalAltitude& get_optimalaltitude(void) const { return m_optimalaltitude; }
+		OptimalAltitude& get_optimalaltitude(void) { return m_optimalaltitude; }
 
 		template<class Archive> void hibernate(Archive& ar) {
 			if (ar.is_load()) {
@@ -1161,6 +1328,7 @@ public:
 			ar.io(m_fuelfactor);
 			ar.io(m_tempfactor);
 			ar.io(m_bhpfactor);
+			ar.io(m_massfactor);
 			ar.io(m_remark);
 		}
 
@@ -1406,18 +1574,20 @@ public:
 		typedef std::map<std::string, massmap_t> curves_t;
 		curves_t m_curves;
 		PistonPower m_pistonpower;
+		OptimalAltitude m_optimalaltitude;
 		std::string m_remark;
 		double m_altfactor;
 		double m_tasfactor;
 		double m_fuelfactor;
 		double m_tempfactor;
 		double m_bhpfactor;
+		double m_massfactor;
 
 		void calculate(double& mass, double& isaoffs, double& pa, double& bhp, double& tas, double& ff) const;
 		void calculate(bhpmap_t::const_iterator it, double& isaoffs, double& pa, double& bhp, double& tas, double& ff) const;
 		void calculate(bhpisamap_t::const_iterator it, double& pa, double& bhp, double& tas, double& ff) const;
 		void calculate(bhpaltmap_t::const_iterator it, double& bhp, double& tas, double& ff) const;
-		
+
 		Curve::flags_t calculate(curves_t::const_iterator it, double& tas, double& fuelflow, double& pa, double& mass, double& isaoffs, CruiseEngineParams& ep) const;
 		Curve::flags_t calculate(massmap_t::const_iterator it, double& tas, double& fuelflow, double& pa, double& isaoffs, CruiseEngineParams& ep) const;
 		std::pair<double,double> get_bhp_range(curves_t::const_iterator it) const;
@@ -1462,7 +1632,7 @@ public:
 			CheckError& m_ce;
 			std::ostringstream m_oss;
 		};
-		
+
 		typedef enum {
 			type_climb,
 			type_descent,
@@ -1482,6 +1652,9 @@ public:
 			   double tmin = std::numeric_limits<double>::quiet_NaN(),
 			   double tmax = std::numeric_limits<double>::quiet_NaN());
 		CheckError(const Cruise::Curve& c, severity_t sev = severity_error);
+		CheckError(const Cruise::OptimalAltitude& oa, double isaoffs = std::numeric_limits<double>::quiet_NaN(),
+			   severity_t sev = severity_error);
+		CheckError(const Cruise::OptimalAltitudePoint& oap, severity_t sev = severity_error);
 
 		const std::string& get_name(void) const { return m_name; }
 		void set_name(const std::string& n) { m_name = n; }
@@ -1547,6 +1720,13 @@ public:
 		CheckError::MessageOStream add(const Cruise::Curve& c, CheckError::severity_t sev = CheckError::severity_error) {
 			return add(CheckError(c, sev));
 		}
+		CheckError::MessageOStream add(const Cruise::OptimalAltitude& oa, double isaoffs = std::numeric_limits<double>::quiet_NaN(),
+					       CheckError::severity_t sev = CheckError::severity_error) {
+			return add(CheckError(oa, isaoffs, sev));
+		}
+		CheckError::MessageOStream add(const Cruise::OptimalAltitudePoint& oap, CheckError::severity_t sev = CheckError::severity_error) {
+			return add(CheckError(oap, sev));
+		}
 
 		std::ostream& print(std::ostream& os, const std::string& indent = "") const;
 #ifdef HAVE_JSONCPP
@@ -1559,56 +1739,207 @@ protected:
 
 public:
 	typedef enum {
-		pbn_a1 = 1 << 0,
-		pbn_b1 = 1 << 1,
-		pbn_b2 = 1 << 2,
-		pbn_b3 = 1 << 3,
-		pbn_b4 = 1 << 4,
-		pbn_b5 = 1 << 5,
-		pbn_b6 = 1 << 6,
-		pbn_c1 = 1 << 7,
-		pbn_c2 = 1 << 8,
-		pbn_c3 = 1 << 9,
-		pbn_c4 = 1 << 10,
-		pbn_d1 = 1 << 11,
-		pbn_d2 = 1 << 12,
-		pbn_d3 = 1 << 13,
-		pbn_d4 = 1 << 14,
-		pbn_l1 = 1 << 15,
-		pbn_o1 = 1 << 16,
-		pbn_o2 = 1 << 17,
-		pbn_o3 = 1 << 18,
-		pbn_o4 = 1 << 19,
-		pbn_s1 = 1 << 20,
-		pbn_s2 = 1 << 21,
-		pbn_t1 = 1 << 22,
-		pbn_t2 = 1 << 23,
-		pbn_rnav = pbn_b1 | pbn_b2 | pbn_b3 | pbn_b4 | pbn_b5, // B1 B2 B3 B4 B5
-		pbn_gnss = pbn_b1 | pbn_b2 | pbn_c1 | pbn_c2 | pbn_d1 | pbn_d2 | pbn_o1 | pbn_o2, // B1 B2 C1 C2 D1 D2 O1 O2
-		pbn_dmedme = pbn_b1 | pbn_b3 | pbn_c1 | pbn_c3 | pbn_d1 | pbn_d3 | pbn_o1 | pbn_o3, // B1 B3 C1 C3 D1 D3 O1 O3
-		pbn_vordme = pbn_b1 | pbn_b4, // B1 B4
-		pbn_dmedmeiru = pbn_b1 | pbn_b5 | pbn_c1 | pbn_c4 | pbn_d1 | pbn_d4 | pbn_o1 | pbn_o4, //  B1 B5 C1 C4 D1 D4 O1 O4
-		pbn_loran = pbn_b5, // B5
-		pbn_dme = pbn_dmedme | pbn_vordme | pbn_dmedmeiru,
-		pbn_none = 0,
-		pbn_all = pbn_a1 | pbn_b1 | pbn_b2 | pbn_b3 | pbn_b4 | pbn_b5 | pbn_b6
-		| pbn_c1 | pbn_c2 | pbn_c3 | pbn_c4
-		| pbn_d1 | pbn_d2 | pbn_d3 | pbn_d4
-		| pbn_l1
-		| pbn_o1 | pbn_o2 | pbn_o3 | pbn_o4
-		| pbn_s1 | pbn_s2 | pbn_t1 | pbn_t2
+		pbn_a1                            = 1 << 0,
+		pbn_b1                            = 1 << 1,
+		pbn_b2                            = 1 << 2,
+		pbn_b3                            = 1 << 3,
+		pbn_b4                            = 1 << 4,
+		pbn_b5                            = 1 << 5,
+		pbn_b6                            = 1 << 6,
+		pbn_c1                            = 1 << 7,
+		pbn_c2                            = 1 << 8,
+		pbn_c3                            = 1 << 9,
+		pbn_c4                            = 1 << 10,
+		pbn_d1                            = 1 << 11,
+		pbn_d2                            = 1 << 12,
+		pbn_d3                            = 1 << 13,
+		pbn_d4                            = 1 << 14,
+		pbn_l1                            = 1 << 15,
+		pbn_o1                            = 1 << 16,
+		pbn_o2                            = 1 << 17,
+		pbn_o3                            = 1 << 18,
+		pbn_o4                            = 1 << 19,
+		pbn_s1                            = 1 << 20,
+		pbn_s2                            = 1 << 21,
+		pbn_t1                            = 1 << 22,
+		pbn_t2                            = 1 << 23,
+		pbn_rnav                          = pbn_b1 | pbn_b2 | pbn_b3 | pbn_b4 | pbn_b5, // B1 B2 B3 B4 B5
+		pbn_gnss                          = pbn_b1 | pbn_b2 | pbn_c1 | pbn_c2 | pbn_d1 | pbn_d2 | pbn_o1 | pbn_o2, // B1 B2 C1 C2 D1 D2 O1 O2
+		pbn_dmedme                        = pbn_b1 | pbn_b3 | pbn_c1 | pbn_c3 | pbn_d1 | pbn_d3 | pbn_o1 | pbn_o3, // B1 B3 C1 C3 D1 D3 O1 O3
+		pbn_vordme                        = pbn_b1 | pbn_b4, // B1 B4
+		pbn_dmedmeiru                     = pbn_b1 | pbn_b5 | pbn_c1 | pbn_c4 | pbn_d1 | pbn_d4 | pbn_o1 | pbn_o4, //  B1 B5 C1 C4 D1 D4 O1 O4
+		pbn_loran                         = pbn_b5, // B5
+		pbn_dme                           = pbn_dmedme | pbn_vordme | pbn_dmedmeiru,
+		pbn_none                          = 0,
+		pbn_all                           = (pbn_a1 | pbn_b1 | pbn_b2 | pbn_b3 | pbn_b4 | pbn_b5 | pbn_b6 |
+						     pbn_c1 | pbn_c2 | pbn_c3 | pbn_c4 |
+						     pbn_d1 | pbn_d2 | pbn_d3 | pbn_d4 |
+						     pbn_l1 |
+						     pbn_o1 | pbn_o2 | pbn_o3 | pbn_o4 |
+						     pbn_s1 | pbn_s2 | pbn_t1 | pbn_t2)
 	} pbn_t;
 
 	typedef enum {
-		gnssflags_none    = 0,
-		gnssflags_gps     = 1 << 0,
-		gnssflags_sbas    = 1 << 1,
-		gnssflags_glonass = 1 << 2,
-		gnssflags_galileo = 1 << 3,
-		gnssflags_qzss    = 1 << 4,
-		gnssflags_beidou  = 1 << 5,
-		gnssflags_baroaid = 1 << 6
+		gnssflags_none                    = 0,
+		gnssflags_gps                     = 1 << 0,
+		gnssflags_sbas                    = 1 << 1,
+		gnssflags_glonass                 = 1 << 2,
+		gnssflags_galileo                 = 1 << 3,
+		gnssflags_qzss                    = 1 << 4,
+		gnssflags_beidou                  = 1 << 5,
+		gnssflags_baroaid                 = 1 << 6
 	} gnssflags_t;
+
+	// Navigation/Communication Equipment and Capabilities
+	typedef enum {
+		// Nil, Standard & Other
+		com_nil                           = 1 <<  0, // No COM/NAV/approach aid equipment or the equipment is unserviceable
+		com_standard                      = 1 <<  1, // Standard COM/NAV/approach aid equipment
+		com_other                         = 1 <<  2, // Other equipment carried or other capabilities
+		// Radio Communication
+		com_fmc_wpr_acars                 = 1 <<  3, // FMC WPR ACARS
+		com_dfis_acars                    = 1 <<  4, // D-FIS ACARS
+		com_pdc_acars                     = 1 <<  5, // PDC ACARS
+		com_hf_rtf                        = 1 <<  6, // HF RTF
+		com_cpdlc_atn_vdl2                = 1 <<  7, // CPDLC ATN VDL Mode 2
+		com_cpdlc_fans1a_hfdl             = 1 <<  8, // CPDLC FANS 1/A HFDL
+		com_cpdlc_fans1a_vdla             = 1 <<  9, // CPDLC FANS 1/A VDL Mode A
+		com_cpdlc_fans1a_vdl2             = 1 << 10, // CPDLC FANS 1/A VDL Mode 2
+		com_cpdlc_fans1a_inmarsat         = 1 << 11, // CPDLC FANS 1/A SATCOM (INMARSAT)
+		com_cpdlc_fans1a_mtsat            = 1 << 12, // CPDLC FANS 1/A SATCOM (MTSAT)
+		com_cpdlc_fans1a_iridium          = 1 << 13, // CPDLC FANS 1/A SATCOM (Iridium)
+		com_atc_rtf_inmarsat              = 1 << 14, // ATC RTF SATCOM (INMARSAT)
+		com_atc_rtf_mtsat                 = 1 << 15, // ATC RTF (MTSAT)
+		com_atc_rtf_iridium               = 1 << 16, // ATC RTF (Iridium)
+		com_uhf_rtf                       = 1 << 17, // UHF RTF
+		com_vhf_rtf                       = 1 << 18, // VHF RTF
+		com_vhf_833                       = 1 << 19, // VHF with 8.33 kHz channel spacing capability
+		com_rcp1                          = 1 << 20, // Reserved for RCP
+		com_rcp2                          = 1 << 21, // Reserved for RCP
+		com_rcp3                          = 1 << 22, // Reserved for RCP
+		com_rcp4                          = 1 << 23, // Reserved for RCP
+		com_rcp5                          = 1 << 24, // Reserved for RCP
+		com_rcp6                          = 1 << 25, // Reserved for RCP
+		com_rcp7                          = 1 << 26, // Reserved for RCP
+		com_rcp8                          = 1 << 27, // Reserved for RCP
+		com_rcp9                          = 1 << 28, // Reserved for RCP
+		// masks
+		com_none                          = 0,
+		com_cpdlc                         = (com_cpdlc_atn_vdl2 | com_cpdlc_fans1a_hfdl | com_cpdlc_fans1a_vdla | com_cpdlc_fans1a_vdl2 |
+				        	     com_cpdlc_fans1a_inmarsat | com_cpdlc_fans1a_mtsat | com_cpdlc_fans1a_iridium),
+		com_all                           = (com_nil | com_standard | com_other | com_fmc_wpr_acars | com_dfis_acars | com_pdc_acars |
+				        	     com_hf_rtf | com_cpdlc_atn_vdl2 | com_cpdlc_fans1a_hfdl | com_cpdlc_fans1a_vdla | com_cpdlc_fans1a_vdl2 |
+				        	     com_cpdlc_fans1a_inmarsat | com_cpdlc_fans1a_mtsat | com_cpdlc_fans1a_iridium |
+				        	     com_atc_rtf_inmarsat | com_atc_rtf_mtsat | com_atc_rtf_iridium |
+				        	     com_uhf_rtf | com_vhf_rtf | com_vhf_833 | com_rcp1 | com_rcp2 | com_rcp3 | com_rcp4 |
+				        	     com_rcp5 | com_rcp6 | com_rcp7 | com_rcp8 | com_rcp9)
+	} com_t;
+
+	typedef enum {
+		// Navigation Equipment
+		nav_gbas_ldg                      = 1 <<  0, // GBAS Landing System
+		nav_lpv                           = 1 <<  1, // LPV (APV with SBAS)
+		nav_mls                           = 1 <<  2, // MLS
+		nav_ils                           = 1 <<  3, // ILS
+		nav_loranc                        = 1 <<  4, // Loran C
+		nav_dme                           = 1 <<  5, // DME
+		nav_adf                           = 1 <<  6, // ADF
+		nav_gnss                          = 1 <<  7, // GNSS
+		nav_ins                           = 1 <<  8, // Inertial Navigation
+		nav_vor                           = 1 <<  9, // VOR
+		nav_pbn                           = 1 << 10, // PBN approved
+		nav_tacan                         = 1 << 11, // TACAN
+		nav_rvsm                          = 1 << 12, // RVSM
+		nav_mnps                          = 1 << 13, // MNPS approved
+		// masks
+		nav_none                          = 0,
+		nav_all                           = (nav_gbas_ldg | nav_lpv | nav_mls | nav_ils | nav_loranc | nav_dme | nav_adf |
+				        	     nav_gnss | nav_ins | nav_vor | nav_pbn | nav_tacan | nav_rvsm | nav_mnps)
+	} nav_t;
+
+	// Transponder
+	typedef enum {
+		// Nil
+		transponder_nil                   = 1 <<  0, // N: No Surveillance Equipment
+		// SSR Modes
+		transponder_modea                 = 1 <<  1, // Transponder Mode A
+		transponder_modec                 = 1 <<  2, // Transponder Mode C
+		transponder_modes_e               = 1 <<  3, // Transponder Mode S
+		transponder_modes_h               = 1 <<  4, // Transponder Mode S
+		transponder_modes_i               = 1 <<  5, // Transponder Mode S
+		transponder_modes_l               = 1 <<  6, // Transponder Mode S
+		transponder_modes_p               = 1 <<  7, // Transponder Mode S
+		transponder_modes_s               = 1 <<  8, // Transponder Mode S
+		transponder_modes_x               = 1 <<  9, // Transponder Mode S
+		// ADS
+		transponder_adsb_1090_o           = 1 << 10, // ADS-B with dedicated 1090 MHz ADS-B "out" capability
+		transponder_adsb_1090_io          = 1 << 11, // ADS-B with dedicated 1090 MHz ADS-B "out" and "in" capability
+		transponder_adsb_uat_o            = 1 << 12, // ADS-B "out" capability using UAT
+		transponder_adsb_uat_io           = 1 << 13, // U2 ADS-B "out" and "in" capability using UAT
+		transponder_adsb_vdl4_o           = 1 << 14, // ADS-B "out" capability using VDL Mode 4
+		transponder_adsb_vdl4_io          = 1 << 15, // ADS-B "out" and "in" capability using VDL Mode 4
+		transponder_adsc_fans1a           = 1 << 16, // ADS-C with FANS 1/A capabilities
+		transponder_adsc_atn              = 1 << 17, // ADS-C with ATN capabilities
+		// masks
+		transponder_none                  = 0,
+		transponder_code                  = (transponder_modes_e |
+				        	     transponder_adsb_1090_o | transponder_adsb_1090_io | transponder_adsb_uat_o | transponder_adsb_uat_io |
+				        	     transponder_adsb_vdl4_o | transponder_adsb_vdl4_io | transponder_adsc_fans1a | transponder_adsc_atn),
+		transponder_modes_acftid          = transponder_modes_e | transponder_modes_h | transponder_modes_i | transponder_modes_l | transponder_modes_s,
+		transponder_modes_pressalt        = transponder_modes_e | transponder_modes_h | transponder_modes_l | transponder_modes_p | transponder_modes_s,
+		transponder_modes_extsquitter     = transponder_modes_e | transponder_modes_l,
+		transponder_modes_enhsurveillance = transponder_modes_h | transponder_modes_l,
+		transponder_modes_all             = (transponder_modes_e | transponder_modes_h | transponder_modes_i | transponder_modes_l |
+				        	     transponder_modes_p | transponder_modes_s | transponder_modes_x),
+		transponder_ads                   = (transponder_adsb_1090_o | transponder_adsb_1090_io | transponder_adsb_uat_o | transponder_adsb_uat_io |
+				        	     transponder_adsb_vdl4_o | transponder_adsb_vdl4_io | transponder_adsc_fans1a | transponder_adsc_atn),
+		transponder_all                   = (transponder_nil | transponder_modea | transponder_modec |
+				        	     transponder_modes_e | transponder_modes_h | transponder_modes_i | transponder_modes_l |
+					             transponder_modes_p | transponder_modes_s | transponder_modes_x |
+					             transponder_adsb_1090_o | transponder_adsb_1090_io | transponder_adsb_uat_o | transponder_adsb_uat_io |
+					             transponder_adsb_vdl4_o | transponder_adsb_vdl4_io | transponder_adsc_fans1a | transponder_adsc_atn)
+	} transponder_t;
+
+	// Emergency
+	typedef enum {
+		// Radio
+		emergency_radio_elt               = 1 <<  0,
+		emergency_radio_vhf               = 1 <<  1,
+		emergency_radio_uhf               = 1 <<  2,
+		// Survival Equipment
+		emergency_survival                = 1 <<  3,
+		emergency_survival_polar          = 1 <<  4,
+		emergency_survival_desert         = 1 <<  5,
+		emergency_survival_maritime       = 1 <<  6,
+		emergency_survival_jungle         = 1 <<  7,
+		// Jackets
+		emergency_jackets                 = 1 <<  8,
+		emergency_jackets_light           = 1 <<  9,
+		emergency_jackets_fluores         = 1 << 10,
+		emergency_jackets_uhf             = 1 << 11,
+		emergency_jackets_vhf             = 1 << 12,
+		// Dinghies
+		emergency_dinghies                = 1 << 13,
+		emergency_dinghies_cover          = 1 << 14,
+		// masks
+		emergency_none                    = 0,
+		emergency_radio_all               = (emergency_radio_elt | emergency_radio_vhf | emergency_radio_uhf),
+		emergency_survival_all            = (emergency_survival | emergency_survival_polar | emergency_survival_desert |
+						     emergency_survival_maritime | emergency_survival_jungle),
+		emergency_survival_options        = (emergency_survival_polar | emergency_survival_desert |
+						     emergency_survival_maritime | emergency_survival_jungle),
+		emergency_jackets_all             = (emergency_jackets | emergency_jackets_light | emergency_jackets_fluores |
+						     emergency_jackets_uhf | emergency_jackets_vhf),
+		emergency_jackets_options         = (emergency_jackets_light | emergency_jackets_fluores |
+						     emergency_jackets_uhf | emergency_jackets_vhf),
+		emergency_dinghies_all            = (emergency_dinghies | emergency_dinghies_cover),
+		emergency_all                     = (emergency_radio_elt | emergency_radio_vhf | emergency_radio_uhf |
+						     emergency_survival | emergency_survival_polar | emergency_survival_desert |
+						     emergency_survival_maritime | emergency_survival_jungle |
+						     emergency_jackets | emergency_jackets_light | emergency_jackets_fluores |
+						     emergency_jackets_uhf | emergency_jackets_vhf |
+						     emergency_dinghies | emergency_dinghies_cover)
+	} emergency_t;
 
 	Aircraft(void);
 
@@ -1624,6 +1955,9 @@ public:
 	Descent& get_descent(void) { return m_descent; }
 	const Descent& get_descent(void) const { return m_descent; }
 
+	Glide& get_glide(void) { return m_glide; }
+	const Glide& get_glide(void) const { return m_glide; }
+
 	Cruise& get_cruise(void) { return m_cruise; }
 	const Cruise& get_cruise(void) const { return m_cruise; }
 
@@ -1634,27 +1968,52 @@ public:
 	void otherinfo_add(const Glib::ustring& category, const Glib::ustring& text = "") { otherinfo_add(OtherInfo(category, text)); }
 	const OtherInfo& otherinfo_find(const Glib::ustring& category) const;
 
-	const Glib::ustring& get_callsign(void) const { return m_callsign; }
+	const std::string& get_callsign(void) const { return m_callsign; }
  	const Glib::ustring& get_manufacturer(void) const { return m_manufacturer; }
  	const Glib::ustring& get_model(void) const { return m_model; }
  	const Glib::ustring& get_year(void) const { return m_year; }
 	Glib::ustring get_description(void) const;
-	static std::string get_aircrafttypeclass(const Glib::ustring& acfttype);
+	static std::string get_aircrafttypeclass(const std::string& acfttype);
 	std::string get_aircrafttypeclass(void) const;
-	const Glib::ustring& get_icaotype(void) const { return m_icaotype; }
-	const Glib::ustring& get_equipment(void) const { return m_equipment; }
-	const Glib::ustring& get_transponder(void) const { return m_transponder; }
+	const std::string& get_icaotype(void) const { return m_icaotype; }
+	nav_t get_nav(void) const { return m_nav; }
+	com_t get_com(void) const { return m_com; }
+	static std::string get_equipment_string(nav_t nav, com_t com);
+	std::string get_equipment_string(void) const { return get_equipment_string(m_nav, m_com); }
+	bool is_rvsm(void) const { return !!(m_nav & nav_rvsm); }
+	bool is_mnps(void) const { return !!(m_nav & nav_mnps); }
+	bool is_833(void) const { return !!(m_com & com_vhf_833); }
+	bool is_code_needed(void) const;
+	transponder_t get_transponder(void) const { return m_transponder; }
+	static std::string get_transponder_string(transponder_t transponder);
+	std::string get_transponder_string(void) const { return get_transponder_string(m_transponder); }
 	pbn_t get_pbn(void) const { return m_pbn; }
-	static Glib::ustring get_pbn_string(pbn_t pbn);
-	Glib::ustring get_pbn_string(void) const { return get_pbn_string(m_pbn); }
+	static std::string get_pbn_string(pbn_t pbn);
+	std::string get_pbn_string(void) const { return get_pbn_string(m_pbn); }
 	gnssflags_t get_gnssflags(void) const { return m_gnssflags; }
-	static Glib::ustring get_gnssflags_string(gnssflags_t gnssflags);
-	Glib::ustring get_gnssflags_string(void) const { return get_gnssflags_string(m_gnssflags); }
+	static std::string get_gnssflags_string(gnssflags_t gnssflags);
+	std::string get_gnssflags_string(void) const { return get_gnssflags_string(m_gnssflags); }
 	const Glib::ustring& get_colormarking(void) const { return m_colormarking; }
-	const Glib::ustring& get_emergencyradio(void) const { return m_emergencyradio; }
-	const Glib::ustring& get_survival(void) const { return m_survival; }
-	const Glib::ustring& get_lifejackets(void) const { return m_lifejackets; }
-	const Glib::ustring& get_dinghies(void) const { return m_dinghies; }
+	emergency_t get_emergency(void) const { return m_emergency; }
+	emergency_t get_emergencyradio(void) const;
+	static std::string get_emergencyradio_string(emergency_t emerg);
+	std::string get_emergencyradio_string(void) const { return get_emergencyradio_string(m_emergency); }
+	emergency_t get_survival(void) const;
+	static std::string get_survival_options(emergency_t emerg);
+	std::string get_survival_options(void) const { return get_survival_options(m_emergency); }
+	static std::string get_survival_string(emergency_t emerg);
+	std::string get_survival_string(void) const { return get_survival_string(m_emergency); }
+	emergency_t get_lifejackets(void) const;
+	static std::string get_lifejackets_options(emergency_t emerg);
+	std::string get_lifejackets_options(void) const { return get_lifejackets_options(m_emergency); }
+	static std::string get_lifejackets_string(emergency_t emerg);
+	std::string get_lifejackets_string(void) const { return get_lifejackets_string(m_emergency); }
+	emergency_t get_dinghies(void) const;
+	uint16_t get_dinghiesnumber(void) const { return m_dinghiesnumber; }
+	uint16_t get_dinghiescapacity(void) const { return m_dinghiescapacity; }
+	const std::string& get_dinghiescolor(void) const { return m_dinghiescolor; }
+	static std::string get_dinghies_string(emergency_t emerg, uint16_t nr, uint16_t cap, const std::string& col);
+	std::string get_dinghies_string(void) const { return get_dinghies_string(m_emergency, m_dinghiesnumber, m_dinghiescapacity, m_dinghiescolor); }
 	const Glib::ustring& get_picname(void) const { return m_picname; }
 	const Glib::ustring& get_crewcontact(void) const { return m_crewcontact; }
 	const Glib::ustring& get_homebase(void) const { return m_homebase; }
@@ -1682,8 +2041,6 @@ public:
 	double get_vfe(void) const { return m_vfe; }
 	double get_vgearext(void) const { return m_vgearext; }
 	double get_vgearret(void) const { return m_vgearret; }
-	double get_vbestglide(void) const { return m_vbestglide; }
-	double get_glideslope(void) const { return m_glideslope; }
 	double get_vdescent(void) const { return m_vdescent; }
 	double get_fuelmass(void) const { return m_fuelmass; }
 	unit_t get_fuelunit(void) const { return m_fuelunit; }
@@ -1696,22 +2053,32 @@ public:
 	bool is_constantspeed(void) const { return get_propulsion() == propulsion_constantspeed; }
 	bool is_freecirculation(void) const { return m_freecirculation; }
 
-	void set_callsign(const Glib::ustring& x) { m_callsign = x; }
+	void set_callsign(const std::string& x) { m_callsign = x; }
  	void set_manufacturer(const Glib::ustring& x) { m_manufacturer = x; }
  	void set_model(const Glib::ustring& x) { m_model = x; }
  	void set_year(const Glib::ustring& x) { m_year = x; }
-	void set_icaotype(const Glib::ustring& x) { m_icaotype = x; }
-	void set_equipment(const Glib::ustring& x) { m_equipment = x; }
-	void set_transponder(const Glib::ustring& x) { m_transponder = x; }
+	void set_icaotype(const std::string& x) { m_icaotype = x; }
+	void set_nav(nav_t n) { m_nav = n; }
+	void set_com(com_t c) { m_com = c; }
+	bool set_equipment(const std::string& x) { return parse_navcom(m_nav, m_com, x); }
+	void set_transponder(transponder_t t) { m_transponder = t; }
+	bool set_transponder(const std::string& x) { return parse_transponder(m_transponder, x); }
 	void set_pbn(pbn_t x) { m_pbn = x; }
-	void set_pbn(const Glib::ustring& x) { m_pbn = parse_pbn(x); }
+	bool set_pbn(const std::string& x) { return parse_pbn(m_pbn, x); }
 	void set_gnssflags(gnssflags_t x) { m_gnssflags = x; }
-	void set_gnssflags(const Glib::ustring& x) { m_gnssflags = parse_gnssflags(x); }
+	bool set_gnssflags(const std::string& x) { return parse_gnssflags(m_gnssflags, x); }
 	void set_colormarking(const Glib::ustring& x) { m_colormarking = x; }
-	void set_emergencyradio(const Glib::ustring& x) { m_emergencyradio = x; }
-	void set_survival(const Glib::ustring& x) { m_survival = x; }
-	void set_lifejackets(const Glib::ustring& x) { m_lifejackets = x; }
-	void set_dinghies(const Glib::ustring& x) { m_dinghies = x; }
+	void set_emergencyradio(emergency_t x);
+	bool set_emergencyradio(const std::string& x) { return parse_emergencyradio(m_emergency, x); }
+	void set_survival(emergency_t x);
+	bool set_survival(const std::string& x) { return parse_survival(m_emergency, x); }
+	void set_lifejackets(emergency_t x);
+	bool set_lifejackets(const std::string& x) { return parse_lifejackets(m_emergency, x); }
+	void set_dinghies(emergency_t x);
+	void set_dinghiesnumber(uint16_t x) { m_dinghiesnumber = x; }
+	void set_dinghiescapacity(uint16_t x) { m_dinghiescapacity = x; }
+	void set_dinghiescolor(const std::string& x) { m_dinghiescolor = x; }
+	bool set_dinghies(const std::string& x) { return parse_dinghies(m_emergency, m_dinghiesnumber, m_dinghiescapacity, m_dinghiescolor, x); }
 	void set_picname(const Glib::ustring& x) { m_picname = x; }
 	void set_crewcontact(const Glib::ustring& x) { m_crewcontact = x; }
 	void set_homebase(const Glib::ustring& x) { m_homebase = x; }
@@ -1734,10 +2101,9 @@ public:
 	void set_vfe(double x) { m_vfe = x; }
 	void set_vgearext(double x) { m_vgearext = x; }
 	void set_vgearret(double x) { m_vgearret = x; }
-	void set_vbestglide(double x) { m_vbestglide = x; }
-	void set_glideslope(double x) { m_glideslope = x; }
 	void set_vdescent(double x) { m_vdescent = x; }
 	void set_fuelmass(double x) { m_fuelmass = x; }
+	void set_fuelunit(unit_t x) { m_fuelunit = x; }
 	void set_taxifuel(double x) { m_taxifuel = x; }
 	void set_taxifuelflow(double x) { m_taxifuelflow = x; }
 	void set_maxbhp(double x) { m_maxbhp = x; }
@@ -1755,13 +2121,35 @@ public:
 	bool load_string(const Glib::ustring& data);
 	Glib::ustring save_string(void) const;
 
+#ifdef HAVE_PQXX
+	bool load_pgdb(pqxx::connection_base& conn, int64_t id);
+#endif
+
 	bool load_opsperf(const OperationsPerformance::Aircraft& acft);
 
-	static pbn_t parse_pbn(const Glib::ustring& x);
+#ifdef HAVE_JSONCPP
+	bool load_json(const Json::Value& root);
+	bool load_garminpilot(const Json::Value& root);
+	void save_garminpilot(Json::Value& root);
+	const Json::Value& find_json_uuid(const Json::Value& root, const std::string& uuid);
+	const Json::Value& find_json_uuid(const Json::Value& root, const Json::Value& obj, const std::string& member);
+#endif
+
+	static bool parse_pbn(pbn_t& pbn, const std::string& x);
+	static void pbn_fix_equipment(nav_t& nav, pbn_t pbn);
 	static void pbn_fix_equipment(Glib::ustring& equipment, pbn_t pbn);
 	static void pbn_fix_equipment(std::string& equipment, pbn_t pbn);
-	void pbn_fix_equipment(void) { pbn_fix_equipment(m_equipment, m_pbn); }
-	static gnssflags_t parse_gnssflags(const Glib::ustring& x);
+	void pbn_fix_equipment(void) { pbn_fix_equipment(m_nav, m_pbn); }
+	static bool parse_gnssflags(gnssflags_t& gnssflags, const std::string& x);
+	static bool parse_navcom(nav_t& nav, com_t& com, const std::string& x);
+	static bool equipment_with_standard(nav_t& nav, com_t& com);
+	static bool equipment_without_standard(nav_t& nav, com_t& com);
+	void equipment_canonicalize(void);
+	static bool parse_transponder(transponder_t& transponder, const std::string& x);
+	static bool parse_emergencyradio(emergency_t& emergency, const std::string& x);
+	static bool parse_survival(emergency_t& emergency, const std::string& x);
+	static bool parse_lifejackets(emergency_t& emergency, const std::string& x);
+	static bool parse_dinghies(emergency_t& emergency, uint16_t& nr, uint16_t& capacity, std::string& col, const std::string& x);
 
 	double get_useable_fuelmass(void) const { return m_wb.get_useable_fuelmass(); }
 	double get_total_fuelmass(void) const { return m_wb.get_total_fuelmass(); }
@@ -1783,10 +2171,14 @@ public:
 				     double isaoffs = 0, double qnh = IcaoAtmosphere<double>::std_sealevel_pressure) const;
 	ClimbDescent calculate_descent(const std::string& name, double mass = std::numeric_limits<double>::quiet_NaN(),
 				       double isaoffs = 0, double qnh = IcaoAtmosphere<double>::std_sealevel_pressure) const;
+	ClimbDescent calculate_glide(const std::string& name, double mass = std::numeric_limits<double>::quiet_NaN(),
+				     double isaoffs = 0, double qnh = IcaoAtmosphere<double>::std_sealevel_pressure) const;
 	ClimbDescent calculate_climb(Cruise::EngineParams& ep, double mass = std::numeric_limits<double>::quiet_NaN(),
 				     double isaoffs = 0, double qnh = IcaoAtmosphere<double>::std_sealevel_pressure) const;
 	ClimbDescent calculate_descent(Cruise::EngineParams& ep, double mass = std::numeric_limits<double>::quiet_NaN(),
 				       double isaoffs = 0, double qnh = IcaoAtmosphere<double>::std_sealevel_pressure) const;
+	ClimbDescent calculate_glide(std::string& name, double mass = std::numeric_limits<double>::quiet_NaN(),
+				     double isaoffs = 0, double qnh = IcaoAtmosphere<double>::std_sealevel_pressure) const;
 	void calculate_cruise(double& tas, double& fuelflow, double& pa, double& mass, double& isaoffs, double& qnh, Cruise::CruiseEngineParams& ep) const;
 
 	opsrules_t get_opsrules(void) const { return m_opsrules; }
@@ -1798,6 +2190,8 @@ public:
 	bool is_opsrules_holdcruisealt(void) const { return is_opsrules_holdcruisealt(get_opsrules()); }
 
 	CheckErrors check(void) const;
+
+	std::string to_lua(void) const;
 
 	class Endurance {
 	public:
@@ -1854,8 +2248,8 @@ public:
 				     gint64 gfsminefftime = -1, gint64 gfsmaxefftime = -1,
 				     double tofuel = std::numeric_limits<double>::quiet_NaN(),
 				     unit_t fuelunit = unit_invalid, const std::string& atcfplc = "",
-				     const std::string& servicename = "www.autorouter.eu",
-				     const std::string& servicelink = "http://www.autorouter.eu") const;
+				     const std::string& servicename = SiteName::sitename,
+				     const std::string& servicelink = SiteName::sitesecureurl) const;
 
 	std::ostream& navfplan_lualatex(std::ostream& os, Engine& engine, const FPlanRoute& fplan,
 					const std::vector<FPlanAlternate>& altn,
@@ -1865,8 +2259,8 @@ public:
 					gint64 gfsminefftime = -1, gint64 gfsmaxefftime = -1,
 					double tofuel = std::numeric_limits<double>::quiet_NaN(),
 					unit_t fuelunit = unit_invalid, const std::string& atcfplc = "",
-					const std::string& servicename = "www.autorouter.eu",
-					const std::string& servicelink = "http://www.autorouter.eu") const;
+					const std::string& servicename = SiteName::sitename,
+					const std::string& servicelink = SiteName::sitesecureurl) const;
 
 	std::ostream& massbalance_latex(std::ostream& os, const FPlanRoute& fplan,
 					const std::vector<FPlanAlternate>& altn,
@@ -1875,6 +2269,14 @@ public:
 					const WeightBalance::elementvalues_t& wbev = WeightBalance::elementvalues_t(),
 					unit_t fuelunit = unit_invalid, unit_t massunit = unit_invalid,
 					double *tomass = (double *)0) const;
+
+	std::ostream& massbalance_lualatex(std::ostream& os, const FPlanRoute& fplan,
+					   const std::vector<FPlanAlternate>& altn,
+					   const Cruise::EngineParams& epcruise = Cruise::EngineParams(),
+					   double fuel_on_board = std::numeric_limits<double>::quiet_NaN(),
+					   const WeightBalance::elementvalues_t& wbev = WeightBalance::elementvalues_t(),
+					   unit_t fuelunit = unit_invalid, unit_t massunit = unit_invalid,
+					   double *tomass = (double *)0) const;
 
 	std::ostream& distances_latex(std::ostream& os, double tomass, const FPlanRoute& fplan,
 				      const std::vector<FPlanAlternate>& altn,
@@ -1889,6 +2291,7 @@ public:
 
 	std::ostream& climb_latex(std::ostream& os, double tomass, double isaoffs, double qnh, unit_t fu, const FPlanWaypoint& wpt) const;
 	std::ostream& descent_latex(std::ostream& os, double dmass, double isaoffs, double qnh, unit_t fu, const FPlanWaypoint& wpt) const;
+	std::ostream& glide_latex(std::ostream& os, double dmass, double isaoffs, double qnh, unit_t fu, const FPlanWaypoint& wpt) const;
 
 	WeightBalance::elementvalues_t prepare_wb(const WeightBalance::elementvalues_t& wbev = WeightBalance::elementvalues_t(),
 						  double fuel_on_board = std::numeric_limits<double>::quiet_NaN(),
@@ -1899,12 +2302,31 @@ public:
 
 	static std::string to_ascii(const Glib::ustring& x);
 	static std::string to_luastring(const std::string& x);
+	static std::string to_luastring(double x);
+	static std::string to_luastring(bool x);
+
+	static void trimleft(std::string::const_iterator& txti, std::string::const_iterator txte);
+	static void trimright(std::string::const_iterator txti, std::string::const_iterator& txte);
+	static void trim(std::string::const_iterator& txti, std::string::const_iterator& txte);
+	static bool parsetxt(std::string& txt, unsigned int len, std::string::const_iterator& txti, std::string::const_iterator txte, bool slashsep = true);
+
+	typedef enum {
+		recompute_none       = 0,
+		recompute_wbunits    = 1 << 0,
+		recompute_distances  = 1 << 1,
+		recompute_climb      = 1 << 2,
+		recompute_descent    = 1 << 3,
+		recompute_glide      = 1 << 4
+	} recompute_t;
+
+	recompute_t recompute(void);
 
 	template<class Archive> void hibernate(Archive& ar) {
 		m_wb.hibernate(ar);
 		m_dist.hibernate(ar);
 		m_climb.hibernate(ar);
 		m_descent.hibernate(ar);
+		m_glide.hibernate(ar);
 		m_cruise.hibernate(ar);
 		uint32_t n(m_otherinfo.size());
 		ar.ioleb(n);
@@ -1924,13 +2346,8 @@ public:
 		ar.io(m_model);
 		ar.io(m_year);
 		ar.io(m_icaotype);
-		ar.io(m_equipment);
-		ar.io(m_transponder);
+		ar.io(m_dinghiescolor);
 		ar.io(m_colormarking);
-		ar.io(m_emergencyradio);
-		ar.io(m_survival);
-		ar.io(m_lifejackets);
-		ar.io(m_dinghies);
 		ar.io(m_picname);
 		ar.io(m_crewcontact);
 		ar.io(m_homebase);
@@ -1953,14 +2370,18 @@ public:
 		ar.io(m_vfe);
 		ar.io(m_vgearext);
 		ar.io(m_vgearret);
-		ar.io(m_vbestglide);
-		ar.io(m_glideslope);
 		ar.io(m_vdescent);
 		ar.io(m_fuelmass);
 		ar.io(m_taxifuel);
 		ar.io(m_taxifuelflow);
 		ar.io(m_maxbhp);
-		ar.iouint8(m_pbn);
+		ar.iouint16(m_dinghiesnumber);
+		ar.iouint16(m_dinghiescapacity);
+		ar.iouint32(m_nav);
+		ar.iouint32(m_com);
+		ar.iouint32(m_transponder);
+		ar.iouint32(m_emergency);
+		ar.iouint32(m_pbn);
 		ar.iouint8(m_gnssflags);
 		ar.iouint8(m_fuelunit);
 		ar.iouint8(m_opsrules);
@@ -1985,6 +2406,11 @@ protected:
 	typedef char aircraft_type_class_t[10];
 	static const aircraft_type_class_t aircraft_type_class_db[];
 
+	static const char pbn_table[24][2];
+	static const char nav_table[14];
+	static const char com_table[29][2];
+	static const char transponder_table[18][2];
+
 	class AircraftTypeClassDbCompare {
 	public:
 		bool operator()(const char *a, const char *b) const { return strncmp(a, b, 4) < 0; }
@@ -1994,21 +2420,17 @@ protected:
 	Distances m_dist;
 	Climb m_climb;
 	Descent m_descent;
+	Glide m_glide;
 	Cruise m_cruise;
 	otherinfo_t m_otherinfo;
 	// some basic data
-	Glib::ustring m_callsign;
+	std::string m_callsign;
 	Glib::ustring m_manufacturer;
  	Glib::ustring m_model;
  	Glib::ustring m_year;
-	Glib::ustring m_icaotype;
-	Glib::ustring m_equipment;
-	Glib::ustring m_transponder;
+	std::string m_icaotype;
+	std::string m_dinghiescolor;
 	Glib::ustring m_colormarking;
-	Glib::ustring m_emergencyradio;
-	Glib::ustring m_survival;
-	Glib::ustring m_lifejackets;
-	Glib::ustring m_dinghies;
 	Glib::ustring m_picname;
 	Glib::ustring m_crewcontact;
 	Glib::ustring m_homebase;
@@ -2032,14 +2454,18 @@ protected:
 	double m_vfe;
 	double m_vgearext;
 	double m_vgearret;
-	double m_vbestglide;
-	double m_glideslope;
 	double m_vdescent;
 	double m_fuelmass;
 	double m_taxifuel;
 	double m_taxifuelflow;
 	double m_maxbhp;
 	double m_contingencyfuel;
+	uint16_t m_dinghiesnumber;
+	uint16_t m_dinghiescapacity;
+	nav_t m_nav;
+	com_t m_com;
+	transponder_t m_transponder;
+	emergency_t m_emergency;
 	pbn_t m_pbn;
 	gnssflags_t m_gnssflags;
 	unit_t m_fuelunit;
@@ -2055,6 +2481,7 @@ protected:
 	static std::string get_text(const xmlpp::Node *n);
 	void load_xml_fs(const xmlpp::Element *el);
 	void check_aircraft_type_class(void);
+	void autogenerate_code(void);
 
 	std::ostream& distances_latex(std::ostream& os, double tomass,
 				      const std::vector<FPlanWaypoint>& alt,
@@ -2093,9 +2520,17 @@ protected:
 	};
 
 	static bool to_ascii_iconv(std::string& r, const Glib::ustring& x);
-	std::ostream& climbdescent_latex(const ClimbDescent& cd, bool rev, std::ostream& os, double xmass, double isaoffs, double qnh, unit_t fu, const FPlanWaypoint& wpt) const;
+	typedef enum {
+		cdltxmode_climb,
+		cdltxmode_descent,
+		cdltxmode_glide
+	} cdltxmode_t;
+	std::ostream& climbdescent_latex(const ClimbDescent& cd, cdltxmode_t mode, std::ostream& os, double xmass, double isaoffs, double qnh,
+					 unit_t fu, const FPlanWaypoint& wpt) const;
 	std::ostream& write_lua_point(std::ostream& os, const std::string& ident, Aircraft::unit_t fuelunit,
 				      const FPlanWaypoint& wpt, time_t deptime, double totalfuel, double tofuel, double cumdist, double remdist) const;
+	std::ostream& write_lua_alternate(std::ostream& os, const std::string& ident, Aircraft::unit_t fuelunit,
+					  const FPlanAlternate& alt, time_t deptime, double totalfuel, double tofuel, double cumdist, double remdist) const;
 	std::ostream& write_lua_path(std::ostream& os, const std::string& ident, Aircraft::unit_t fuelunit,
 				     const FPlanWaypoint& wpt, const FPlanWaypoint& wptn) const;
 };
@@ -2124,6 +2559,38 @@ inline Aircraft::gnssflags_t& operator|=(Aircraft::gnssflags_t& x, Aircraft::gns
 inline Aircraft::gnssflags_t& operator&=(Aircraft::gnssflags_t& x, Aircraft::gnssflags_t y) { x = x & y; return x; }
 inline Aircraft::gnssflags_t& operator^=(Aircraft::gnssflags_t& x, Aircraft::gnssflags_t y) { x = x ^ y; return x; }
 
+inline Aircraft::com_t operator|(Aircraft::com_t x, Aircraft::com_t y) { return (Aircraft::com_t)((unsigned int)x | (unsigned int)y); }
+inline Aircraft::com_t operator&(Aircraft::com_t x, Aircraft::com_t y) { return (Aircraft::com_t)((unsigned int)x & (unsigned int)y); }
+inline Aircraft::com_t operator^(Aircraft::com_t x, Aircraft::com_t y) { return (Aircraft::com_t)((unsigned int)x ^ (unsigned int)y); }
+inline Aircraft::com_t operator~(Aircraft::com_t x) { return (Aircraft::com_t)~(unsigned int)x; }
+inline Aircraft::com_t& operator|=(Aircraft::com_t& x, Aircraft::com_t y) { x = x | y; return x; }
+inline Aircraft::com_t& operator&=(Aircraft::com_t& x, Aircraft::com_t y) { x = x & y; return x; }
+inline Aircraft::com_t& operator^=(Aircraft::com_t& x, Aircraft::com_t y) { x = x ^ y; return x; }
+
+inline Aircraft::nav_t operator|(Aircraft::nav_t x, Aircraft::nav_t y) { return (Aircraft::nav_t)((unsigned int)x | (unsigned int)y); }
+inline Aircraft::nav_t operator&(Aircraft::nav_t x, Aircraft::nav_t y) { return (Aircraft::nav_t)((unsigned int)x & (unsigned int)y); }
+inline Aircraft::nav_t operator^(Aircraft::nav_t x, Aircraft::nav_t y) { return (Aircraft::nav_t)((unsigned int)x ^ (unsigned int)y); }
+inline Aircraft::nav_t operator~(Aircraft::nav_t x) { return (Aircraft::nav_t)~(unsigned int)x; }
+inline Aircraft::nav_t& operator|=(Aircraft::nav_t& x, Aircraft::nav_t y) { x = x | y; return x; }
+inline Aircraft::nav_t& operator&=(Aircraft::nav_t& x, Aircraft::nav_t y) { x = x & y; return x; }
+inline Aircraft::nav_t& operator^=(Aircraft::nav_t& x, Aircraft::nav_t y) { x = x ^ y; return x; }
+
+inline Aircraft::transponder_t operator|(Aircraft::transponder_t x, Aircraft::transponder_t y) { return (Aircraft::transponder_t)((unsigned int)x | (unsigned int)y); }
+inline Aircraft::transponder_t operator&(Aircraft::transponder_t x, Aircraft::transponder_t y) { return (Aircraft::transponder_t)((unsigned int)x & (unsigned int)y); }
+inline Aircraft::transponder_t operator^(Aircraft::transponder_t x, Aircraft::transponder_t y) { return (Aircraft::transponder_t)((unsigned int)x ^ (unsigned int)y); }
+inline Aircraft::transponder_t operator~(Aircraft::transponder_t x) { return (Aircraft::transponder_t)~(unsigned int)x; }
+inline Aircraft::transponder_t& operator|=(Aircraft::transponder_t& x, Aircraft::transponder_t y) { x = x | y; return x; }
+inline Aircraft::transponder_t& operator&=(Aircraft::transponder_t& x, Aircraft::transponder_t y) { x = x & y; return x; }
+inline Aircraft::transponder_t& operator^=(Aircraft::transponder_t& x, Aircraft::transponder_t y) { x = x ^ y; return x; }
+
+inline Aircraft::emergency_t operator|(Aircraft::emergency_t x, Aircraft::emergency_t y) { return (Aircraft::emergency_t)((unsigned int)x | (unsigned int)y); }
+inline Aircraft::emergency_t operator&(Aircraft::emergency_t x, Aircraft::emergency_t y) { return (Aircraft::emergency_t)((unsigned int)x & (unsigned int)y); }
+inline Aircraft::emergency_t operator^(Aircraft::emergency_t x, Aircraft::emergency_t y) { return (Aircraft::emergency_t)((unsigned int)x ^ (unsigned int)y); }
+inline Aircraft::emergency_t operator~(Aircraft::emergency_t x) { return (Aircraft::emergency_t)~(unsigned int)x; }
+inline Aircraft::emergency_t& operator|=(Aircraft::emergency_t& x, Aircraft::emergency_t y) { x = x | y; return x; }
+inline Aircraft::emergency_t& operator&=(Aircraft::emergency_t& x, Aircraft::emergency_t y) { x = x & y; return x; }
+inline Aircraft::emergency_t& operator^=(Aircraft::emergency_t& x, Aircraft::emergency_t y) { x = x ^ y; return x; }
+
 inline Aircraft::unitmask_t operator|(Aircraft::unitmask_t x, Aircraft::unitmask_t y) { return (Aircraft::unitmask_t)((unsigned int)x | (unsigned int)y); }
 inline Aircraft::unitmask_t operator&(Aircraft::unitmask_t x, Aircraft::unitmask_t y) { return (Aircraft::unitmask_t)((unsigned int)x & (unsigned int)y); }
 inline Aircraft::unitmask_t operator^(Aircraft::unitmask_t x, Aircraft::unitmask_t y) { return (Aircraft::unitmask_t)((unsigned int)x ^ (unsigned int)y); }
@@ -2131,6 +2598,14 @@ inline Aircraft::unitmask_t operator~(Aircraft::unitmask_t x) { return (Aircraft
 inline Aircraft::unitmask_t& operator|=(Aircraft::unitmask_t& x, Aircraft::unitmask_t y) { x = x | y; return x; }
 inline Aircraft::unitmask_t& operator&=(Aircraft::unitmask_t& x, Aircraft::unitmask_t y) { x = x & y; return x; }
 inline Aircraft::unitmask_t& operator^=(Aircraft::unitmask_t& x, Aircraft::unitmask_t y) { x = x ^ y; return x; }
+
+inline Aircraft::recompute_t operator|(Aircraft::recompute_t x, Aircraft::recompute_t y) { return (Aircraft::recompute_t)((unsigned int)x | (unsigned int)y); }
+inline Aircraft::recompute_t operator&(Aircraft::recompute_t x, Aircraft::recompute_t y) { return (Aircraft::recompute_t)((unsigned int)x & (unsigned int)y); }
+inline Aircraft::recompute_t operator^(Aircraft::recompute_t x, Aircraft::recompute_t y) { return (Aircraft::recompute_t)((unsigned int)x ^ (unsigned int)y); }
+inline Aircraft::recompute_t operator~(Aircraft::recompute_t x) { return (Aircraft::recompute_t)~(unsigned int)x; }
+inline Aircraft::recompute_t& operator|=(Aircraft::recompute_t& x, Aircraft::recompute_t y) { x = x | y; return x; }
+inline Aircraft::recompute_t& operator&=(Aircraft::recompute_t& x, Aircraft::recompute_t y) { x = x & y; return x; }
+inline Aircraft::recompute_t& operator^=(Aircraft::recompute_t& x, Aircraft::recompute_t y) { x = x ^ y; return x; }
 
 inline Aircraft::Cruise::Curve::flags_t operator|(Aircraft::Cruise::Curve::flags_t x, Aircraft::Cruise::Curve::flags_t y) { return (Aircraft::Cruise::Curve::flags_t)((unsigned int)x | (unsigned int)y); }
 inline Aircraft::Cruise::Curve::flags_t operator&(Aircraft::Cruise::Curve::flags_t x, Aircraft::Cruise::Curve::flags_t y) { return (Aircraft::Cruise::Curve::flags_t)((unsigned int)x & (unsigned int)y); }

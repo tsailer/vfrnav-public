@@ -160,6 +160,9 @@
 /* Jsoncpp Libraries */
 #undef HAVE_JSONCPP
 
+/* libarchive library */
+#undef HAVE_LIBARCHIVE
+
 /* OpenSSL Crypto Library */
 #undef HAVE_LIBCRYPTO
 
@@ -205,6 +208,9 @@
 /* openjpeg library */
 #undef HAVE_OPENJPEG
 
+/* Define if openjpeg version 1.x */
+#undef HAVE_OPENJPEG1
+
 /* Defined if open_memstream is available */
 #undef HAVE_OPEN_MEMSTREAM
 
@@ -226,11 +232,20 @@
 /* Define to 1 if you have the `prctl' function. */
 #undef HAVE_PRCTL
 
+/* Google Protocol Buffers */
+#undef HAVE_PROTOBUF
+
 /* Define to 1 if you have the <pty.h> header file. */
 #undef HAVE_PTY_H
 
 /* Define to 1 if you have the <pwd.h> header file. */
 #undef HAVE_PWD_H
+
+/* qrencode library */
+#undef HAVE_QRENCODE
+
+/* RTK Library */
+#undef HAVE_RTKLIB
 
 /* Define to 1 if you have the <sensorsapi.h> header file. */
 #undef HAVE_SENSORSAPI_H
@@ -354,7 +369,13 @@
 #undef PACKAGE_BUGREPORT
 
 /* various directories */
+#undef PACKAGE_CACHE_DIR
+
+/* various directories */
 #undef PACKAGE_DATA_DIR
+
+/* various directories */
+#undef PACKAGE_HTTPDCACHE_DIR
 
 /* various directories */
 #undef PACKAGE_LIBEXEC_DIR

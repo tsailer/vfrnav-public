@@ -1,5 +1,6 @@
 /***************************************************************************
- *   Copyright (C) 2007, 2009, 2012, 2013, 2014, 2015 by Thomas Sailer     *
+ *   Copyright (C) 2007, 2009, 2012, 2013, 2014, 2015, 2018                *
+ *     by Thomas Sailer                                                    *
  *   t.sailer@alumni.ethz.ch                                               *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -96,4 +97,27 @@ void PolygonSimple::InsideHelper::compute_winding(winding_t& wind, const Polygon
 			}
 		}
 	}
+}
+
+void PolygonSimple::InsideHelper::limit(int32_t fsmin, int32_t fsmax, int32_t min, int32_t max, bool allowswap)
+{
+	DEFINE_INT128
+	int32_t fsdiff(fsmax - fsmin);
+	if (!fsdiff)
+		return;
+	int128_t x(min - fsmin);
+	int128_t y(max - fsmin);
+	if (fsdiff < 0) {
+		x = -x;
+		y = -y;
+		fsdiff = -fsdiff;
+	}
+	x *= m_end;
+	y *= m_end;
+	if (allowswap && x > y)
+		std::swap(x, y);
+	y += fsdiff - 1;
+	x /= fsdiff;
+	y /= fsdiff;
+	limit(static_cast<int64_t>(x), static_cast<int64_t>(y));
 }

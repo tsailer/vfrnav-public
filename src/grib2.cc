@@ -3,7 +3,7 @@
 /*
  *      grib2.cc  --  Gridded Binary weather files.
  *
- *      Copyright (C) 2012, 2013, 2014, 2015, 2016  Thomas Sailer (t.sailer@alumni.ethz.ch)
+ *      Copyright (C) 2012, 2013, 2014, 2015, 2016, 2017, 2018  Thomas Sailer (t.sailer@alumni.ethz.ch)
  *
  *      This program is free software; you can redistribute it and/or modify
  *      it under the terms of the GNU General Public License as published by
@@ -1725,21 +1725,185 @@ GRIB2::LayerJ2KParam::LayerJ2KParam(void)
 }
 
 GRIB2::LayerSimplePackingParam::LayerSimplePackingParam(void)
-	: m_nbitsgroupref(0)
+	: m_nbitsgroupref(0), m_fieldvaluetype(255)
 {
 }
 
 GRIB2::LayerComplexPackingParam::LayerComplexPackingParam(void)
 	: m_ngroups(0), m_refgroupwidth(0), m_nbitsgroupwidth(0),
 	  m_refgrouplength(0), m_incrgrouplength(0), m_lastgrouplength(0), m_nbitsgrouplength(0),
-	  m_gengroupsplit(false)
+	  m_primarymissingvalue(0), m_secondarymissingvalue(0), m_groupsplitmethod(255), m_missingvaluemgmt(255)
 {
+}
+
+bool GRIB2::LayerComplexPackingParam::is_primarymissingvalue(void) const
+{
+	switch (get_missingvaluemgmt()) {
+	case 1:
+	case 2:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
+bool GRIB2::LayerComplexPackingParam::is_secondarymissingvalue(void) const
+{
+	switch (get_missingvaluemgmt()) {
+	case 2:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
+unsigned int GRIB2::LayerComplexPackingParam::get_primarymissingvalue_raw(void) const
+{
+	if (is_primarymissingvalue())
+		return (1U << get_nbitsgroupref()) - 1U;
+	return 0;
+}
+
+unsigned int GRIB2::LayerComplexPackingParam::get_secondarymissingvalue_raw(void) const
+{
+	if (is_secondarymissingvalue())
+		return (1U << get_nbitsgroupref()) - 2U;
+	return 0;
+}
+
+double GRIB2::LayerComplexPackingParam::get_primarymissingvalue_float(void) const
+{
+	if (!is_fieldvalue_float())
+		return get_primarymissingvalue();
+	union {
+		uint32_t u;
+		float f;
+	} u;
+	u.u = get_primarymissingvalue();
+	return u.f;
+}
+
+double GRIB2::LayerComplexPackingParam::get_secondarymissingvalue_float(void) const
+{
+	if (!is_fieldvalue_float())
+		return get_secondarymissingvalue();
+	union {
+		uint32_t u;
+		float f;
+	} u;
+	u.u = get_secondarymissingvalue();
+	return u.f;
 }
 
 GRIB2::LayerComplexPackingSpatialDiffParam::LayerComplexPackingSpatialDiffParam(void)
 	: m_spatialdifforder(0), m_extradescroctets(0)
 {
 }
+
+#if defined(HAVE_OPENJPEG) && !defined(HAVE_OPENJPEG1)
+
+namespace {
+
+class OpjMemStream {
+public:
+	OpjMemStream(const std::vector<uint8_t>& filedata);
+	~OpjMemStream();
+	opj_stream_t *get_stream(void) { return m_stream; }
+
+protected:
+	const std::vector<uint8_t>& m_filedata;
+	opj_stream_t *m_stream;
+	OPJ_OFF_T m_offs;
+
+	OPJ_SIZE_T opj_mem_stream_read(void *p_buffer, OPJ_SIZE_T p_nb_bytes);
+	OPJ_SIZE_T opj_mem_stream_write(void *p_buffer, OPJ_SIZE_T p_nb_bytes);
+	OPJ_OFF_T opj_mem_stream_skip(OPJ_OFF_T p_nb_bytes);
+	OPJ_BOOL opj_mem_stream_seek(OPJ_OFF_T p_nb_bytes);
+	void opj_mem_stream_free_user_data(void);
+
+	static OPJ_SIZE_T opj_mem_stream_read_1(void *p_buffer, OPJ_SIZE_T p_nb_bytes, void *p_user_data) {
+		return ((OpjMemStream *)p_user_data)->opj_mem_stream_read(p_buffer, p_nb_bytes);
+	}
+
+	static OPJ_SIZE_T opj_mem_stream_write_1(void *p_buffer, OPJ_SIZE_T p_nb_bytes, void *p_user_data) {
+		return ((OpjMemStream *)p_user_data)->opj_mem_stream_write(p_buffer, p_nb_bytes);
+	}
+
+	static OPJ_OFF_T opj_mem_stream_skip_1(OPJ_OFF_T p_nb_bytes, void *p_user_data) {
+		return ((OpjMemStream *)p_user_data)->opj_mem_stream_skip(p_nb_bytes);
+	}
+
+	static OPJ_BOOL opj_mem_stream_seek_1(OPJ_OFF_T p_nb_bytes, void *p_user_data) {
+		return ((OpjMemStream *)p_user_data)->opj_mem_stream_seek(p_nb_bytes);
+	}
+
+	static void opj_mem_stream_free_user_data_1(void *p_user_data) {
+		return ((OpjMemStream *)p_user_data)->opj_mem_stream_free_user_data();
+	}
+};
+
+OpjMemStream::OpjMemStream(const std::vector<uint8_t>& filedata)
+	: m_filedata(filedata), m_stream(0), m_offs(0)
+{
+	m_stream = opj_stream_create(m_filedata.size(), 1);
+	if (!m_stream)
+		return;
+	opj_stream_set_user_data(m_stream, this, opj_mem_stream_free_user_data_1);
+	opj_stream_set_user_data_length(m_stream, m_filedata.size());
+	opj_stream_set_read_function(m_stream, opj_mem_stream_read_1);
+	opj_stream_set_write_function(m_stream, opj_mem_stream_write_1);
+	opj_stream_set_skip_function(m_stream, opj_mem_stream_skip_1);
+	opj_stream_set_seek_function(m_stream, opj_mem_stream_seek_1);
+}
+
+OpjMemStream::~OpjMemStream()
+{
+	if (m_stream)
+		opj_stream_destroy(m_stream);
+}
+
+OPJ_SIZE_T OpjMemStream::opj_mem_stream_read(void *p_buffer, OPJ_SIZE_T p_nb_bytes)
+{
+	OPJ_SIZE_T r = p_nb_bytes;
+	if (m_offs + r > m_filedata.size())
+		r = m_filedata.size() - m_offs;
+	memcpy(p_buffer, &m_filedata[m_offs], r);
+	m_offs += r;
+	return r;
+}
+
+OPJ_SIZE_T OpjMemStream::opj_mem_stream_write(void *p_buffer, OPJ_SIZE_T p_nb_bytes)
+{
+	return 0;
+}
+
+OPJ_OFF_T OpjMemStream::opj_mem_stream_skip(OPJ_OFF_T p_nb_bytes)
+{
+	OPJ_SIZE_T r = p_nb_bytes;
+	if (m_offs + r > m_filedata.size())
+		r = m_filedata.size() - m_offs;
+	m_offs += r;
+	return r;
+}
+
+OPJ_BOOL OpjMemStream::opj_mem_stream_seek(OPJ_OFF_T p_nb_bytes)
+{
+	m_offs = p_nb_bytes;
+	if (m_offs <= m_filedata.size())
+		return OPJ_TRUE;
+	m_offs = m_filedata.size();
+	return OPJ_FALSE;
+}
+
+void OpjMemStream::opj_mem_stream_free_user_data(void)
+{
+}
+
+};
+
+#endif
 
 GRIB2::LayerJ2K::LayerJ2K(const Parameter *param, const Glib::RefPtr<Grid const>& grid,
 			  gint64 reftime, gint64 efftime, uint16_t centerid, uint16_t subcenterid,
@@ -1828,7 +1992,7 @@ void GRIB2::LayerJ2K::load(void)
 						break;
 					m_data[i] = m_param.scale(data[imgptr++]);
 				}
-			} else {			
+			} else {
 				for (unsigned int i = 0, n = std::min(uvsize, (unsigned int)data.size()); i < n; ++i)
 					m_data[i] = m_param.scale(data[i]);
 			}
@@ -1842,6 +2006,7 @@ void GRIB2::LayerJ2K::load(void)
 		}
 	}
 #ifdef HAVE_OPENJPEG
+#ifdef HAVE_OPENJPEG1
 	opj_common_struct_t cinfo;
 	opj_codestream_info_t cstr_info;
 	memset(&cinfo, 0, sizeof(cinfo));
@@ -1867,7 +2032,7 @@ void GRIB2::LayerJ2K::load(void)
 					break;
 				m_data[i] = m_param.scale(img->comps[0].data[imgptr++]);
 			}
-		} else {			
+		} else {
 			for (unsigned int i = 0; i < uvsize; ++i)
 				m_data[i] = m_param.scale(img->comps[0].data[i]);
 		}
@@ -1878,6 +2043,51 @@ void GRIB2::LayerJ2K::load(void)
 	}
 	opj_image_destroy(img);
 	opj_destroy_cstr_info(&cstr_info);
+#else
+	opj_image_t *img(0);
+	{
+		OpjMemStream streamdata(filedata);
+		opj_codec_t *codec(opj_create_decompress(OPJ_CODEC_J2K));
+		if (codec) {
+			opj_dparameters_t param;
+			opj_set_default_decoder_parameters(&param);
+			if (opj_setup_decoder(codec, &param)) {
+				if (opj_read_header(streamdata.get_stream(), codec, &img)) {
+					if (!opj_decode(codec, streamdata.get_stream(), img)) {
+						opj_image_destroy(img);
+						img = 0;
+					}
+				}
+			}
+			opj_destroy_codec(codec);
+		}
+	}
+	if (img) {
+		if (img->numcomps == 1) {
+			cache.save(m_cachedir, img->comps[0].data, img->comps[0].w * img->comps[0].h);
+			m_data.resize(uvsize, std::numeric_limits<float>::quiet_NaN());
+			if (m_bitmap) {
+				unsigned int imgsz(img->comps[0].w * img->comps[0].h);
+				unsigned int imgptr(0);
+				for (unsigned int i = 0; i < uvsize; ++i) {
+					if (!((bitmap[i >> 3] << (i & 7)) & 0x80))
+						continue;
+					if (imgptr >= imgsz)
+						break;
+					m_data[i] = m_param.scale(img->comps[0].data[imgptr++]);
+				}
+			} else {
+				for (unsigned int i = 0; i < uvsize; ++i)
+					m_data[i] = m_param.scale(img->comps[0].data[i]);
+			}
+			if (false)
+				std::cerr << "LayerJ2K: load: dataoffset " << m_param.get_dataoffset()
+					  << " datascale " << m_param.get_datascale() << " data " << m_param.scale(img->comps[0].data[0])
+					  << '(' << img->comps[0].data[0] << ')' << std::endl;
+		}
+		opj_image_destroy(img);
+	}
+#endif
 #endif
 	if (m_data.empty()) {
 		if (true)
@@ -2091,16 +2301,45 @@ void GRIB2::LayerComplexPacking::load(void)
 	}
 	m_data.resize(uvsize, std::numeric_limits<float>::quiet_NaN());
 	{
-		unsigned int grpidx(0), grpcnt(1U), grpr(0U), grpw(1U);
+		const unsigned int primiss(m_param.get_primarymissingvalue_raw());
+		const unsigned int secmiss(m_param.get_secondarymissingvalue_raw());
+		const double primissfloat(m_param.get_primarymissingvalue_float());
+		const double secmissfloat(m_param.get_secondarymissingvalue_float());
+		unsigned int grpidx(0), grpcnt(1U), grpr(0U), grpw(1U), grpprimiss(~0U), grpsecmiss(~0U);
 		if (grpidx < grplength.size()) {
 			grpcnt = grplength[grpidx];
 			grpr = grpref[grpidx];
 			grpw = grpwidth[grpidx];
+			if (grpw > 0 && m_param.is_primarymissingvalue())
+				grpprimiss = (1U << grpw) - 1U;
+			if (grpw > 1 && m_param.is_secondarymissingvalue())
+				grpsecmiss = (1U << grpw) - 2U;
 		}
 		for (unsigned int i = 0; i < uvsize; ++i) {
 			if (m_bitmap && !((bitmap[i >> 3] << (i & 7)) & 0x80))
 				continue;
-			m_data[i] = m_param.scale(grpr + extract(filedata, ptr, grpw));
+			unsigned int v(extract(filedata, ptr, grpw));
+			if (v == grpprimiss) {
+				m_data[i] = primissfloat;
+				goto next;
+			}
+			if (v == grpsecmiss) {
+				m_data[i] = secmissfloat;
+				goto next;
+			}
+			v += grpr;
+			if (v) {
+				if (v == primiss) {
+					m_data[i] = primissfloat;
+					goto next;
+				}
+				if (v == secmiss) {
+					m_data[i] = secmissfloat;
+					goto next;
+				}
+			}
+			m_data[i] = m_param.scale(v);
+		  next:
 			ptr += grpw;
 			--grpcnt;
 			if (grpcnt)
@@ -2202,19 +2441,20 @@ void GRIB2::LayerComplexPackingSpatialDiff::load(void)
 		return;
 	std::vector<unsigned int> grpref(m_param.get_ngroups(), 0), grpwidth(m_param.get_ngroups(), 0), grplength(m_param.get_ngroups(), 0);
 	unsigned int ptr(0);
-	unsigned int gh[2] = { 0, 0 };
-	int ghmin(0);
+	std::vector<int> ddata;
+	unsigned int diffinit[2] = { 0, 0 };
 	{
 		unsigned int w(m_param.get_extradescroctets() << 3);
 		for (unsigned int i(0), n(m_param.get_spatialdifforder()); i < n; ++i) {
-			gh[i] = extract(filedata, ptr, w);
+			diffinit[i] = extract(filedata, ptr, w);
 			ptr += w;
 		}
 		unsigned int sgn(extract(filedata, ptr, 1));
-		ghmin = extract(filedata, ptr + 1, w - 1);
+		int ghmin(extract(filedata, ptr + 1, w - 1));
 		if (sgn)
 			ghmin = -ghmin;
 		ptr += w;
+		ddata.resize(uvsize, ghmin);
 	}
 	for (unsigned int i(0), ng(m_param.get_ngroups()), grw(m_param.get_nbitsgroupref()); i < ng; ++i, ptr += grw)
 		grpref[i] = extract(filedata, ptr, grw);
@@ -2242,20 +2482,49 @@ void GRIB2::LayerComplexPackingSpatialDiff::load(void)
 			<< " / " << (unsigned int)get_surface2type() << ' ' << get_surface2value()
 			<< " group length sum " << totlen << " bitmap " << bmsz << " uv " << uvsize << std::endl;
 	}
-	std::vector<int> ddata(uvsize, ghmin);
-	unsigned int ndd(0);
+	static const int ddataprimiss(std::numeric_limits<int>::min());
+	static const int ddatasecmiss(std::numeric_limits<int>::min() + 1);
+	static const int ddatamiss(std::numeric_limits<int>::min() + 2);
 	{
-		unsigned int grpidx(0), grpcnt(1U), grpr(0U), grpw(1U);
+		const unsigned int primiss(m_param.get_primarymissingvalue_raw());
+		const unsigned int secmiss(m_param.get_secondarymissingvalue_raw());
+		unsigned int grpidx(0), grpcnt(1U), grpr(0U), grpw(1U), grpprimiss(~0U), grpsecmiss(~0U);
 		if (grpidx < grplength.size()) {
 			grpcnt = grplength[grpidx];
 			grpr = grpref[grpidx];
 			grpw = grpwidth[grpidx];
+			if (grpw > 0 && m_param.is_primarymissingvalue())
+				grpprimiss = (1U << grpw) - 1U;
+			if (grpw > 1 && m_param.is_secondarymissingvalue())
+				grpsecmiss = (1U << grpw) - 2U;
 		}
 		for (unsigned int i = 0; i < uvsize; ++i) {
-			if (m_bitmap && !((bitmap[i >> 3] << (i & 7)) & 0x80))
+			if (m_bitmap && !((bitmap[i >> 3] << (i & 7)) & 0x80)) {
+				ddata[i] = ddatamiss;
 				continue;
-			ddata[ndd] += grpr + extract(filedata, ptr, grpw);
-			++ndd;
+			}
+			unsigned int v(extract(filedata, ptr, grpw));
+			if (v == grpprimiss) {
+				ddata[i] = ddataprimiss;
+				goto next;
+			}
+			if (v == grpsecmiss) {
+				ddata[i] = ddatasecmiss;
+				goto next;
+			}
+			v += grpr;
+			if (v) {
+				if (v == primiss) {
+					ddata[i] = ddataprimiss;
+					goto next;
+				}
+				if (v == secmiss) {
+					ddata[i] = ddatasecmiss;
+					goto next;
+				}
+			}
+			ddata[i] += v;
+		  next:
 			ptr += grpw;
 			--grpcnt;
 			if (grpcnt)
@@ -2264,36 +2533,71 @@ void GRIB2::LayerComplexPackingSpatialDiff::load(void)
 			grpcnt = 1U;
 			grpr = 0U;
 			grpw = 1U;
+			grpprimiss = grpsecmiss = ~0U;
 			if (grpidx < grplength.size()) {
 				grpcnt = grplength[grpidx];
 				grpr = grpref[grpidx];
 				grpw = grpwidth[grpidx];
+				if (grpw > 0 && m_param.is_primarymissingvalue())
+					grpprimiss = (1U << grpw) - 1U;
+				if (grpw > 1 && m_param.is_secondarymissingvalue())
+					grpsecmiss = (1U << grpw) - 2U;
 			}
 		}
 	}
-	m_data.resize(uvsize, std::numeric_limits<float>::quiet_NaN());
 	switch (m_param.get_spatialdifforder()) {
 	case 1:
-		ddata[0] = gh[0];
-		for (unsigned int i = 1; i < ndd; ++i)
-			ddata[i] += ddata[i-1];
+		if (ddata[0] > ddatamiss)
+			ddata[0] = diffinit[0];
+		for (unsigned int i = 1; i < uvsize; ++i) {
+			int v(ddata[i]);
+			if (v <= ddatamiss)
+				continue;
+			v += diffinit[0];
+			diffinit[0] = v;
+			ddata[i] = v;
+		}
 		break;
 
 	case 2:
-		ddata[0] = gh[0];
-		ddata[1] = gh[1];
-		for (unsigned int i = 2; i < ndd; ++i)
-			ddata[i] += 2 * ddata[i-1] - ddata[i-2];
+		if (ddata[0] > ddatamiss)
+			ddata[0] = diffinit[0];
+		if (ddata[1] > ddatamiss)
+			ddata[1] = diffinit[1];
+		for (unsigned int i = 2; i < uvsize; ++i) {
+			int v(ddata[i]);
+			if (v <= ddatamiss)
+				continue;
+			v += 2 * diffinit[1] - diffinit[0];
+			diffinit[0] = diffinit[1];
+			diffinit[1] = v;
+			ddata[i] = v;
+		}
 		break;
 
 	default:
 		break;
 	}
-	for (unsigned int i = 0, j = 0; i < uvsize; ++i) {
-		if (m_bitmap && !((bitmap[i >> 3] << (i & 7)) & 0x80))
-			continue;
-		m_data[i] = m_param.scale(ddata[j]);
-		++j;
+	m_data.resize(uvsize, std::numeric_limits<float>::quiet_NaN());
+	const double primissfloat(m_param.get_primarymissingvalue_float());
+	const double secmissfloat(m_param.get_secondarymissingvalue_float());
+	for (unsigned int i = 0; i < uvsize; ++i) {
+		switch (ddata[i]) {
+		case ddataprimiss:
+			m_data[i] = primissfloat;
+			break;
+
+		case ddatasecmiss:
+			m_data[i] = secmissfloat;
+			break;
+
+		case ddatamiss:
+			break;
+
+		default:
+			m_data[i] = m_param.scale(ddata[i]);
+			break;
+		}
 	}
 }
 
@@ -2975,7 +3279,7 @@ int GRIB2::Parser::parse_file(const std::string& filename)
 				}
 				break;
 			}
-				       
+
 			case 3:
 		        {
 				err = section3(buf + 5, len - 5);
@@ -2985,7 +3289,7 @@ int GRIB2::Parser::parse_file(const std::string& filename)
 				}
 				break;
 			}
-				       
+
 			case 4:
 			{
 				err = section4(buf + 5, len - 5);
@@ -2995,7 +3299,7 @@ int GRIB2::Parser::parse_file(const std::string& filename)
 				}
 				break;
 			}
-				       
+
 			case 5:
 			{
 				err = section5(buf + 5, len - 5);
@@ -3005,7 +3309,7 @@ int GRIB2::Parser::parse_file(const std::string& filename)
 				}
 				break;
 			}
-				       
+
 			case 6:
 			{
 				err = section6(buf + 5, len - 5, instream->tell() + 5 - bufsz);
@@ -3015,7 +3319,7 @@ int GRIB2::Parser::parse_file(const std::string& filename)
 				}
 				break;
 			}
-				       
+
 			case 7:
 			{
 				err = section7(buf + 5, len - 5, instream->tell() + 5 - bufsz, filename);
@@ -3153,7 +3457,8 @@ int GRIB2::Parser::section3(const uint8_t *buf, uint32_t len)
 			Dj = -Dj;
 		}
 		// we do not (yet) care about the exact earth definition
-		if (basicangle || subdivbasicangle) {
+		// FIXME: subdivbasicangle should not be zero, old GFS data
+		if (basicangle || (subdivbasicangle != 0 && subdivbasicangle != (uint32_t)~0UL)) {
 			std::cerr << "Grid: basic angle/subdivisions not supported" << std::endl;
 			return 0;
 		}
@@ -3369,6 +3674,7 @@ int GRIB2::Parser::section5(const uint8_t *buf, uint32_t len)
 		m_layerparam.set_datascale(std::ldexp(sc, e));
 		m_layerparam.set_dataoffset(r.f * sc);
 		m_layerparam.set_nbitsgroupref(buf[14]);
+		m_layerparam.set_fieldvaluetype(buf[15]);
 		break;
 	}
 
@@ -3397,8 +3703,11 @@ int GRIB2::Parser::section5(const uint8_t *buf, uint32_t len)
 		m_layerparam.set_datascale(std::ldexp(sc, e));
 		m_layerparam.set_dataoffset(r.f * sc);
 		m_layerparam.set_nbitsgroupref(buf[14]);
-		uint32_t primmiss(buf[21] | (((uint32_t)buf[20]) << 8) | (((uint32_t)buf[19]) << 16) | (((uint32_t)buf[18]) << 24));
-		uint32_t secmiss(buf[25] | (((uint32_t)buf[24]) << 8) | (((uint32_t)buf[23]) << 16) | (((uint32_t)buf[22]) << 24));
+		m_layerparam.set_fieldvaluetype(buf[15]);
+		m_layerparam.set_groupsplitmethod(buf[16]);
+		m_layerparam.set_missingvaluemgmt(buf[17]);
+		m_layerparam.set_primarymissingvalue(buf[21] | (((uint32_t)buf[20]) << 8) | (((uint32_t)buf[19]) << 16) | (((uint32_t)buf[18]) << 24));
+	        m_layerparam.set_secondarymissingvalue(buf[25] | (((uint32_t)buf[24]) << 8) | (((uint32_t)buf[23]) << 16) | (((uint32_t)buf[22]) << 24));
 		m_layerparam.set_ngroups(buf[29] | (((uint32_t)buf[28]) << 8) | (((uint32_t)buf[27]) << 16) | (((uint32_t)buf[26]) << 24));
 		m_layerparam.set_refgroupwidth(buf[30]);
 		m_layerparam.set_nbitsgroupwidth(buf[31]);
@@ -3406,7 +3715,6 @@ int GRIB2::Parser::section5(const uint8_t *buf, uint32_t len)
 		m_layerparam.set_incrgrouplength(buf[36]);
 		m_layerparam.set_lastgrouplength(buf[40] | (((uint32_t)buf[39]) << 8) | (((uint32_t)buf[38]) << 16) | (((uint32_t)buf[37]) << 24));
 		m_layerparam.set_nbitsgrouplength(buf[41]);
-		m_layerparam.set_gengroupsplit(buf[16] == 1);
 		break;
 	}
 
@@ -3435,8 +3743,11 @@ int GRIB2::Parser::section5(const uint8_t *buf, uint32_t len)
 		m_layerparam.set_datascale(std::ldexp(sc, e));
 		m_layerparam.set_dataoffset(r.f * sc);
 		m_layerparam.set_nbitsgroupref(buf[14]);
-		uint32_t primmiss(buf[21] | (((uint32_t)buf[20]) << 8) | (((uint32_t)buf[19]) << 16) | (((uint32_t)buf[18]) << 24));
-		uint32_t secmiss(buf[25] | (((uint32_t)buf[24]) << 8) | (((uint32_t)buf[23]) << 16) | (((uint32_t)buf[22]) << 24));
+		m_layerparam.set_fieldvaluetype(buf[15]);
+		m_layerparam.set_groupsplitmethod(buf[16]);
+		m_layerparam.set_missingvaluemgmt(buf[17]);
+	        m_layerparam.set_primarymissingvalue(buf[21] | (((uint32_t)buf[20]) << 8) | (((uint32_t)buf[19]) << 16) | (((uint32_t)buf[18]) << 24));
+	        m_layerparam.set_secondarymissingvalue(buf[25] | (((uint32_t)buf[24]) << 8) | (((uint32_t)buf[23]) << 16) | (((uint32_t)buf[22]) << 24));
 		m_layerparam.set_ngroups(buf[29] | (((uint32_t)buf[28]) << 8) | (((uint32_t)buf[27]) << 16) | (((uint32_t)buf[26]) << 24));
 		m_layerparam.set_refgroupwidth(buf[30]);
 		m_layerparam.set_nbitsgroupwidth(buf[31]);
@@ -3444,12 +3755,11 @@ int GRIB2::Parser::section5(const uint8_t *buf, uint32_t len)
 		m_layerparam.set_incrgrouplength(buf[36]);
 		m_layerparam.set_lastgrouplength(buf[40] | (((uint32_t)buf[39]) << 8) | (((uint32_t)buf[38]) << 16) | (((uint32_t)buf[37]) << 24));
 		m_layerparam.set_nbitsgrouplength(buf[41]);
-		m_layerparam.set_gengroupsplit(buf[16] == 1);
 		m_layerparam.set_spatialdifforder(buf[42]);
 		m_layerparam.set_extradescroctets(buf[43]);
 		break;
 	}
-		
+
 	case 40:
 	{
 		if (len < 18)
@@ -3517,7 +3827,7 @@ int GRIB2::Parser::section6(const uint8_t *buf, uint32_t len, goffset offs)
 	}
 	if (!m_bitmap)
 		return 0;
-	
+
 	return 0;
 }
 
@@ -4082,7 +4392,7 @@ GRIB2::WeatherProfilePoint::WeatherProfilePoint(double dist, double routedist, u
 						float cldmidcover, int32_t cldmidbase, int32_t cldmidtop,
 						float cldhighcover, int32_t cldhighbase, int32_t cldhightop,
 						float cldconvcover, int32_t cldconvbase, int32_t cldconvtop,
-						float precip, float preciprate, float convprecip, float convpreciprate, 
+						float precip, float preciprate, float convprecip, float convpreciprate,
 						float liftedindex, float cape, float cin, uint16_t flags)
 	: m_pt(pt), m_efftime(efftime), m_dist(dist), m_routedist(routedist), m_routeindex(routeindex), m_alt(alt),
 	  m_zerodegisotherm(zerodegisotherm), m_tropopause(tropopause),
@@ -4132,6 +4442,11 @@ GRIB2::WeatherProfilePoint::operator soundingsurfaces_t(void) const
 		s.insert(x);
 	}
 	return s;
+}
+
+bool GRIB2::WeatherProfilePoint::is_pressure_valid(float press_pa)
+{
+	return !std::isnan(press_pa) && press_pa >= 0.38f && press_pa <= 200000.0f;
 }
 
 GRIB2::WeatherProfile::WeatherProfile(void)
@@ -4339,7 +4654,7 @@ const GRIB2::ParamDiscipline * const *GRIB2::find_discipline(const char *str)
 		return 0;
 	if (strcmp((*i)->get_str(), str))
 		return 0;
-	return i;	
+	return i;
 }
 
 const GRIB2::ParamCategory * const *GRIB2::find_paramcategory(const char *str)
@@ -4357,7 +4672,7 @@ const GRIB2::ParamCategory * const *GRIB2::find_paramcategory(const char *str)
 		return 0;
 	if (strcmp((*i)->get_str(), str))
 		return 0;
-	return i;	
+	return i;
 }
 
 const GRIB2::Parameter * const *GRIB2::find_parameter(const char *str)
@@ -4375,7 +4690,7 @@ const GRIB2::Parameter * const *GRIB2::find_parameter(const char *str)
 		return 0;
 	if (strcmp((*i)->get_str(), str))
 		return 0;
-	return i;	
+	return i;
 }
 
 const GRIB2::Parameter * const *GRIB2::find_parameter_by_abbrev(const char *str)
@@ -4391,7 +4706,7 @@ const GRIB2::Parameter * const *GRIB2::find_parameter_by_abbrev(const char *str)
 		return 0;
 	if (strcmp((*i)->get_abbrev(), str))
 		return 0;
-	return i;	
+	return i;
 }
 
 const GRIB2::CenterTable *GRIB2::find_centerid_table(uint16_t cid)
@@ -5017,6 +5332,8 @@ GRIB2::WeatherProfile GRIB2::get_profile(const FPlanRoute& fpl)
 					break;
 				t = 1.0;
 			}
+			if (false)
+				std::cerr << "WX profile: wpt " << wptnr << '/' << nrwpt << " t " << t << std::endl;
 			Point pt(Point(ptdiff.get_lon() * t, ptdiff.get_lat() * t) + ptorig);
 			gint64 efftime(timeorig + t * timediff);
 			int32_t alt(altorig + t * altdiff);
@@ -5668,7 +5985,7 @@ GRIB2::WeatherProfile GRIB2::get_profile(const FPlanRoute& fpl)
 			int32_t cldlowbase = WeatherProfilePoint::invalidalt;
 			if (wxcldlowbase) {
 				float x(wxcldlowbase->operator()(pt, efftime, 0));
-				if (!std::isnan(x)) {
+				if (WeatherProfilePoint::is_pressure_valid(x)) {
 					float alt(0);
 					IcaoAtmosphere<float>::std_pressure_to_altitude(&alt, 0, x * 0.01);
 					cldlowbase = Point::round<int,float>(alt * Point::m_to_ft);
@@ -5677,7 +5994,7 @@ GRIB2::WeatherProfile GRIB2::get_profile(const FPlanRoute& fpl)
 			int32_t cldlowtop = WeatherProfilePoint::invalidalt;
 			if (wxcldlowtop) {
 				float x(wxcldlowtop->operator()(pt, efftime, 0));
-				if (!std::isnan(x)) {
+				if (WeatherProfilePoint::is_pressure_valid(x)) {
 					float alt(0);
 					IcaoAtmosphere<float>::std_pressure_to_altitude(&alt, 0, x * 0.01);
 					cldlowtop = Point::round<int,float>(alt * Point::m_to_ft);
@@ -5692,7 +6009,7 @@ GRIB2::WeatherProfile GRIB2::get_profile(const FPlanRoute& fpl)
 			int32_t cldmidbase = WeatherProfilePoint::invalidalt;
 			if (wxcldmidbase) {
 				float x(wxcldmidbase->operator()(pt, efftime, 0));
-				if (!std::isnan(x)) {
+				if (WeatherProfilePoint::is_pressure_valid(x)) {
 					float alt(0);
 					IcaoAtmosphere<float>::std_pressure_to_altitude(&alt, 0, x * 0.01);
 					cldmidbase = Point::round<int,float>(alt * Point::m_to_ft);
@@ -5701,7 +6018,7 @@ GRIB2::WeatherProfile GRIB2::get_profile(const FPlanRoute& fpl)
 			int32_t cldmidtop = WeatherProfilePoint::invalidalt;
 			if (wxcldmidtop) {
 				float x(wxcldmidtop->operator()(pt, efftime, 0));
-				if (!std::isnan(x)) {
+				if (WeatherProfilePoint::is_pressure_valid(x)) {
 					float alt(0);
 					IcaoAtmosphere<float>::std_pressure_to_altitude(&alt, 0, x * 0.01);
 					cldmidtop = Point::round<int,float>(alt * Point::m_to_ft);
@@ -5716,7 +6033,7 @@ GRIB2::WeatherProfile GRIB2::get_profile(const FPlanRoute& fpl)
 			int32_t cldhighbase = WeatherProfilePoint::invalidalt;
 			if (wxcldhighbase) {
 				float x(wxcldhighbase->operator()(pt, efftime, 0));
-				if (!std::isnan(x)) {
+				if (WeatherProfilePoint::is_pressure_valid(x)) {
 					float alt(0);
 					IcaoAtmosphere<float>::std_pressure_to_altitude(&alt, 0, x * 0.01);
 					cldhighbase = Point::round<int,float>(alt * Point::m_to_ft);
@@ -5725,7 +6042,7 @@ GRIB2::WeatherProfile GRIB2::get_profile(const FPlanRoute& fpl)
 			int32_t cldhightop = WeatherProfilePoint::invalidalt;
 			if (wxcldhightop) {
 				float x(wxcldhightop->operator()(pt, efftime, 0));
-				if (!std::isnan(x)) {
+				if (WeatherProfilePoint::is_pressure_valid(x)) {
 					float alt(0);
 					IcaoAtmosphere<float>::std_pressure_to_altitude(&alt, 0, x * 0.01);
 					cldhightop = Point::round<int,float>(alt * Point::m_to_ft);
@@ -5740,7 +6057,7 @@ GRIB2::WeatherProfile GRIB2::get_profile(const FPlanRoute& fpl)
 			int32_t cldconvbase = WeatherProfilePoint::invalidalt;
 			if (wxcldconvbase) {
 				float x(wxcldconvbase->operator()(pt, efftime, 0));
-				if (!std::isnan(x)) {
+				if (WeatherProfilePoint::is_pressure_valid(x)) {
 					float alt(0);
 					IcaoAtmosphere<float>::std_pressure_to_altitude(&alt, 0, x * 0.01);
 					cldconvbase = Point::round<int,float>(alt * Point::m_to_ft);
@@ -5749,7 +6066,7 @@ GRIB2::WeatherProfile GRIB2::get_profile(const FPlanRoute& fpl)
 			int32_t cldconvtop = WeatherProfilePoint::invalidalt;
 			if (wxcldconvtop) {
 				float x(wxcldconvtop->operator()(pt, efftime, 0));
-				if (!std::isnan(x)) {
+				if (WeatherProfilePoint::is_pressure_valid(x)) {
 					float alt(0);
 					IcaoAtmosphere<float>::std_pressure_to_altitude(&alt, 0, x * 0.01);
 					cldconvtop = Point::round<int,float>(alt * Point::m_to_ft);
@@ -5996,19 +6313,19 @@ GRIB2::WeatherProfile GRIB2::get_profile(const FPlanRoute& fpl)
 					if (!std::isnan(x))
 						temp = x;
 				}
-				float ugrd = WeatherProfilePoint::invalidcover;
-				if (wxugrd[i]) {
-					float x(wxugrd[i]->operator()(pt, efftime, (isobarlvl < 0) ? 10 : isobarlvl * 100.0));
-					if (!std::isnan(x))
-						ugrd = x;
+				float ugrd = WeatherProfilePoint::invalidcover, vgrd = WeatherProfilePoint::invalidcover;
+				if (wxugrd[i] && wxvgrd[i]) {
+					float u(wxugrd[i]->operator()(pt, efftime, (isobarlvl < 0) ? 10 : isobarlvl * 100.0));
+					float v(wxvgrd[i]->operator()(pt, efftime, (isobarlvl < 0) ? 10 : isobarlvl * 100.0));
+					if (!std::isnan(u) && !std::isnan(v)) {
+						std::pair<float,float> wnd(wxugrd[i]->get_layer()->get_grid()->transform_axes(u, v));
+						if (!std::isnan(wnd.first) && !std::isnan(wnd.second)) {
+							ugrd = wnd.first;
+							vgrd = wnd.second;
+						}
+					}
 				}
-				float vgrd = WeatherProfilePoint::invalidcover;
-				if (wxvgrd[i]) {
-					float x(wxvgrd[i]->operator()(pt, efftime, (isobarlvl < 0) ? 10 : isobarlvl * 100.0));
-					if (!std::isnan(x))
-						vgrd = x;
-				}
-				float rh = WeatherProfilePoint::invalidcover;
+				;		float rh = WeatherProfilePoint::invalidcover;
 				if (wxrelhum[i]) {
 					float x(wxrelhum[i]->operator()(pt, efftime, (isobarlvl < 0) ? 2 : isobarlvl * 100.0));
 					if (!std::isnan(x))
@@ -6023,8 +6340,17 @@ GRIB2::WeatherProfile GRIB2::get_profile(const FPlanRoute& fpl)
 					static const double hwshdist_m = hwshdist_nmi * (1000.0 / Point::km_to_nmi_dbl);
 					for (unsigned int j = 0; j < 4; ++j) {
 						Point pt1(pt.spheric_course_distance_nmi(j * 90, hwshdist_nmi));
+						if (!wxugrd[i] || !wxvgrd[i])
+							continue;
 						float ugrd1(wxugrd[i]->operator()(pt, efftime, (isobarlvl < 0) ? 10 : isobarlvl * 100.0));
 						float vgrd1(wxvgrd[i]->operator()(pt, efftime, (isobarlvl < 0) ? 10 : isobarlvl * 100.0));
+						if (std::isnan(ugrd1) || std::isnan(vgrd1))
+							continue;
+						{
+							std::pair<float,float> wnd(wxugrd[i]->get_layer()->get_grid()->transform_axes(ugrd1, vgrd1));
+							ugrd1 = wnd.first;
+							vgrd1 = wnd.second;
+						}
 						if (std::isnan(ugrd1) || std::isnan(vgrd1))
 							continue;
 						float w1(sqrtf(ugrd1 * ugrd1 + vgrd1 * vgrd1));
@@ -6072,7 +6398,7 @@ GRIB2::WeatherProfile GRIB2::get_profile(const FPlanRoute& fpl)
 	}
 	if (!false) {
 		for (WeatherProfile::const_iterator pi(wxprof.begin()), pe(wxprof.end()); pi != pe; ++pi) {
-			std::cerr << "D " << pi->get_routedist() << " CLD B ";
+			std::cerr << "D " << pi->get_routedist() << " W" << pi->get_routeindex() << " CLD B ";
 			if (std::isnan(pi->get_cldbdrycover()) ||
 			    pi->get_bdrylayerheight() == GRIB2::WeatherProfilePoint::invalidalt)
 				std::cerr << "--";
@@ -6080,28 +6406,28 @@ GRIB2::WeatherProfile GRIB2::get_profile(const FPlanRoute& fpl)
 				std::cerr << pi->get_cldbdrycover() << ' ' << pi->get_bdrylayerheight();
 			std::cerr << " L ";
 			if (std::isnan(pi->get_cldlowcover()) ||
-			    pi->get_cldlowbase() == GRIB2::WeatherProfilePoint::invalidalt || 
+			    pi->get_cldlowbase() == GRIB2::WeatherProfilePoint::invalidalt ||
 			    pi->get_cldlowtop() == GRIB2::WeatherProfilePoint::invalidalt)
 				std::cerr << "--";
 			else
 				std::cerr << pi->get_cldlowcover() << ' ' << pi->get_cldlowbase() << ' ' << pi->get_cldlowtop();
 			std::cerr << " M ";
 			if (std::isnan(pi->get_cldmidcover()) ||
-			    pi->get_cldmidbase() == GRIB2::WeatherProfilePoint::invalidalt || 
+			    pi->get_cldmidbase() == GRIB2::WeatherProfilePoint::invalidalt ||
 			    pi->get_cldmidtop() == GRIB2::WeatherProfilePoint::invalidalt)
 				std::cerr << "--";
 			else
 				std::cerr << pi->get_cldmidcover() << ' ' << pi->get_cldmidbase() << ' ' << pi->get_cldmidtop();
 			std::cerr << " H ";
 			if (std::isnan(pi->get_cldhighcover()) ||
-			    pi->get_cldhighbase() == GRIB2::WeatherProfilePoint::invalidalt || 
+			    pi->get_cldhighbase() == GRIB2::WeatherProfilePoint::invalidalt ||
 			    pi->get_cldhightop() == GRIB2::WeatherProfilePoint::invalidalt)
 				std::cerr << "--";
 			else
 				std::cerr << pi->get_cldhighcover() << ' ' << pi->get_cldhighbase() << ' ' << pi->get_cldhightop();
 			std::cerr << " C ";
 			if (std::isnan(pi->get_cldconvcover()) ||
-			    pi->get_cldconvbase() == GRIB2::WeatherProfilePoint::invalidalt || 
+			    pi->get_cldconvbase() == GRIB2::WeatherProfilePoint::invalidalt ||
 			    pi->get_cldconvtop() == GRIB2::WeatherProfilePoint::invalidalt)
 				std::cerr << "--";
 			else

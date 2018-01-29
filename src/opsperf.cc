@@ -56,7 +56,7 @@ OperationsPerformance::Aircraft::ComputeResult::ComputeResult(double mass, doubl
 }
 
 OperationsPerformance::Aircraft::Aircraft(const std::string& basename, const std::string& desc)
-	: m_basename(basename), m_description(desc), 
+	: m_basename(basename), m_description(desc),
 	  m_massref(std::numeric_limits<double>::quiet_NaN()),
 	  m_massmin(std::numeric_limits<double>::quiet_NaN()),
 	  m_massmax(std::numeric_limits<double>::quiet_NaN()),
@@ -383,7 +383,7 @@ void OperationsPerformance::Aircraft::load_opf(const std::string& fn)
 		if (line.substr(0, 2) != "FI")
 			continue;
 		break;
-	}	
+	}
 }
 
 void OperationsPerformance::Aircraft::load_apf(const std::string& fn)
@@ -638,7 +638,7 @@ bool OperationsPerformance::Aircraft::compute(ComputeResult& res, compute_t mode
 		res.set_thrust(get_thrustclimb(0) * (1 - ad.get_pressure_altitude() / get_thrustclimb(1) +
 						     ad.get_pressure_altitude() * ad.get_pressure_altitude() * get_thrustclimb(2)));
 		break;
-		
+
 	case propulsion_turboprop:
 		res.set_thrust(get_thrustclimb(0) / ad.get_tas() * (1 - ad.get_pressure_altitude() / get_thrustclimb(1)) +
 			       get_thrustclimb(2));

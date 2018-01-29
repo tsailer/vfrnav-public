@@ -1712,7 +1712,7 @@ void DbXmlImporter::process_vor(void)
 						continue;
 					std::cerr << e->get_navaid_typename() << ' ' << e->get_icao() << ' ' << e->get_name() << " is now colocated with DME"
 						  << std::endl;
-					e->set_navaid_type((el.get_navaid_type() == NavaidsDb::element_t::navaid_tacan) ? 
+					e->set_navaid_type((el.get_navaid_type() == NavaidsDb::element_t::navaid_tacan) ?
 							   NavaidsDb::element_t::navaid_vortac : NavaidsDb::element_t::navaid_vordme);
 					e->set_dmecoord(el.get_dmecoord());
 					m_navaidsdb.save(*e);
@@ -3170,7 +3170,7 @@ void DbXmlImporter::ForEachAirspace::process(AirspacesDb& airspacesdb)
 
 		default:
 			break;
-		} 
+		}
 	}
 }
 
@@ -3448,7 +3448,7 @@ void DbXmlImporter::finalize_airspaces(void)
 	foreach.process(m_airspacesdb);
         if (m_airspacesdbopen)
                 m_airspacesdb.close();
-        m_airspacesdbopen = false;	
+        m_airspacesdbopen = false;
 }
 
 
@@ -3544,10 +3544,10 @@ void DbXmlImporter::update_authority(void)
 {
         if (m_airportsdbopen)
                 m_airportsdb.close();
-        m_airportsdbopen = false;	
+        m_airportsdbopen = false;
         if (m_navaidsdbopen)
                 m_navaidsdb.close();
-        m_navaidsdbopen = false;	
+        m_navaidsdbopen = false;
         if (m_waypointsdbopen)
                 m_waypointsdb.close();
         m_waypointsdbopen = false;
@@ -3558,7 +3558,7 @@ void DbXmlImporter::update_authority(void)
 	}
         if (m_airspacesdbopen)
                 m_airspacesdb.close();
-        m_airspacesdbopen = false;	
+        m_airspacesdbopen = false;
 }
 
 void DbXmlImporter::open_airports_db(void)
@@ -3695,12 +3695,12 @@ int main(int argc, char *argv[])
 			std::cerr << "Intersection failed" << std::endl;
 			return EX_DATAERR;
 		}
-		std::cerr << "Intersection1: " << pt.get_lon() << ' ' << pt.get_lat() << std::endl;	
+		std::cerr << "Intersection1: " << pt.get_lon() << ' ' << pt.get_lat() << std::endl;
 		if (!pt.intersection(Point(0, 0), Point(1000, 1000), Point(0, 1000), Point(1000, 0))) {
 			std::cerr << "Intersection failed" << std::endl;
 			return EX_DATAERR;
 		}
-		std::cerr << "Intersection2: " << pt.get_lon() << ' ' << pt.get_lat() << std::endl;	
+		std::cerr << "Intersection2: " << pt.get_lon() << ' ' << pt.get_lat() << std::endl;
 		if (!pt.intersection(Point(0, 0), Point(100, 100), Point(0, 100), Point(100, 150))) {
 			std::cerr << "Intersection failed" << std::endl;
 			return EX_DATAERR;

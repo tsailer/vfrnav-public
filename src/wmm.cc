@@ -102,7 +102,7 @@ bool WMM::compute( const WMMModel & model, float alt, float glat, float glon, fl
         cp[1] = crlon;
 
         /* CONVERT FROM GEODETIC COORDS. TO SPHERICAL COORDS. */
-        //if (alt != oalt || glat != olat) 
+        //if (alt != oalt || glat != olat)
         {
                 q = sqrt(a2-c2*srlat2);
                 q1 = alt*q;
@@ -115,7 +115,7 @@ bool WMM::compute( const WMMModel & model, float alt, float glat, float glon, fl
                 ca = (alt+d)/r;
                 sa = c2*crlat*srlat/(r*d);
         }
-        //if (glon != olon) 
+        //if (glon != olon)
         {
                 for (m=2; m<=maxord; m++) {
                         sp[m] = sp[1]*cp[m-1]+cp[1]*sp[m-1];
@@ -132,7 +132,7 @@ bool WMM::compute( const WMMModel & model, float alt, float glat, float glon, fl
                         COMPUTE UNNORMALIZED ASSOCIATED LEGENDRE POLYNOMIALS
                         AND DERIVATIVES VIA RECURSION RELATIONS
 */
-                        //if (alt != oalt || glat != olat) 
+                        //if (alt != oalt || glat != olat)
                         {
                                 if (n == m) {
                                         *(p+n+m*13) = st**(p+n-1+(m-1)*13);
@@ -155,7 +155,7 @@ S50:
 /*
                         TIME ADJUST THE GAUSS COEFFICIENTS
 */
-                        //if (time != otime) 
+                        //if (time != otime)
                         {
                                 tc[m][n] = model.c[m][n]+dt*model.cd[m][n];
                                 if (m != 0) tc[n][m-1] = model.c[n][m-1]+dt*model.cd[n][m-1];

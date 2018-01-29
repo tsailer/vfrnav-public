@@ -2409,7 +2409,7 @@ void RouteEditUi::route_delete(void)
         m_route.delete_fp();
         Gtk::TreeStore::iterator i(m_routeliststore->children().begin()), ie(m_routeliststore->children().end());
         for (; i != ie;) {
-                 if ((*i)[m_routelistcolumns.m_col_id] != id) { 
+                 if ((*i)[m_routelistcolumns.m_col_id] != id) {
                          i++;
                          continue;
                  }
@@ -2638,7 +2638,7 @@ void RouteEditUi::route_update(void)
                                                 m_wxcruisealt->set_range(rmin, rmax);
                                                 m_wxcruisealt->set_sensitive(true);
                                         }
-                                }                                               
+                                }
                         }
                         m_connwxcruisealt.unblock();
 			if (m_wxwinddir)

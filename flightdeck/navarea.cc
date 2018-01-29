@@ -581,12 +581,13 @@ void FlightDeckWindow::NavArea::set_sensors(Sensors& sensors)
 	sensors_change(m_sensors, Sensors::change_all);
 	alt_set_qnh(m_sensors->get_altimeter_qnh());
 	alt_set_std(m_sensors->is_altimeter_std());
-	// FIXME: should be TAS, not IAS
-	hsi_set_glidetas(m_sensors->get_aircraft().get_vbestglide());
+	// FIXME: use real mass
 	if (m_hsiglide)
-		m_navhsidrawingarea.set_glideslope(m_sensors->get_aircraft().get_glideslope());
+		m_navhsidrawingarea.set_glidemodel(m_sensors->get_aircraft().calculate_glide("", m_sensors->get_aircraft().get_mtom(),
+											     m_sensors->get_altimeter_tempoffs(),
+											     m_sensors->get_altimeter_qnh()));
 	else
-		m_navhsidrawingarea.set_glideslope();
+		m_navhsidrawingarea.set_glidemodel();
 }
 
 void FlightDeckWindow::NavArea::alt_set_altbug(double altbug)
@@ -941,18 +942,15 @@ void FlightDeckWindow::NavArea::hsi_set_glide(bool v)
 		m_sensors->get_configfile().set_integer(cfggroup_mainwindow, cfgkey_mainwindow_hsiglide, (unsigned int)m_hsiglide);
 		m_sensors->save_config();
 		if (m_hsiglide)
-			m_navhsidrawingarea.set_glideslope(m_sensors->get_aircraft().get_glideslope());
+			m_navhsidrawingarea.set_glidemodel(m_sensors->get_aircraft().calculate_glide("", m_sensors->get_aircraft().get_mtom(),
+												     m_sensors->get_altimeter_tempoffs(),
+												     m_sensors->get_altimeter_qnh()));
 	}
 	if (!m_hsiglide)
-		m_navhsidrawingarea.set_glideslope();
+		m_navhsidrawingarea.set_glidemodel();
 }
 
 void FlightDeckWindow::NavArea::hsi_set_glidewind(double dir, double speed)
 {
 	m_navhsidrawingarea.set_glidewind(dir, speed);
-}
-
-void FlightDeckWindow::NavArea::hsi_set_glidetas(double tas)
-{
-	m_navhsidrawingarea.set_glidetas(tas);
 }

@@ -4,7 +4,7 @@
 // Description: Database Objects: Navaids
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2016
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2016, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -200,7 +200,7 @@ void DbBaseElements::Navaid::load(const pqxx::tuple& cursor, pqxx::basic_transac
 	m_modtime = cursor[16].as<time_t>(0);
 }
 
-void DbBaseElements::Navaid::save(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Navaid::save(pqxx::connection_base& conn, bool rtree)
 {
 	pqxx::work w(conn);
 	if (!m_id) {
@@ -222,7 +222,7 @@ void DbBaseElements::Navaid::save(pqxx::connection& conn, bool rtree)
 	w.commit();
 }
 
-void DbBaseElements::Navaid::erase(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Navaid::erase(pqxx::connection_base& conn, bool rtree)
 {
 	if (!is_valid())
 		return;
@@ -234,7 +234,7 @@ void DbBaseElements::Navaid::erase(pqxx::connection& conn, bool rtree)
 	m_id = 0;
 }
 
-void DbBaseElements::Navaid::update_index(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Navaid::update_index(pqxx::connection_base& conn, bool rtree)
 {
 	if (!m_id)
 		return;

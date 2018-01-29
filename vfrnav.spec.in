@@ -41,7 +41,7 @@ BuildRequires:  evince-devel
 BuildRequires:  libusb1-devel
 BuildRequires:  libcurl-devel
 BuildRequires:  webkitgtk4-devel
-BuildRequires:  openjpeg-devel
+BuildRequires:  openjpeg2-devel
 BuildRequires:  libsoup-devel
 BuildRequires:  librsvg2-devel
 BuildRequires:  podofo-devel
@@ -66,7 +66,10 @@ BuildRequires:  libpqxx-devel
 BuildRequires:  octave
 BuildRequires:  octave-devel
 BuildRequires:  inkscape
+BuildRequires:  dia
 BuildRequires:  selinux-policy-devel
+BuildRequires:  qrencode-devel
+BuildRequires:  libarchive-devel
 Requires:       libreoffice-core
 Requires:       libreoffice-calc
 Requires:       texlive
@@ -85,6 +88,11 @@ Requires:       texlive-xetex-def
 Requires:       texlive-framed
 Requires:       texlive-polyglossia
 Requires:       texlive-multirow
+Requires:       texlive-mdframed
+%if 0%{?fedora} >= 25
+Requires:       texlive-lualibs
+Requires:       texlive-ctablestack
+%endif
 
 %if %{with webservice}
 BuildRequires:  jsoncpp-devel
@@ -159,6 +167,7 @@ Group:          Applications/Productivity
 Requires:       %{name} = %{version}
 Requires:       php
 Requires:       php-mbstring
+Requires:       /usr/bin/convert
 
 %description utils
 This package contains utilities for database creation and manipulation
@@ -286,18 +295,6 @@ getent passwd vfrnav &>/dev/null || \
 useradd -g vfrnav -d /var/lib/vfrnav -M -r -s /sbin/nologin \
     -c "Special user account to be used by vfrnav cfmuautoroute/cfmuvalidate services" vfrnav
 
-%post
-touch --no-create %{_datadir}/icons/hicolor &>/dev/null || :
-
-%postun
-if [ $1 -eq 0 ] ; then
-    touch --no-create %{_datadir}/icons/hicolor &>/dev/null
-    gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
-fi
-
-%posttrans
-gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
-
 %post selinux
 /usr/sbin/semodule -i %{_datadir}/selinux/packages/%{name}/%{name}.pp >/dev/null 2>&1 || :
 
@@ -352,6 +349,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/cfmuvalidate
 %{_bindir}/cfmuautoroute
 %{_bindir}/checkfplan
+%{_bindir}/vfrnavacftconv
 %dir %{_libexecdir}/%{name}
 %{_libexecdir}/%{name}/cfmuvalidateserver
 %{_libexecdir}/%{name}/web-extensions/libcfmuwebextension.so
@@ -410,6 +408,8 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/adrdbsync
 %{_bindir}/aircraftopsperf
 %{_bindir}/weatherfplan
+%{_bindir}/vfrnavgrib2dump
+%{_bindir}/vfrnavgrib2fcst
 
 %files wetterdl
 %defattr(-,root,root,-)
@@ -442,6 +442,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Mon Jan 29 2018 Thomas Sailer <t.sailer@alumni.ethz.ch> - 20180129-1
+- remove obsolete post scripts
+
 * Sat Jul 27 2013 Thomas Sailer <t.sailer@alumni.ethz.ch> - 20130727-1
 - convert webservice from websockets to php and long poll
 

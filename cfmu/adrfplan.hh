@@ -127,7 +127,7 @@ public:
 	void set_equipment(const std::string& x) { m_equipment = x; }
 	void set_transponder(const std::string& x) { m_transponder = x; }
 	void set_pbn(Aircraft::pbn_t x) { m_pbn = x; }
-	void set_pbn(const std::string& x) { m_pbn = Aircraft::parse_pbn(x); }
+	void set_pbn(const std::string& x) { Aircraft::parse_pbn(m_pbn, x); }
 	void set_cruisespeed(const std::string& x) { m_cruisespeed = x; }
 	void set_alternate1(const std::string& x) { m_alternate1 = x; }
 	void set_alternate2(const std::string& x) { m_alternate2 = x; }

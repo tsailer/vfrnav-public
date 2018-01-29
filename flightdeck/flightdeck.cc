@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2007, 2009, 2012, 2013 by Thomas Sailer                 *
+ *   Copyright (C) 2007, 2009, 2012, 2013, 2017 by Thomas Sailer           *
  *   t.sailer@alumni.ethz.ch                                               *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -24,6 +24,7 @@
 
 #include "engine.h"
 #include "sensors.h"
+#include "icaofpl.h"
 #include "flightdeckwindow.h"
 #include "sysdepsgui.h"
 
@@ -50,20 +51,19 @@
 static int screensaver_off;
 static unsigned int time_last;
 
-
 static int xss_suspend(Bool suspend)
 {
 #ifndef CONFIG_XSS
-    return 0;
+	return 0;
 #else
-    int event, error, major, minor;
-    if (XScreenSaverQueryExtension(mDisplay, &event, &error) != True ||
-        XScreenSaverQueryVersion(mDisplay, &major, &minor) != True)
-        return 0;
-    if (major < 1 || (major == 1 && minor < 1))
-        return 0;
-    XScreenSaverSuspend(mDisplay, suspend);
-    return 1;
+	int event, error, major, minor;
+	if (XScreenSaverQueryExtension(mDisplay, &event, &error) != True ||
+	    XScreenSaverQueryVersion(mDisplay, &major, &minor) != True)
+		return 0;
+	if (major < 1 || (major == 1 && minor < 1))
+		return 0;
+	XScreenSaverSuspend(mDisplay, suspend);
+	return 1;
 #endif
 }
 
@@ -73,121 +73,106 @@ static int xss_suspend(Bool suspend)
 
 void saver_on(Display * mDisplay)
 {
-
-    if (!screensaver_off)
-        return;
-    screensaver_off = 0;
-    if (xss_suspend(False))
-        return;
+	if (!screensaver_off)
+		return;
+	screensaver_off = 0;
+	if (xss_suspend(False))
+		return;
 #ifdef CONFIG_XDPMS
-    if (dpms_disabled)
-    {
-        int nothing;
-        if (DPMSQueryExtension(mDisplay, &nothing, &nothing))
-        {
-            if (!DPMSEnable(mDisplay))
-            {                   // restoring power saving settings
-                mp_msg(MSGT_VO, MSGL_WARN, "DPMS not available?\n");
-            } else
-            {
-                // DPMS does not seem to be enabled unless we call DPMSInfo
-                BOOL onoff;
-                CARD16 state;
-
-                DPMSForceLevel(mDisplay, DPMSModeOn);
-                DPMSInfo(mDisplay, &state, &onoff);
-                if (onoff)
-                {
-                    mp_msg(MSGT_VO, MSGL_V,
-                           "Successfully enabled DPMS\n");
-                } else
-                {
-                    mp_msg(MSGT_VO, MSGL_WARN, "Could not enable DPMS\n");
-                }
-            }
-        }
-        dpms_disabled = 0;
-    }
+	if (dpms_disabled) {
+		int nothing;
+		if (DPMSQueryExtension(mDisplay, &nothing, &nothing)) {
+			if (!DPMSEnable(mDisplay)) {
+				// restoring power saving settings
+				mp_msg(MSGT_VO, MSGL_WARN, "DPMS not available?\n");
+			} else {
+				// DPMS does not seem to be enabled unless we call DPMSInfo
+				BOOL onoff;
+				CARD16 state;
+				DPMSForceLevel(mDisplay, DPMSModeOn);
+				DPMSInfo(mDisplay, &state, &onoff);
+				if (onoff) {
+					mp_msg(MSGT_VO, MSGL_V,
+					       "Successfully enabled DPMS\n");
+				} else {
+					mp_msg(MSGT_VO, MSGL_WARN, "Could not enable DPMS\n");
+				}
+			}
+		}
+		dpms_disabled = 0;
+	}
 #endif
 }
 
 void saver_off(Display * mDisplay)
 {
-    int nothing;
-
-    if (!stop_xscreensaver || screensaver_off)
-        return;
-    screensaver_off = 1;
-    if (xss_suspend(True))
-        return;
+	int nothing;
+	if (!stop_xscreensaver || screensaver_off)
+		return;
+	screensaver_off = 1;
+	if (xss_suspend(True))
+		return;
 #ifdef CONFIG_XDPMS
-    if (DPMSQueryExtension(mDisplay, &nothing, &nothing))
-    {
-        BOOL onoff;
-        CARD16 state;
-
-        DPMSInfo(mDisplay, &state, &onoff);
-        if (onoff)
-        {
-            Status stat;
-
-            mp_msg(MSGT_VO, MSGL_V, "Disabling DPMS\n");
-            dpms_disabled = 1;
-            stat = DPMSDisable(mDisplay);       // monitor powersave off
-            mp_msg(MSGT_VO, MSGL_V, "DPMSDisable stat: %d\n", stat);
-        }
-    }
+	if (DPMSQueryExtension(mDisplay, &nothing, &nothing)) {
+		BOOL onoff;
+		CARD16 state;
+		DPMSInfo(mDisplay, &state, &onoff);
+		if (onoff) {
+			Status stat;
+			mp_msg(MSGT_VO, MSGL_V, "Disabling DPMS\n");
+			dpms_disabled = 1;
+			stat = DPMSDisable(mDisplay);       // monitor powersave off
+			mp_msg(MSGT_VO, MSGL_V, "DPMSDisable stat: %d\n", stat);
+		}
+	}
 #endif
 }
 
-
 #endif
-
-
 
 int main(int argc, char *argv[])
 {
 	try {
-                std::string dir_main(""), dir_aux("");
-                Engine::auxdb_mode_t auxdbmode = Engine::auxdb_prefs;
-                bool dis_aux(false);
+		std::string dir_main(""), dir_aux("");
+		Engine::auxdb_mode_t auxdbmode = Engine::auxdb_prefs;
+		bool dis_aux(false);
 		Glib::init();
 		Gio::init();
-               Glib::OptionGroup optgroup("vfrnav", "Flight Deck Application Options", "Options controlling the Flight Deck Application");
-                Glib::OptionEntry optmaindir, optauxdir, optdisableaux;
-                optmaindir.set_short_name('m');
-                optmaindir.set_long_name("maindir");
-                optmaindir.set_description("Directory containing the main database");
-                optmaindir.set_arg_description("DIR");
-                optauxdir.set_short_name('a');
-                optauxdir.set_long_name("auxdir");
-                optauxdir.set_description("Directory containing the auxilliary database");
-                optauxdir.set_arg_description("DIR");
-                optdisableaux.set_short_name('A');
-                optdisableaux.set_long_name("disableaux");
-                optdisableaux.set_description("Disable the auxilliary database");
-                optdisableaux.set_arg_description("BOOL");
-                optgroup.add_entry_filename(optmaindir, dir_main);
-                optgroup.add_entry_filename(optauxdir, dir_aux);
-                optgroup.add_entry(optdisableaux, dis_aux);
-                Glib::OptionContext optctx("[--maindir=<dir>] [--auxdir=<dir>] [--disableaux]");
-                optctx.set_help_enabled(true);
-                optctx.set_ignore_unknown_options(false);
-                optctx.set_main_group(optgroup);
-                Gtk::Main m(argc, argv, optctx);
-                if (dis_aux)
-                        auxdbmode = Engine::auxdb_none;
-                else if (!dir_aux.empty())
-                        auxdbmode = Engine::auxdb_override;
+		Glib::OptionGroup optgroup("vfrnav", "Flight Deck Application Options", "Options controlling the Flight Deck Application");
+		Glib::OptionEntry optmaindir, optauxdir, optdisableaux;
+		optmaindir.set_short_name('m');
+		optmaindir.set_long_name("maindir");
+		optmaindir.set_description("Directory containing the main database");
+		optmaindir.set_arg_description("DIR");
+		optauxdir.set_short_name('a');
+		optauxdir.set_long_name("auxdir");
+		optauxdir.set_description("Directory containing the auxilliary database");
+		optauxdir.set_arg_description("DIR");
+		optdisableaux.set_short_name('A');
+		optdisableaux.set_long_name("disableaux");
+		optdisableaux.set_description("Disable the auxilliary database");
+		optdisableaux.set_arg_description("BOOL");
+		optgroup.add_entry_filename(optmaindir, dir_main);
+		optgroup.add_entry_filename(optauxdir, dir_aux);
+		optgroup.add_entry(optdisableaux, dis_aux);
+		Glib::OptionContext optctx("[--maindir=<dir>] [--auxdir=<dir>] [--disableaux]");
+		optctx.set_help_enabled(true);
+		optctx.set_ignore_unknown_options(false);
+		optctx.set_main_group(optgroup);
+		Gtk::Main m(argc, argv, optctx);
+		if (dis_aux)
+			auxdbmode = Engine::auxdb_none;
+		else if (!dir_aux.empty())
+			auxdbmode = Engine::auxdb_override;
 #ifdef HAVE_OSSO
-                osso_context_t* osso_context = osso_initialize("flightdeck", VERSION, TRUE /* deprecated parameter */, 0 /* Use default Glib main loop context */);
-                if (!osso_context) {
-                        std::cerr << "osso_initialize() failed." << std::endl;
-                        return OSSO_ERROR;
-                }
+		osso_context_t* osso_context = osso_initialize("flightdeck", VERSION, TRUE /* deprecated parameter */, 0 /* Use default Glib main loop context */);
+		if (!osso_context) {
+			std::cerr << "osso_initialize() failed." << std::endl;
+			return OSSO_ERROR;
+		}
 #endif
 #ifdef HAVE_HILDONMM
-                Hildon::init();
+		Hildon::init();
 #endif
 #ifdef HAVE_OBJBASE_H
 		{
@@ -202,9 +187,9 @@ int main(int argc, char *argv[])
 #ifdef HAVE_CURL
 		curl_global_init(CURL_GLOBAL_ALL);
 #endif
-                Glib::set_application_name("Flight Deck");
-                Glib::thread_init();
-                Engine engine(dir_main, auxdbmode, dir_aux, true, true);
+		Glib::set_application_name("Flight Deck");
+		Glib::thread_init();
+		Engine engine(dir_main, auxdbmode, dir_aux, true, true);
 		Sensors sensors;
 		sensors.set_engine(engine);
 #ifdef HAVE_GTKMM3
@@ -259,6 +244,31 @@ int main(int argc, char *argv[])
 			splashwindow->hide();
 		if (flightdeckwindow)
 			flightdeckwindow->hide();
+		FPlanRoute::id_t fplid(-1);
+		for (int ind = 1; ind < argc; ++ind) {
+			if (strncmp(argv[ind], "garminpilot://", 14))
+				continue;
+			// handle garminpilot
+			IcaoFlightPlan fpl(engine);
+			{
+				IcaoFlightPlan::errors_t err(fpl.parse_garminpilot(argv[ind], true));
+				if (!err.empty()) {
+					std::cerr << "Error parsing garminpilot flightplan: " << argv[ind] << std::endl;
+					for (IcaoFlightPlan::errors_t::const_iterator ei(err.begin()), ee(err.end()); ei != ee; ++ei)
+						std::cerr << *ei << std::endl;
+					continue;
+				}
+			}
+			if (!false)
+				std::cerr << "Successfully parsed garminpilot flightplan: " << argv[ind] << std::endl;
+			FPlanRoute route(engine.get_fplan_db());
+			route.new_fp();
+			fpl.set_route(route);
+			route.save_fp();
+			if (!false)
+				std::cerr << "Successfully saved garminpilot flightplan: " << route.get_id() << std::endl;
+			engine.get_prefs().curplan = fplid = route.get_id();
+		}
 		{
 			std::set<Sensors::ConfigFile> cfgfiles(Sensors::find_configs(dir_main, engine.get_aux_dir(auxdbmode, dir_aux)));
 			std::set<Sensors::ConfigFile>::size_type cfgsz(cfgfiles.size());
@@ -294,20 +304,22 @@ int main(int argc, char *argv[])
 		if (flightdeckwindow) {
 			flightdeckwindow->set_engine(engine);
 			flightdeckwindow->set_sensors(sensors);
+			if (fplid != -1)
+				flightdeckwindow->fpldirpage_set_default_fpl(fplid);
 			Gtk::Main::run(*flightdeckwindow);
 		}
 #ifdef HAVE_OSSO
-                osso_deinitialize(osso_context);
+		osso_deinitialize(osso_context);
 #endif
-        } catch (const Glib::Exception& e) {
-                std::cerr << "glib exception: " << e.what() << std::endl;
-                return 1;
-        } catch (const std::exception& e) {
-                std::cerr << "exception: " << e.what() << std::endl;
-                return 1;
-        }
+	} catch (const Glib::Exception& e) {
+		std::cerr << "glib exception: " << e.what() << std::endl;
+		return 1;
+	} catch (const std::exception& e) {
+		std::cerr << "exception: " << e.what() << std::endl;
+		return 1;
+	}
 #ifdef HAVE_OBJBASE_H
-        ::CoUninitialize();
+	::CoUninitialize();
 #endif
-        return 0;
+	return 0;
 }

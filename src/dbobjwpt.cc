@@ -4,7 +4,7 @@
 // Description: Database Objects: Waypoints (Intersections)
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2016
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2016, 2017
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -204,7 +204,7 @@ void DbBaseElements::Waypoint::load(const pqxx::tuple& cursor, pqxx::basic_trans
 	m_modtime = cursor[11].as<time_t>(0);
 }
 
-void DbBaseElements::Waypoint::save(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Waypoint::save(pqxx::connection_base& conn, bool rtree)
 {
 	pqxx::work w(conn);
 	if (!m_id) {
@@ -225,7 +225,7 @@ void DbBaseElements::Waypoint::save(pqxx::connection& conn, bool rtree)
 	w.commit();
 }
 
-void DbBaseElements::Waypoint::erase(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Waypoint::erase(pqxx::connection_base& conn, bool rtree)
 {
 	if (!is_valid())
 		return;
@@ -237,7 +237,7 @@ void DbBaseElements::Waypoint::erase(pqxx::connection& conn, bool rtree)
 	m_id = 0;
 }
 
-void DbBaseElements::Waypoint::update_index(pqxx::connection& conn, bool rtree)
+void DbBaseElements::Waypoint::update_index(pqxx::connection_base& conn, bool rtree)
 {
 	if (!m_id)
 		return;

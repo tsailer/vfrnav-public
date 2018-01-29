@@ -4,7 +4,7 @@
 // Description: System Dependency "equalization"
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007, 2009, 2012, 2015
 //
 // Copyright: See COPYING file that comes with this distribution
 //

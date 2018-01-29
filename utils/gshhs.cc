@@ -99,7 +99,7 @@ GSHHSParser::GSHHSParser(const Glib::ustring & fname, const Rect& rect)
 	if (!m_ds)
 		throw std::runtime_error("Cannot open GSHHS database " + fname);
 }
- 
+
 GSHHSParser::~GSHHSParser()
 {
 #if defined(HAVE_GDAL2)
@@ -1072,9 +1072,13 @@ int main(int argc, char *argv[])
 	try {
 		std::unique_ptr<WaterelementsDbQueryInterface> db;
 #ifdef HAVE_PQXX
-		if (pgsql)
-			db.reset(new WaterelementsPGDb(output_dir));
-		else
+		std::unique_ptr<pqxx::connection> pgconn;
+		if (pgsql) {
+			pgconn = std::unique_ptr<pqxx::connection>(new pqxx::connection(output_dir));
+			if (pgconn->get_variable("application_name").empty())
+				pgconn->set_variable("application_name", "gshhs");
+			db.reset(new WaterelementsPGDb(*pgconn));
+		} else
 #endif
 			db.reset(new WaterelementsDb(output_dir));
 		if (purge)

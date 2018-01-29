@@ -390,7 +390,7 @@ int main(int argc, char *argv[])
 				simplpbn = Aircraft::pbn_none;
 				std::string::size_type n(simplequipment.find(':'));
 				if (n != std::string::npos) {
-					simplpbn = Aircraft::parse_pbn(simplequipment.substr(n + 1));
+					Aircraft::parse_pbn(simplpbn, simplequipment.substr(n + 1));
 					simplequipment.erase(n);
 				}
 			}

@@ -1,7 +1,7 @@
 //
 // C++ Interface: SunriseSunset
 //
-// Description: 
+// Description:
 //
 //
 // Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2007

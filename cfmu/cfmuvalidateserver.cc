@@ -2815,11 +2815,14 @@ void CFMUValidateServer::annotate(Results& res)
 	std::string dir_aux1 = m_engine->get_aux_dir(m_auxdbmode, m_dir_aux);
 #ifdef HAVE_PQXX
 	if (m_auxdbmode == Engine::auxdb_postgres) {
-		m_airportdb.reset(new AirportsPGDb(m_dir_main, AirportsPGDb::read_only));
-		m_navaiddb.reset(new NavaidsPGDb(m_dir_main, NavaidsPGDb::read_only));
-		m_waypointdb.reset(new WaypointsPGDb(m_dir_main, WaypointsPGDb::read_only));
-		m_airwaydb.reset(new AirwaysPGDb(m_dir_main, AirwaysPGDb::read_only));
-		m_airspacedb.reset(new AirspacesPGDb(m_dir_main, AirspacesPGDb::read_only));
+		m_pgconn.reset(new pqxx::lazyconnection(m_dir_main));
+		if (m_pgconn->get_variable("application_name").empty())
+			m_pgconn->set_variable("application_name", "cfmuvalidateserver");
+		m_airportdb.reset(new AirportsPGDb(*m_pgconn, AirportsPGDb::read_only));
+		m_navaiddb.reset(new NavaidsPGDb(*m_pgconn, NavaidsPGDb::read_only));
+		m_waypointdb.reset(new WaypointsPGDb(*m_pgconn, WaypointsPGDb::read_only));
+		m_airwaydb.reset(new AirwaysPGDb(*m_pgconn, AirwaysPGDb::read_only));
+		m_airspacedb.reset(new AirspacesPGDb(*m_pgconn, AirspacesPGDb::read_only));
 	} else
 #endif
 	{

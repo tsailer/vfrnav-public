@@ -77,11 +77,11 @@ vfrdbfasimport_SOURCES = fasimport.cc
 vfrdbfasimport_LDADD = ../src/libvfrnav.la @LIBS@ @LIBXMLPP_LIBS@ @SQLITE_LIBS@ @GTKMM_LIBS@ @SQLITE3X_LIBS@ @GEOS_LIBS@ @CLIPPER_LIBS@ @OPENJPEG_LIBS@
 vfrdbfasimport_LDFLAGS = @GEOS_LDFLAGS@ @CLIPPER_LDFLAGS@
 
-grib2dump_SOURCES = grib2dump.cc
-grib2dump_LDADD = ../src/libvfrnav.la @LIBS@ @GTKMM_LIBS@ @SQLITE3X_LIBS@ @GEOS_LIBS@ @CLIPPER_LIBS@ @OPENJPEG_LIBS@
+vfrnavgrib2dump_SOURCES = grib2dump.cc
+vfrnavgrib2dump_LDADD = ../src/libvfrnav.la @LIBS@ @GTKMM_LIBS@ @SQLITE3X_LIBS@ @GEOS_LIBS@ @CLIPPER_LIBS@ @OPENJPEG_LIBS@
 
-grib2fcst_SOURCES = grib2fcst.cc
-grib2fcst_LDADD = ../src/libvfrnav.la @LIBS@ @LIBXMLPP_LIBS@ @GTKMM_LIBS@ @SQLITE3X_LIBS@ @PILOTLINK_LIBS@ @GEOS_LIBS@ @CLIPPER_LIBS@ @OPENJPEG_LIBS@
+vfrnavgrib2fcst_SOURCES = grib2fcst.cc
+vfrnavgrib2fcst_LDADD = ../src/libvfrnav.la @LIBS@ @LIBXMLPP_LIBS@ @GTKMM_LIBS@ @SQLITE3X_LIBS@ @PILOTLINK_LIBS@ @GEOS_LIBS@ @CLIPPER_LIBS@ @OPENJPEG_LIBS@
 
 adsbdecode_SOURCES = adsbdecode.cc
 adsbdecode_LDADD = ../src/libvfrnav.la @LIBS@ @GTKMM_LIBS@ @SQLITE3X_LIBS@ @GEOS_LIBS@ @CLIPPER_LIBS@ @OPENJPEG_LIBS@
@@ -96,11 +96,15 @@ vfrnavfixdb_SOURCES = vfrnavfixdb.cc
 vfrnavfixdb_LDADD = ../src/libvfrnav.la @LIBS@ @LIBXMLPP_LIBS@ @SQLITE_LIBS@ @GTKMM_LIBS@ @SQLITE3X_LIBS@ @GEOS_LIBS@ @CLIPPER_LIBS@ @OPENJPEG_LIBS@
 vfrnavfixdb_LDFLAGS = @GEOS_LDFLAGS@ @CLIPPER_LDFLAGS@
 
+vfrnavacftconv_SOURCES = acftconv.cc
+vfrnavacftconv_LDADD = ../src/libvfrnav.la @LIBS@ @LIBXMLPP_LIBS@ @SQLITE_LIBS@ @SQLITE3X_LIBS@ @GLIBMM_LIBS@ @GIOMM_LIBS@ @GTKMM_LIBS@ @PILOTLINK_LIBS@ @BOOST_LIBS@ @GEOS_LIBS@ @CLIPPER_LIBS@ @OPENJPEG_LIBS@ @LIBARCHIVE_LIBS@
+vfrnavacftconv_LDFLAGS = @GEOS_LDFLAGS@ @CLIPPER_LDFLAGS@
+
 bin_PROGRAMS = vfrnavfplan vfrnavwmmconv vfrnavwmmtest vfrdbdafif vfrdbupdategndelev vfrdboptimizelabelplacement \
 	vfrdbrebuildspatialindex vfrnavdb2xml vfrnavxml2db vfrdbsettopo30 vfrdbtopo30zerotiles vfrdbtopo30bin \
 	vfrdbcamelcase vfrdbeadimport vfrdbaixmimport vfrdbfasimport aircraftopsperf vfrdbukpostcodeimport \
-	vfrnavfixdb
-noinst_PROGRAMS = xmlformat vfrnavdbimport grib2dump grib2fcst adsbdecode windcalc
+	vfrnavfixdb vfrnavacftconv vfrnavgrib2dump vfrnavgrib2fcst
+noinst_PROGRAMS = xmlformat vfrnavdbimport adsbdecode windcalc
 
 if HAVE_GDAL
 
@@ -168,5 +172,6 @@ EXTRA_DIST = srtmwatermask.cc vmap.cc gshhs.cc srtm30db.cc xplane.cc openair.cc 
 AM_CFLAGS = @MY_CFLAGS@
 AM_CXXFLAGS = @MY_CXXFLAGS@ @GTKMM_CFLAGS@ @GLIBMM_CFLAGS@ @GIOMM_CFLAGS@ @LIBXMLPP_CFLAGS@ \
 	@SQLITE_CFLAGS@ @SQLITE3X_CFLAGS@ @ZFSTREAM_CFLAGS@ @GDAL_CFLAGS@ @PILOTLINK_CFLAGS@ \
-	@GEOS_CPPFLAGS@ @CLIPPER_CPPFLAGS@ @OPENJPEG_CFLAGS@ @JSONCPP_CFLAGS@ @EIGEN3_CFLAGS@
+	@GEOS_CPPFLAGS@ @CLIPPER_CPPFLAGS@ @OPENJPEG_CFLAGS@ @JSONCPP_CFLAGS@ @EIGEN3_CFLAGS@ \
+	@LIBARCHIVE_CFLAGS@
 AM_CPPFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/include

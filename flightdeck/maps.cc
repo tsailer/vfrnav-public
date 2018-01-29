@@ -33,8 +33,7 @@ FlightDeckWindow::MapDrawingArea::MapDrawingArea(BaseObjectType * castitem, cons
         : Gtk::DrawingArea(castitem), m_engine(0), m_renderer(0), m_rendertype(renderer_none),
           m_dragbutton(2), m_dragstart(0, 0), m_dragoffset(0, 0), m_draginprogress(false),
           m_cursorvalid(false), m_cursoranglevalid(false), m_cursorangle(0),
-          m_time(0), m_altitude(0), m_mapscale(0.1), m_glideslope(std::numeric_limits<float>::quiet_NaN()),
-	  m_tas(std::numeric_limits<float>::quiet_NaN()), m_winddir(0), m_windspeed(0),
+          m_time(0), m_altitude(0), m_mapscale(0.1), m_winddir(0), m_windspeed(0),
 	  m_route(0), m_track(0), m_drawflags(MapRenderer::drawflags_none)
 {
         set_map_scale(0.1);
@@ -58,8 +57,7 @@ FlightDeckWindow::MapDrawingArea::MapDrawingArea(void)
         : m_engine(0), m_renderer(0), m_rendertype(renderer_none),
           m_dragbutton(2), m_dragstart(0, 0), m_dragoffset(0, 0), m_draginprogress(false),
           m_cursorvalid(false), m_cursoranglevalid(false), m_cursorangle(0),
-          m_time(0), m_altitude(0), m_mapscale(0.1), m_glideslope(std::numeric_limits<float>::quiet_NaN()),
-	  m_tas(std::numeric_limits<float>::quiet_NaN()), m_winddir(0), m_windspeed(0),
+          m_time(0), m_altitude(0), m_mapscale(0.1), m_winddir(0), m_windspeed(0),
 	  m_route(0), m_track(0), m_drawflags(MapRenderer::drawflags_none)
 {
         set_map_scale(0.1);
@@ -179,8 +177,7 @@ void FlightDeckWindow::MapDrawingArea::renderer_alloc(void)
                 m_renderer->set_track(m_track);
                 m_renderer->set_center(m_center, m_altitude, 0, tv.tv_sec);
                 m_renderer->set_map_scale(m_mapscale);
-		m_renderer->set_glideslope((m_rendertype == renderer_terrain) ? m_glideslope : std::numeric_limits<float>::quiet_NaN());
-		m_renderer->set_tas(m_tas);
+		m_renderer->set_glidemodel((m_rendertype == renderer_terrain) ? m_glidemodel : MapRenderer::GlideModel());
 		m_renderer->set_wind(m_winddir, m_windspeed);
                 *m_renderer = m_drawflags;
                 m_renderer->set_screensize(MapRenderer::ScreenCoord(get_width(), get_height()));
@@ -474,38 +471,19 @@ float FlightDeckWindow::MapDrawingArea::get_map_scale(void) const
         return m_renderer->get_map_scale();
 }
 
-void FlightDeckWindow::MapDrawingArea::set_glideslope(float gs)
+void FlightDeckWindow::MapDrawingArea::set_glidemodel(const MapRenderer::GlideModel& gm)
 {
-	if (gs <= 0)
-		gs = std::numeric_limits<float>::quiet_NaN();
-	m_glideslope = gs;
+	m_glidemodel = gm;
 	if (m_renderer && m_rendertype == renderer_terrain)
-		m_renderer->set_glideslope(m_glideslope);
+		m_renderer->set_glidemodel(m_glidemodel);
         redraw();
 }
 
-float FlightDeckWindow::MapDrawingArea::get_glideslope(void) const
+const MapRenderer::GlideModel& FlightDeckWindow::MapDrawingArea::get_glidemodel(void) const
 {
 	if (m_renderer && m_rendertype == renderer_terrain)
-		return m_renderer->get_glideslope();
-	return m_glideslope;
-}
-
-void FlightDeckWindow::MapDrawingArea::set_tas(float tas)
-{
-	if (tas <= 0)
-		tas = std::numeric_limits<float>::quiet_NaN();
-	m_tas = tas;
-	if (m_renderer)
-		m_renderer->set_tas(m_tas);
-        redraw();
-}
-
-float FlightDeckWindow::MapDrawingArea::get_tas(void) const
-{
-	if (m_renderer)
-		return m_renderer->get_tas();
-	return m_tas;
+		return m_renderer->get_glidemodel();
+	return m_glidemodel;
 }
 
 void FlightDeckWindow::MapDrawingArea::set_wind(float dir, float speed)

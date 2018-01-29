@@ -4,7 +4,7 @@
 // Description: Flight Deck Windows, Autoroute Dialog
 //
 //
-// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2011, 2012, 2013, 2014
+// Author: Thomas Sailer <t.sailer@alumni.ethz.ch>, (C) 2011, 2012, 2013, 2014, 2016
 //
 // Copyright: See COPYING file that comes with this distribution
 //
@@ -2850,7 +2850,8 @@ void FlightDeckWindow::FPLAutoRouteDialog::pg1_next_clicked(void)
 				cmd["name"] = (std::string)m_departure.get_name();
 				cmd["coordlat"] = m_departure.get_coord().get_lat();
 				cmd["coordlon"] = m_departure.get_coord().get_lon();
-				cmd[m_depifr ? "ifr" : "vfr"] = true;
+				cmd["ifr"] = m_depifr;
+				cmd["vfr"] = true;
 				if (!m_sidend.is_invalid()) {
 					cmd["sidlat"] = m_sidend.get_lat();
 					cmd["sidlon"] = m_sidend.get_lon();
@@ -2892,7 +2893,8 @@ void FlightDeckWindow::FPLAutoRouteDialog::pg1_next_clicked(void)
 				cmd["name"] = (std::string)m_destination.get_name();
 				cmd["coordlat"] = m_destination.get_coord().get_lat();
 				cmd["coordlon"] = m_destination.get_coord().get_lon();
-				cmd[m_destifr ? "ifr" : "vfr"] = true;
+				cmd["ifr"] = m_destifr;
+				cmd["vfr"] = true;
 				if (!m_starstart.is_invalid()) {
 					cmd["starlat"] = m_starstart.get_lat();
 					cmd["starlon"] = m_starstart.get_lon();
@@ -3179,7 +3181,8 @@ void FlightDeckWindow::FPLAutoRouteDialog::pg1_next_clicked(void)
 				cmd.set_option("icao", m_departure.get_icao());
 				cmd.set_option("name", m_departure.get_name());
 				cmd.set_option("coord", m_departure.get_coord());
-				cmd.set_option(m_depifr ? "ifr" : "vfr", "");
+				cmd.set_option("ifr", (int)m_depifr);
+				cmd.set_option("vfr", 1);
 				cmd.set_option("sid", m_sidend);
 				if (m_fplautoroutespinbuttonsidlimit)
 					cmd.set_option("sidlimit", m_fplautoroutespinbuttonsidlimit->get_value());
@@ -3216,7 +3219,8 @@ void FlightDeckWindow::FPLAutoRouteDialog::pg1_next_clicked(void)
 				cmd.set_option("icao", m_destination.get_icao());
 				cmd.set_option("name", m_destination.get_name());
 				cmd.set_option("coord", m_destination.get_coord());
-				cmd.set_option(m_destifr ? "ifr" : "vfr", "");
+				cmd.set_option("ifr", (int)m_destifr);
+				cmd.set_option("vfr", 1);
 				cmd.set_option("star", m_starstart);
 				if (m_fplautoroutespinbuttonstarlimit)
 					cmd.set_option("starlimit", m_fplautoroutespinbuttonstarlimit->get_value());
